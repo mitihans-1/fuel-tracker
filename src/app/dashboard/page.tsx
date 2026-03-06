@@ -1,24 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import DriverDashboard from "@/components/DriverDashboard";
+import StationDashboard from "@/components/StationDashboard";
+import AdminDashboard from "../../components/AdminDashboard";
 
-export default function Dashboard() {
-  const router = useRouter();
+export default function DashboardPage() {
+  const [role, setRole] = useState("");
 
-  // useEffect(() => {
-  //   const token = localStorage.getItem("token");
-
-  //   if (!token) {
-  //     router.push("/auth/login");
-  //   }
-  // }, []);
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(res => res.json())
+      .then(data => setRole(data.role));
+  }, []);
 
   return (
-    <div className="p-10">
-      <h1 className="text-2xl">
-        Welcome Driver Dashboard 🚗
-      </h1>
+    <div>
+      {role === "DRIVER" && <DriverDashboard />}
+      {role === "STATION" && <StationDashboard />}
+      {role === "ADMIN" && <AdminDashboard />}
+      {!role && <p>Loading...</p>}
     </div>
   );
 }
