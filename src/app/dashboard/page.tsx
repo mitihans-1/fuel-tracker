@@ -8,11 +8,12 @@ import AdminDashboard from "../../components/AdminDashboard";
 export default function DashboardPage() {
   const [role, setRole] = useState("");
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then(res => res.json())
-      .then(data => setRole(data.role));
-  }, []);
+ useEffect(() => {
+  fetch("/api/auth/me")
+    .then(res => res.json())
+    .then(data => setRole(data.role))
+    .catch(() => setRole("error"));
+}, []);
 
   return (
     <div>

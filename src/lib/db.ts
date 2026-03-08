@@ -1,8 +1,18 @@
 import mongoose from "mongoose";
 
-export async function connectDB() {
-  if (mongoose.connection.readyState >= 1) return;
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
-  await mongoose.connect("mongodb://127.0.0.1:27017/fueltracker");
-  console.log("database connected");
+if (!MONGODB_URI) {
+  throw new Error("Please define MONGODB_URI in .env.local");
+}
+
+export async function connectDB() {
+
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
+  await mongoose.connect(MONGODB_URI);
+
+  console.log("✅ Database connected");
 }
