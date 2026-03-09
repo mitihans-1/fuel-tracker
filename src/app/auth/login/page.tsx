@@ -2,6 +2,7 @@
 
 import React, { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Login() {
   const router = useRouter();
@@ -12,7 +13,6 @@ export default function Login() {
     e.preventDefault();
 
     if (!form.email || !form.password) {
-      alert("Please enter both email and password");
       return;
     }
 
@@ -22,87 +22,104 @@ export default function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
-        credentials: "include", // ✅ important: store HTTP-only cookie
+        credentials: "include",
       });
 
       let data;
       try {
         data = await res.json();
       } catch {
-        alert("Server returned invalid response");
         setLoading(false);
         return;
       }
 
       if (res.ok) {
-        // Role-based redirect
         if (data.role === "DRIVER") router.push("/dashboard/driver");
         else if (data.role === "STATION") router.push("/dashboard/station");
         else if (data.role === "ADMIN") router.push("/dashboard/admin");
         else router.push("/dashboard");
       } else {
-        alert(data.message || "Login failed");
+        alert(data.message || "Invalid credentials");
       }
     } catch (err) {
       console.error("Login error:", err);
-      alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-tr from-purple-700 via-pink-500 to-red-500 py-10">
-      <form
-        onSubmit={handleSubmit}
-        className="w-96 p-10 bg-white/90 backdrop-blur-md border border-white/30 rounded-3xl shadow-2xl flex flex-col gap-4"
-      >
-        <h2 className="text-3xl font-extrabold text-center text-purple-700 animate-pulse mb-6">
-          Welcome Back
-        </h2>
+    <div className="min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
+      <div className="w-full max-w-md space-y-8 relative z-10">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
+            ⛽
+          </div>
+          <h2 className="text-4xl font-black tracking-tight text-white">
+            Welcome back
+          </h2>
+          <p className="text-blue-100/70 font-medium italic">
+            Access your FuelSync console
+          </p>
+        </div>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, email: e.target.value }))
-          }
-          className="w-full p-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500 shadow-sm transition-all"
-        />
+        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-5">
+          <div className="space-y-4">
+            <div>
+              <label className="text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                className="w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+              />
+            </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, password: e.target.value }))
-          }
-          className="w-full p-3 rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500 shadow-sm transition-all"
-        />
+            <div>
+              <label className="text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                value={form.password}
+                onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                className="w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none" />
+            </div>
+          </div>
+          <div className=" flex justify-center ">
+            <button
+              type="submit"
+              disabled={loading}
+              className={` cursor-pointer w-48 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${loading
+                ? "bg-white/10 text-white/40 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
+                }`}
+            >
+              {loading ? "Authenticating..." : "✦ Sign In"}
+            </button>
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`p-3 rounded-xl font-bold text-white text-lg transition-all ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-purple-600 hover:bg-purple-700 hover:scale-105 shadow-lg"
-          }`}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
 
-        <p className="text-sm text-center text-gray-600 mt-2">
-          Don’t have an account?{" "}
-          <a
-            href="/auth/register"
-            className="text-purple-600 font-semibold hover:underline"
-          >
-            Register
-          </a>
+          <div className="pt-4 text-center">
+            <p className="text-xs font-bold text-green-300/70 uppercase tracking-widest flex items-center justify-center gap-2">
+              🔒 Secure & Encrypted Connection
+            </p>
+
+          </div>
+        </form>
+
+        <p className="text-center text-sm font-bold text-blue-200/60 mt-8">
+          New to the platform?{" "}
+          <Link href="/auth/register" className="text-blue-300 hover:text-white hover:underline transition-colors">
+            Register Account
+          </Link>
         </p>
-      </form>
+
+      </div>
     </div>
   );
 }

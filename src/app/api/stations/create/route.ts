@@ -1,16 +1,35 @@
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import Station from "@/models/Station";
-import { NextResponse } from "next/server";
+import FuelRequest from "@/models/FuelRequest";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   await connectDB();
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
 
-  const { name, location } = await req.json();
+  if (!token) {
+    return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  }
 
-  const station = await Station.create({
-    name,
-    location,
-  });
+  const user = verifyToken(token);
+  if (!user) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
 
-  return NextResponse.json(station);
-}
+  try {
+    const { stationId, fuelType } = await req.json();
+
+    const newRequest = await FuelRequest.create({
+      driverId: user.id,
+      stationId,
+      fuelType,
+      status: "PENDING"
+    });
+
+    return NextResponse.json(newRequest, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
+  }
+}

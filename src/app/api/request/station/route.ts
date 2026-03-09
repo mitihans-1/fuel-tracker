@@ -2,7 +2,7 @@ import { connectDB } from "@/lib/db";
 import FuelRequest from "@/models/FuelRequest";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET() {
 
   await connectDB();
 

@@ -1,9 +1,9 @@
 import { connectDB } from "@/lib/db";
 import UserModel from "@/models/user";
 import bcrypt from "bcryptjs";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   await connectDB();
   const { name, email, password, role } = await req.json();
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await UserModel.create({
+  await UserModel.create({
     name,
     email,
     password: hashedPassword,
@@ -26,4 +26,4 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ message: "User registered successfully" }, { status: 201 });
-}
+}

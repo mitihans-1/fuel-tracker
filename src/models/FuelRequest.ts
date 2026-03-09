@@ -1,37 +1,20 @@
 import mongoose from "mongoose";
 
-const FuelRequestSchema = new mongoose.Schema({
-
+const requestSchema = new mongoose.Schema({
   driverId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
+    ref: "user"
   },
-
   stationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Station",
-    required: true
+    ref: "station"
   },
-
-  fuelType: {
-    type: String,
-    enum: ["petrol", "diesel"],
-    required: true
-  },
-
+  fuelType: String,
   status: {
     type: String,
-    enum: ["PENDING", "APPROVED", "REJECTED"],
     default: "PENDING"
-  },
-
-  createdAt: {
-    type: Date,
-    default: Date.now
   }
-
 });
 
-export default mongoose.models.FuelRequest ||
-mongoose.model("FuelRequest", FuelRequestSchema);
+export default mongoose.models.request ||
+  mongoose.model("request", requestSchema);

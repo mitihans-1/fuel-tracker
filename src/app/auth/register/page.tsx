@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Register() {
   const router = useRouter();
@@ -11,7 +12,6 @@ export default function Register() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password || !form.role) {
-      alert("All fields are required");
       return;
     }
 
@@ -35,108 +35,101 @@ export default function Register() {
       router.push("/auth/login");
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-tr from-purple-700 via-pink-500 to-red-500 py-10" >
-      <form
-        onSubmit={handleSubmit}
-        className="p-10 w-96 bg-white/90 backdrop-blur-md border border-white/30 rounded-3xl shadow-2xl flex flex-col gap-4"
-      >
-        <h2 className="text-3xl font-extrabold text-center text-purple-700 animate-pulse mb-6">
-          Create Your Account
-        </h2>
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-6 bg-gray-50">
+      <div className="w-full max-w-lg space-y-8">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-indigo-200">
+            ⛽
+          </div>
+          <h2 className="text-4xl font-black tracking-tight text-gray-900">
+            Get Started
+          </h2>
+          <p className="text-gray-500 font-medium italic">
+            Join the digital fuel network today
+          </p>
+        </div>
 
-        <input
-          type="text"
-          placeholder="Name"
-          className="
-    w-full mb-4 p-3 rounded-xl
-    border border-gray-300
-    bg-white/80 text-gray-900 placeholder-gray-400
-    focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500
-    transition-all shadow-sm
-  "
-          value={form.name}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-  setForm(prev => ({ ...prev, name: e.target.value }))
-}
-        />
-<input
-  type="email"
-  placeholder="Email"
-  value={form.email}
-  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(prev => ({ ...prev, email: e.target.value }))
-  }
-  className="
-    w-full mb-4 p-3 rounded-xl
-    border border-gray-300
-    bg-white/80 text-gray-900 placeholder-gray-400
-    focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500
-    transition-all shadow-sm
-  "
-/>
+        <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">Full Name</label>
+              <input
+                type="text"
+                required
+                placeholder="Abebe Bikila"
+                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none"
+                value={form.name}
+                onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
 
-        <input
-  type="password"
-  placeholder="Password"
-  value={form.password}
-  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(prev => ({ ...prev, password: e.target.value }))
-  }
-  className="
-    w-full mb-6 p-3 rounded-xl
-    border border-gray-300
-    bg-white/80 text-gray-900 placeholder-gray-400
-    focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500
-    transition-all shadow-sm
-  "
-/>
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="abebe@example.com"
+                value={form.email}
+                onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none"
+              />
+            </div>
 
-        <select
-        title="role"
-  value={form.role}
-  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-    setForm(prev => ({ ...prev, role: e.target.value }))
-  }
-  className="
-    w-full mb-6 p-3 rounded-xl
-    border border-gray-300
-    bg-white/80 text-gray-900 placeholder-gray-400
-    focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500
-    transition-all shadow-sm
-  "
->
-          <option value="">Select Role</option>
-          <option value="ADMIN">Admin</option>
-          <option value="STATION">Station</option>
-          <option value="DRIVER">Driver</option>
-        </select>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">Password</label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={form.password}
+                onChange={(e) => setForm(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none"
+              />
+            </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`p-3 rounded-xl font-bold text-white text-lg transition-all ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-purple-600 hover:bg-purple-700 hover:scale-105 shadow-lg"
-          }`}
-        >
-          {loading ? "Registering..." : "Register"}
-        </button>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">System Role</label>
+              <select
+                title="role"
+                required
+                value={form.role}
+                onChange={(e) => setForm(prev => ({ ...prev, role: e.target.value }))}
+                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none appearance-none"
+              >
+                <option value="">Select Role</option>
+                <option value="DRIVER">Driver</option>
+                <option value="STATION">Fuel Station</option>
+                <option value="ADMIN">Administrator</option>
+              </select>
+            </div>
+          </div>
 
-        <p className="text-sm text-center text-gray-600 mt-2">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest mt-4 transition-all ${
+              loading
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100"
+            }`}
+          >
+            {loading ? "Creating Account..." : "Confirm Registration"}
+          </button>
+        </form>
+
+        <p className="text-center text-sm font-bold text-gray-500 mt-8">
           Already have an account?{" "}
-          <a href="/auth/login" className="text-purple-600 font-semibold hover:underline">
-            Login
-          </a>
+          <Link href="/auth/login" className="text-indigo-600 hover:underline">
+            Log In
+          </Link>
         </p>
-      </form>
+      </div>
     </div>
   );
 }
