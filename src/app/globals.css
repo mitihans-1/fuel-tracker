@@ -5,24 +5,32 @@
   --foreground: #f1f5f9;
 }
 
+/* 
+  ULTIMATE DOUBLE SCROLLBAR REMOVAL:
+  We force the HTML to be the only scrollable element.
+  We strip all overflow from body and main to ensure they never create their own bars.
+*/
+
 html {
-  height: auto !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
+  height: 100%;
+  overflow-y: auto; /* The only scrollbar allowed */
+  overflow-x: hidden;
   scroll-behavior: smooth;
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: transparent; /* Let HTML background show through */
   color: var(--foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-  height: auto !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
-  position: static !important;
+  overflow: visible !important; /* Force body to never scroll */
+}
+
+main {
+  overflow: visible !important; /* Force main to never scroll */
 }
 
 /* Custom Utilities */

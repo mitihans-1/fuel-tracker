@@ -17,7 +17,7 @@ export default function StationDashboard() {
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
   useEffect(() => {
-    fetch("/api/requests/station")
+    fetch("/api/request/station")
       .then(res => res.json())
       .then(data => setRequests(data));
   }, []);
@@ -223,4 +223,4 @@ export default function StationDashboard() {
       </div>
     </div>
   );
-}
+}

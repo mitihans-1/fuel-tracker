@@ -11,9 +11,7 @@ export default function Register() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password || !form.role) {
-      return;
-    }
+    if (!form.name || !form.email || !form.password || !form.role) return;
 
     setLoading(true);
     try {
@@ -40,95 +38,125 @@ export default function Register() {
     }
   };
 
+  const labelClass =
+    "text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent";
+  const inputClass =
+    "w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none";
+
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-lg space-y-8">
+    <div className="min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
+
+      {/* Glow blobs */}
+      <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
+
+      <div className="w-full max-w-lg space-y-8 relative z-10">
+
+        {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-indigo-200">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
             ⛽
           </div>
-          <h2 className="text-4xl font-black tracking-tight text-gray-900">
+          <h2 className="text-4xl font-black tracking-tight text-white">
             Get Started
           </h2>
-          <p className="text-gray-500 font-medium italic">
+          <p className="text-blue-100/70 font-medium italic">
             Join the digital fuel network today
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="md:col-span-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">Full Name</label>
-              <input
-                type="text"
-                required
-                placeholder="Abebe Bikila"
-                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none"
-                value={form.name}
-                onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
+        {/* Form Card */}
+        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-5">
 
-            <div className="md:col-span-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">Email Address</label>
-              <input
-                type="email"
-                required
-                placeholder="abebe@example.com"
-                value={form.email}
-                onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">Password</label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={form.password}
-                onChange={(e) => setForm(prev => ({ ...prev, password: e.target.value }))}
-                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4 mb-2 block">System Role</label>
-              <select
-                title="role"
-                required
-                value={form.role}
-                onChange={(e) => setForm(prev => ({ ...prev, role: e.target.value }))}
-                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-600 transition-all outline-none appearance-none"
-              >
-                <option value="">Select Role</option>
-                <option value="DRIVER">Driver</option>
-                <option value="STATION">Fuel Station</option>
-                <option value="ADMIN">Administrator</option>
-              </select>
-            </div>
+          {/* Full Name */}
+          <div>
+            <label className={labelClass}>Full Name</label>
+            <input
+            title = "name"
+              type="text"
+              required
+              // placeholder="Abebe Bikila"
+              className={inputClass}
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+            />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest mt-4 transition-all ${
-              loading
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100"
-            }`}
-          >
-            {loading ? "Creating Account..." : "Confirm Registration"}
-          </button>
+          {/* Email */}
+          <div>
+            <label className={labelClass}>Email Address</label>
+            <input
+            title = "email"
+              type="email"
+              required
+              // placeholder="abebe@example.com"
+              value={form.email}
+              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className={labelClass}>Password</label>
+            <input
+            title = "password"
+              type="password"
+              required
+              // placeholder="••••••••"
+              value={form.password}
+              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className={labelClass}>Account Type</label>
+            <select
+              title="role"
+              required
+              value={form.role}
+              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
+              className={`${inputClass} appearance-none cursor-pointer`}
+            >
+              <option value="" className="bg-slate-800">Select your role</option>
+              <option value="DRIVER" className="bg-slate-800">🚗 Driver</option>
+              <option value="STATION" className="bg-slate-800">⛽ Fuel Station</option>
+              <option value="ADMIN" className="bg-slate-800">🛡️ Administrator</option>
+            </select>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-center pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className={`cursor-pointer w-56 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${loading
+                ? "bg-white/10 text-white/40 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
+                }`}
+            >
+              {loading ? "Creating Account..." : "✦ Create Account"}
+            </button>
+          </div>
+
+          {/* Security note */}
+          <div className="pt-2 text-center">
+            <p className="text-xs font-bold text-green-300/70 uppercase tracking-widest flex items-center justify-center gap-2">
+              🔒 Secure & Encrypted Connection
+            </p>
+          </div>
         </form>
 
-        <p className="text-center text-sm font-bold text-gray-500 mt-8">
+        {/* Login link */}
+        <p className="text-center text-sm font-bold text-blue-200/60 mt-8">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-indigo-600 hover:underline">
-            Log In
+          <Link href="/auth/login" className="text-blue-300 hover:text-white hover:underline transition-colors">
+            Sign In
           </Link>
         </p>
+
       </div>
     </div>
   );

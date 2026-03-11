@@ -21,6 +21,16 @@ const StationSchema = new mongoose.Schema({
     default: false,
   },
 
+  latitude: {
+    type: Number,
+    required: false,
+  },
+
+  longitude: {
+    type: Number,
+    required: false,
+  },
+
   updatedAt: {
     type: Date,
     default: Date.now,

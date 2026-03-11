@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+
+import MapStations from "@/components/MapStations";
 
 interface Station {
   _id: string;
   name: string;
-  location: string;
+  location: { lat: number; lng: number; text: string };
   petrol: boolean;
   diesel: boolean;
 }
@@ -18,220 +20,310 @@ interface FuelRequest {
   createdAt?: string;
 }
 
+const PAGE_SIZE = 6;
+
 export default function DriverDashboard() {
   const [stations, setStations] = useState<Station[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loadingStations, setLoadingStations] = useState(true);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
+  // Fetch stations
   useEffect(() => {
-    fetch("/api/stations")
-      .then(res => res.json())
-      .then(data => setStations(data));
+    const fetchStations = async () => {
+      try {
+        setLoadingStations(true);
+        const res = await fetch(`/api/stations?page=${page}&limit=${PAGE_SIZE}`);
+        if (!res.ok) throw new Error("Failed to fetch stations");
+        const data = await res.json();
+        setStations(data);
+      } catch (err) {
+        setError("Could not load stations");
+      } finally {
+        setLoadingStations(false);
+      }
+    };
+    fetchStations();
+  }, [page]);
+
+  // Fetch driver requests
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const res = await fetch("/api/request/driver");
+        const data = await res.json();
+        setRequests(data);
+      } catch {
+        alert("Failed to load your requests");
+      }
+    };
+    fetchRequests();
   }, []);
 
+  // Real-time updates using EventSource
   useEffect(() => {
-    fetch("/api/requests/driver")
-      .then(res => res.json())
-      .then(data => setRequests(data));
+    const es = new EventSource("/api/stations/stream");
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      setStations(data);
+    };
+    return () => es.close();
   }, []);
 
   const requestFuel = async (stationId: string, fuelType: string) => {
     try {
-      const response = await fetch("/api/stations/request", {
+      const res = await fetch("/api/stations/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stationId, fuelType }),
       });
-
-      if (response.ok) {
-        alert(`Fuel request for ${fuelType} sent successfully!`);
-        // Refresh requests
-        const reqRes = await fetch("/api/requests/driver");
+      if (res.ok) {
+        alert(`${fuelType} request sent!`);
+        const reqRes = await fetch("/api/request/driver");
         const data = await reqRes.json();
         setRequests(data);
+      } else {
+        alert("Failed to send request");
       }
-    } catch (error) {
-      console.error("Failed to request fuel:", error);
+    } catch {
+      alert("Error requesting fuel");
     }
   };
 
-  const filteredStations = stations.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.location.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter stations by search query
+  const filteredStations = stations.filter(
+    (s) =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.location.text.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Stats
   const stats = {
     totalRequests: requests.length,
-    pendingCount: requests.filter(r => r.status === "PENDING").length,
-    approvedCount: requests.filter(r => r.status === "APPROVED").length,
+    pendingCount: requests.filter((r) => r.status === "PENDING").length,
+    approvedCount: requests.filter((r) => r.status === "APPROVED").length,
   };
 
+  const totalPages = Math.ceil(filteredStations.length / PAGE_SIZE);
+  const paginatedStations = filteredStations.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE
+  );
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Driver Dashboard
-          </h1>
-          <p className="text-gray-500 mt-1">Welcome back! Manage your fuel requests and find stations.</p>
-        </div>
-        
-        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
-           <div className="px-4 py-2 text-center border-r border-gray-100">
-             <p className="text-xs text-gray-400 uppercase font-semibold">Total</p>
-             <p className="text-xl font-bold text-gray-800">{stats.totalRequests}</p>
-           </div>
-           <div className="px-4 py-2 text-center border-r border-gray-100">
-             <p className="text-xs text-gray-400 uppercase font-semibold">Pending</p>
-             <p className="text-xl font-bold text-orange-500">{stats.pendingCount}</p>
-           </div>
-           <div className="px-4 py-2 text-center">
-             <p className="text-xs text-gray-400 uppercase font-semibold">Approved</p>
-             <p className="text-xl font-bold text-green-500">{stats.approvedCount}</p>
-           </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white p-6">
+      <div className="max-w-7xl mx-auto space-y-12">
 
-      {/* Available Stations Section */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <span>Available Stations</span>
-            <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">{filteredStations.length}</span>
-          </h2>
-          <input 
-            type="text" 
-            placeholder="Search stations or locations..." 
-            className="w-full sm:w-64 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 transition-all outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStations.map(station => (
-            <div key={station._id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 p-6 transition-all duration-300">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors">{station.name}</h3>
-                  <p className="text-gray-500 text-sm flex items-center gap-1 mt-1">
-                    <span className="opacity-70">📍</span> {station.location}
-                  </p>
-                </div>
-                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${station.petrol || station.diesel ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {station.petrol || station.diesel ? 'Open' : 'Closed'}
-                </div>
-              </div>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Petrol</span>
-                  <span className={`font-medium ${station.petrol ? 'text-green-600' : 'text-red-500'}`}>
-                    {station.petrol ? '✅ Available' : '❌ Out of Stock'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Diesel</span>
-                  <span className={`font-medium ${station.diesel ? 'text-green-600' : 'text-red-500'}`}>
-                    {station.diesel ? '✅ Available' : '❌ Out of Stock'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  disabled={!station.petrol}
-                  onClick={() => requestFuel(station._id, "petrol")}
-                  className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                    station.petrol 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200' 
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  Request Petrol
-                </button>
-
-                <button
-                  disabled={!station.diesel}
-                  onClick={() => requestFuel(station._id, "diesel")}
-                  className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                    station.diesel 
-                      ? 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-lg shadow-yellow-200' 
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  Request Diesel
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        {filteredStations.length === 0 && (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-            <p className="text-gray-500">No stations found matching your search.</p>
+        {/* HEADER */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-5xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              Driver Dashboard
+            </h1>
+            <p className="text-blue-200/70 mt-2 text-lg">
+              Request fuel and find available stations easily.
+            </p>
           </div>
-        )}
-      </section>
 
-      {/* Request History Section */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-800">Request History</h2>
-        
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-gray-50 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                  <th className="px-6 py-4">Station</th>
-                  <th className="px-6 py-4">Fuel Type</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Date</th>
+          {/* STATS */}
+          <div className="flex bg-white/10 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+            <div className="px-6 py-3 text-center border-r border-white/10">
+              <p className="text-xs text-blue-200 uppercase">Total</p>
+              <p className="text-2xl font-bold">{stats.totalRequests}</p>
+            </div>
+            <div className="px-6 py-3 text-center border-r border-white/10">
+              <p className="text-xs text-blue-200 uppercase">Pending</p>
+              <p className="text-2xl font-bold text-orange-400">
+                {stats.pendingCount}
+              </p>
+            </div>
+            <div className="px-6 py-3 text-center">
+              <p className="text-xs text-blue-200 uppercase">Approved</p>
+              <p className="text-2xl font-bold text-green-400">
+                {stats.approvedCount}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* SEARCH & MAP */}
+        <section className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
+            <h2 className="text-3xl font-bold flex items-center gap-3">
+              Available Stations
+              <span className="bg-blue-500/20 text-blue-300 px-3 py-1 text-sm rounded-full">
+                {filteredStations.length}
+              </span>
+            </h2>
+
+            <input
+              type="text"
+              placeholder="Search stations or locations..."
+              className="w-full sm:w-72 px-5 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-blue-200 focus:ring-2 focus:ring-blue-500 outline-none backdrop-blur-lg"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {loadingStations ? (
+            <div className="text-center py-12">Loading stations...</div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-400">{error}</div>
+          ) : (
+            <>
+              {/* Map */}
+              <div className="h-64 rounded-xl overflow-hidden mb-6">
+                <MapStations stations={filteredStations} />
+              </div>
+
+              {/* STATION GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {paginatedStations.map((station) => (
+                  <div
+                    key={station._id}
+                    className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:bg-white/20 hover:scale-[1.03] transition-all duration-300 shadow-xl"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-xl text-white">
+                          {station.name}
+                        </h3>
+                        <p className="text-blue-200 text-sm mt-1">
+                          📍 {station.location.text}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs px-3 py-1 rounded-full font-bold ${
+                          station.petrol || station.diesel
+                            ? "bg-green-500/20 text-green-300"
+                            : "bg-red-500/20 text-red-300"
+                        }`}
+                      >
+                        {station.petrol || station.diesel ? "OPEN" : "CLOSED"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                      <div className="flex justify-between text-sm">
+                        <span>⛽ Petrol</span>
+                        <span
+                          className={station.petrol ? "text-green-400" : "text-red-400"}
+                        >
+                          {station.petrol ? "Available" : "Out of Stock"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>🛢 Diesel</span>
+                        <span
+                          className={station.diesel ? "text-green-400" : "text-red-400"}
+                        >
+                          {station.diesel ? "Available" : "Out of Stock"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        disabled={!station.petrol}
+                        onClick={() => requestFuel(station._id, "petrol")}
+                        className={`flex-1 rounded-xl py-3 font-semibold transition ${
+                          station.petrol
+                            ? "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
+                            : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                        }`}
+                      >
+                        Request Petrol
+                      </button>
+                      <button
+                        disabled={!station.diesel}
+                        onClick={() => requestFuel(station._id, "diesel")}
+                        className={`flex-1 rounded-xl py-3 font-semibold transition ${
+                          station.diesel
+                            ? "bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-lg"
+                            : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                        }`}
+                      >
+                        Request Diesel
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-4 mt-6">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="px-4 py-2 bg-blue-500 rounded disabled:bg-gray-500"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-2 py-2">{page} / {totalPages}</span>
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="px-4 py-2 bg-blue-500 rounded disabled:bg-gray-500"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* REQUEST HISTORY */}
+        <section className="space-y-6">
+          <h2 className="text-3xl font-bold">Request History</h2>
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+            <table className="w-full">
+              <thead className="bg-white/10 text-blue-200 text-sm">
+                <tr>
+                  <th className="px-6 py-4 text-left">Station</th>
+                  <th className="px-6 py-4 text-left">Fuel</th>
+                  <th className="px-6 py-4 text-left">Status</th>
+                  <th className="px-6 py-4 text-left">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {requests.map(r => (
-                  <tr key={r._id} className="hover:bg-gray-50 transition-colors">
+              <tbody>
+                {requests.map((r) => (
+                  <tr key={r._id} className="border-t border-white/10 hover:bg-white/10 transition">
+                    <td className="px-6 py-4 font-semibold">{r.stationId.name}</td>
+                    <td className="px-6 py-4 capitalize">{r.fuelType}</td>
                     <td className="px-6 py-4">
-                      <p className="font-semibold text-gray-800">{r.stationId.name}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${r.fuelType === 'petrol' ? 'bg-blue-50 text-blue-600' : 'bg-yellow-50 text-yellow-600'}`}>
-                        {r.fuelType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                        r.status === 'PENDING' ? 'bg-orange-100 text-orange-600' :
-                        r.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${
-                          r.status === 'PENDING' ? 'bg-orange-600 animate-pulse' :
-                          r.status === 'APPROVED' ? 'bg-green-600' :
-                          'bg-red-600'
-                        }`}></span>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          r.status === "PENDING"
+                            ? "bg-orange-500/20 text-orange-300"
+                            : r.status === "APPROVED"
+                            ? "bg-green-500/20 text-green-300"
+                            : "bg-red-500/20 text-red-300"
+                        }`}
+                      >
                         {r.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 capitalize">
-                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}
+                    <td className="px-6 py-4 text-blue-200 text-sm">
+                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "N/A"}
                     </td>
                   </tr>
                 ))}
                 {requests.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      You haven&apos;t made any requests yet. Start by finding a station above.
+                    <td colSpan={4} className="text-center py-12 text-blue-200">
+                      No fuel requests yet.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
-}
+}

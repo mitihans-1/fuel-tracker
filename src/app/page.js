@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 pt-24 pb-16 md:pt-36 md:pb-32 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950">
+      <section className="relative px-4 sm:px-6 pt-12 pb-16 md:pt-20 md:pb-32 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950">
         {/* Subtle dot pattern overlay */}
         <div className="absolute inset-0 -z-10 h-full w-full bg-transparent bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:16px_16px] opacity-60 [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
 
@@ -17,13 +17,13 @@ export default function Home() {
 
         <div className="max-w-6xl mx-auto text-center space-y-6 relative">
           {/* Live Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-blue-100 text-[10px] sm:text-xs font-bold uppercase tracking-widest shadow-sm hover:shadow-md transition-all hover:scale-105 cursor-default">
+          {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-blue-100 text-[10px] sm:text-xs font-bold uppercase tracking-widest shadow-sm hover:shadow-md transition-all hover:scale-105 cursor-default">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
             </span>
             Now Live in Addis Ababa • 25+ Stations Connected
-          </div>
+          </div> */}
 
           {/* Main Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-sm">
@@ -207,36 +207,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 relative bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
 
-        <div className="max-w-4xl mx-auto text-center space-y-6 sm:space-y-8 relative z-10">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-            Ready to save time?
-          </h2>
-          <p className="text-base sm:text-xl text-blue-50 max-w-2xl mx-auto font-medium drop-shadow-sm px-2">
-            Join thousands of Ethiopian drivers who never wait in fuel lines anymore.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0 pt-4 sm:pt-8">
-            <Link
-              href="/auth/register"
-              className="w-full sm:w-auto px-8 py-4 bg-white text-blue-900 font-bold rounded-2xl hover:bg-blue-50 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] hover:-translate-y-1"
-            >
-              Create Free Account
-            </Link>
-            <Link
-              href="#"
-              className="w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-md text-white font-bold rounded-2xl border border-white/20 hover:bg-white/20 transition-all hover:-translate-y-1"
-            >
-              Contact Sales
-            </Link>
-          </div>
-          <p className="text-xs sm:text-sm text-blue-100/90 font-semibold drop-shadow-sm">
-            No credit card required • Free for drivers • Stations pay as they grow
-          </p>
-        </div>
-      </section>
+
+
 
       {/* Footer */}
       <footer className="py-10 sm:py-12 px-4 sm:px-6 bg-slate-950 border-t border-white/10 relative">

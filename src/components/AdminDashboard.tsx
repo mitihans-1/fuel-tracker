@@ -17,6 +17,15 @@ interface Station {
   diesel: boolean;
 }
 
+interface FuelRequest {
+  _id: string;
+  fuelType: string;
+  status: string;
+  driverId?: { name: string };
+  stationId?: { name: string };
+  createdAt?: string;
+}
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
@@ -35,9 +44,13 @@ export default function AdminDashboard() {
       .then(data => setStations(data))
       .catch(() => {
         // Fallback for demo if API not fully ready
-        console.warn("Stations API not ready");
+        console.warn("StatiAPI not ready");
       });
   }, []);
+  const [requests, setRequests] = useState<FuelRequest[]>([]);
+useEffect(() => {
+  fetch("/api/request/station").then(r => r.json()).then(setRequests);
+}, []);
 
   const deleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
@@ -59,6 +72,15 @@ export default function AdminDashboard() {
     drivers: users.filter(u => u.role === "DRIVER").length,
     stations: users.filter(u => u.role === "STATION").length,
     admins: users.filter(u => u.role === "ADMIN").length,
+  };
+
+  const totalUsers = users.length;
+  const totalStations = stations.length;
+  const totalRequests = requests.length;
+  const byStatus = {
+    pending: requests.filter(r => r.status === "PENDING").length,
+    approved: requests.filter(r => r.status === "APPROVED").length,
+    rejected: requests.filter(r => r.status === "REJECTED").length,
   };
 
   return (
@@ -103,6 +125,36 @@ export default function AdminDashboard() {
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-gray-100">
+          <p className="text-sm text-gray-400 font-semibold uppercase">Users</p>
+          <p className="text-3xl font-extrabold">{totalUsers}</p>
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-gray-100">
+          <p className="text-sm text-gray-400 font-semibold uppercase">Stations</p>
+          <p className="text-3xl font-extrabold">{totalStations}</p>
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-gray-100">
+          <p className="text-sm text-gray-400 font-semibold uppercase">Requests</p>
+          <p className="text-3xl font-extrabold">{totalRequests}</p>
+          <div className="mt-4 space-y-2">
+            {Object.entries(byStatus).map(([k, v]) => {
+              const pct = totalRequests ? Math.round((v / totalRequests) * 100) : 0;
+              return (
+                <div key={k}>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>{k}</span><span>{v}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded">
+                    <div className="h-2 bg-blue-600 rounded" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       {activeTab === "users" ? (
@@ -171,6 +223,9 @@ export default function AdminDashboard() {
       ) : (
         <section className="space-y-4">
           <h2 className="text-2xl font-bold">Station Assets</h2>
+          <div className="mb-4">
+
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {stations.map(s => (
               <div key={s._id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
@@ -202,4 +257,4 @@ export default function AdminDashboard() {
       )}
     </div>
   );
-}
+}

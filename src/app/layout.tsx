@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} text-gray-900 antialiased`}>
         <Navbar />
-        <main className="flex flex-col">
+        <main className="flex flex-col pt-16 sm:pt-20">
           {children}
         </main>
       </body>

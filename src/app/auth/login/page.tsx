@@ -34,10 +34,7 @@ export default function Login() {
       }
 
       if (res.ok) {
-        if (data.role === "DRIVER") router.push("/dashboard/driver");
-        else if (data.role === "STATION") router.push("/dashboard/station");
-        else if (data.role === "ADMIN") router.push("/dashboard/admin");
-        else router.push("/dashboard");
+        router.push("/dashboard");
       } else {
         alert(data.message || "Invalid credentials");
       }
@@ -49,7 +46,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
+    <div className="min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
       <div className="w-full max-w-md space-y-8 relative z-10">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
@@ -70,6 +67,7 @@ export default function Login() {
                 Email Address
               </label>
               <input
+              title="email"
                 type="email"
                 required
                 value={form.email}
@@ -83,6 +81,7 @@ export default function Login() {
                 Password
               </label>
               <input
+              title="password"
                 type="password"
                 required
                 value={form.password}
