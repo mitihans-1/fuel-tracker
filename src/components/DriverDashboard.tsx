@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-
-import MapStations from "@/components/MapStations";
-
+import OSMMap from "@/components/OSMMap";
 interface Station {
   _id: string;
   name: string;
@@ -174,9 +172,9 @@ export default function DriverDashboard() {
           ) : (
             <>
               {/* Map */}
-              <div className="h-64 rounded-xl overflow-hidden mb-6">
-                <MapStations stations={filteredStations} />
-              </div>
+            <div className="h-48 sm:h-64 md:h-80 rounded-xl overflow-hidden mb-6">
+  <OSMMap stations={filteredStations} />
+</div>
 
               {/* STATION GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -279,8 +277,8 @@ export default function DriverDashboard() {
         {/* REQUEST HISTORY */}
         <section className="space-y-6">
           <h2 className="text-3xl font-bold">Request History</h2>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-xl">
-            <table className="w-full">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 overflow-x-auto shadow-xl">
+            <table className="min-w-[600px] w-full">
               <thead className="bg-white/10 text-blue-200 text-sm">
                 <tr>
                   <th className="px-6 py-4 text-left">Station</th>

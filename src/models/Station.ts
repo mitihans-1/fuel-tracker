@@ -21,6 +21,12 @@ const StationSchema = new mongoose.Schema({
     default: false,
   },
 
+  ownerUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    required: false,
+  },
+
   latitude: {
     type: Number,
     required: false,

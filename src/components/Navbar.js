@@ -112,7 +112,7 @@ export default function Navbar() {
       {/* Mobile dropdown menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-white/10 bg-slate-900/95 backdrop-blur-xl px-4 py-4 space-y-2">
-            {visibleLinks.map((Link)=>(
+            {visibleLinks.map((link)=>(
             <Link
               key={link.path}
               href={link.path}
