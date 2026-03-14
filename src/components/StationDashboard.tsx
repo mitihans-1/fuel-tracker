@@ -20,6 +20,17 @@ export default function StationDashboard() {
     fetch("/api/request/station")
       .then(res => res.json())
       .then(data => setRequests(data));
+
+    // Fetch current station status to initialize checkboxes
+    fetch("/api/stations/update", { method: "PUT", body: JSON.stringify({}), headers: { "Content-Type": "application/json" } })
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setPetrol(!!data.petrol);
+          setDiesel(!!data.diesel);
+        }
+      })
+      .catch(err => console.error("Failed to fetch initial status:", err));
   }, []);
 
   const updateFuel = async () => {
@@ -31,10 +42,17 @@ export default function StationDashboard() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        setPetrol(!!data.petrol);
+        setDiesel(!!data.diesel);
         alert("Fuel availability status updated successfully!");
+      } else {
+        const errorData = await response.json();
+        alert(`Update failed: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
        console.error("Failed to update fuel:", error);
+       alert("An error occurred while updating status.");
     }
   };
 
@@ -93,8 +111,7 @@ export default function StationDashboard() {
             <div>
               <p className="text-xs uppercase font-bold tracking-wide opacity-70">Diesel Stock</p>
               <div className="flex items-center gap-2">
-                 <div className={`w-2 h-2 rounded-full ${diesel ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                 <p className="font-bold text-gray-900">{diesel ? 'Available' : 'Empty'}</p>
+                 <p className={`font-bold text-lg ${diesel ? "text-green-400" : "text-red-400"}`}>{diesel ? "Available" : "Empty"}</p>
               </div>
             </div>
           </div>
@@ -177,10 +194,10 @@ export default function StationDashboard() {
               <div key={r._id} className="bg-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-lg transition-shadow border border-gray-700">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 font-bold">
-                    {r.driverId.name.charAt(0)}
+                    {r.driverId?.name?.charAt(0) ?? "?"}
                   </div>
                   <div>
-                    <h4 className="font-bold text-white">{r.driverId.name}</h4>
+                    <h4 className="font-bold text-white">{r.driverId?.name ?? "Unknown Driver"}</h4>
                     <p className="text-xs text-gray-400"> Requested {r.fuelType} • {r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently"}</p>
                   </div>
                 </div>

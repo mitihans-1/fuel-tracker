@@ -7,7 +7,7 @@ const requestSchema = new mongoose.Schema({
   },
   stationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "station"
+    ref: "Station"
   },
   fuelType: String,
   status: {

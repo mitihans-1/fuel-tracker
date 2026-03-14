@@ -19,17 +19,58 @@ export async function PUT(req: Request) {
 
   const { id, petrol, diesel, name, location } = await req.json();
 
+  let lat: number | undefined;
+  let lon: number | undefined;
+
+  if (location) {
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`,
+        { headers: { "User-Agent": "FuelTrackerApp/1.0" } }
+      );
+      const geoData = await geoRes.json();
+      if (geoData && geoData.length > 0) {
+        lat = parseFloat(geoData[0].lat);
+        lon = parseFloat(geoData[0].lon);
+      }
+    } catch (err) {
+      console.error("Geocoding failed during update:", err);
+    }
+  }
+
+  interface StationUpdate {
+    petrol?: boolean;
+    diesel?: boolean;
+    name?: string;
+    location?: string;
+    latitude?: number;
+    longitude?: number;
+    updatedAt: Date;
+  }
+
   let station;
   if (id) {
+    const updateData: StationUpdate = { petrol, diesel, updatedAt: new Date() };
+    if (name) updateData.name = name;
+    if (location) updateData.location = location;
+    if (lat !== undefined) updateData.latitude = lat;
+    if (lon !== undefined) updateData.longitude = lon;
+
     station = await Station.findByIdAndUpdate(
       id,
-      { petrol, diesel, updatedAt: new Date() },
+      updateData,
       { new: true }
     );
   } else {
+    const updateData: StationUpdate = { petrol, diesel, updatedAt: new Date() };
+    if (name) updateData.name = name;
+    if (location) updateData.location = location;
+    if (lat !== undefined) updateData.latitude = lat;
+    if (lon !== undefined) updateData.longitude = lon;
+
     station = await Station.findOneAndUpdate(
       { ownerUserId: user.id },
-      { petrol, diesel, updatedAt: new Date() },
+      updateData,
       { new: true }
     );
     if (!station) {
@@ -39,6 +80,8 @@ export async function PUT(req: Request) {
         petrol: !!petrol,
         diesel: !!diesel,
         ownerUserId: user.id,
+        latitude: lat,
+        longitude: lon,
         updatedAt: new Date(),
       });
     }
