@@ -34,9 +34,20 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<"users" | "stations" | "requests">("users");
 
   useEffect(() => {
-    fetch("/api/admin/users").then(r => r.json()).then(setUsers);
-    fetch("/api/admin/stations").then(r => r.json()).then(setStations);
-    fetch("/api/request/station").then(r => r.json()).then(setRequests);
+    const load = async () => {
+      const [usersRes, stationsRes, requestsRes] = await Promise.all([
+        fetch("/api/admin/users"),
+        fetch("/api/admin/stations"),
+        fetch("/api/request/station"),
+      ]);
+      setUsers(await usersRes.json());
+      setStations(await stationsRes.json());
+      setRequests(await requestsRes.json());
+    };
+
+    load();
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const stats = {
@@ -46,6 +57,17 @@ export default function AdminDashboard() {
     requests: requests.length,
     pending: requests.filter(r => r.status === "PENDING").length,
     approved: requests.filter(r => r.status === "APPROVED").length
+  };
+
+  const platformSignals = {
+    activeStations: stations.filter(s => s.petrol || s.diesel).length,
+    idleStations: stations.filter(s => !s.petrol && !s.diesel).length,
+    approvalRate:
+      requests.length === 0
+        ? 0
+        : Math.round(
+            (requests.filter(r => r.status === "APPROVED").length / requests.length) * 100
+          ),
   };
 
   const deleteUser = async (id: string) => {
@@ -90,7 +112,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* STATS */}
+        {/* STATS + PLATFORM OVERVIEW */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Total Users", value: stats.users, icon: "👥" },
@@ -111,6 +133,42 @@ export default function AdminDashboard() {
               </div>
             </div>
           ))}
+          <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-900/40 rounded-2xl p-4 border border-emerald-400/40">
+              <p className="text-xs uppercase text-emerald-100 tracking-wide font-semibold">
+                Active vs Idle Stations
+              </p>
+              <p className="mt-2 text-sm text-emerald-50">
+                Active: <span className="font-bold">{platformSignals.activeStations}</span> • Idle:{" "}
+                <span className="font-bold">{platformSignals.idleStations}</span>
+              </p>
+              <p className="mt-1 text-[11px] text-emerald-100/80">
+                Idle stations may need onboarding, support, or pricing review.
+              </p>
+            </div>
+            <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
+              <p className="text-xs uppercase text-purple-100 tracking-wide font-semibold">
+                Request Approval Rate
+              </p>
+              <p className="mt-2 text-3xl font-extrabold text-purple-50">
+                {platformSignals.approvalRate}%
+              </p>
+              <p className="mt-1 text-[11px] text-purple-100/80">
+                Approved vs total requests across the platform.
+              </p>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-4 border border-blue-400/40">
+              <p className="text-xs uppercase text-blue-100 tracking-wide font-semibold">
+                Billing & Plans (Preview)
+              </p>
+              <p className="mt-2 text-sm text-blue-50">
+                Connect your billing provider to enable per‑station or per‑fleet subscriptions.
+              </p>
+              <p className="mt-1 text-[11px] text-blue-100/80">
+                This area will surface MRR, churn, and plan breakdown once payment is wired up.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* USERS TAB */}

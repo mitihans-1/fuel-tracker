@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface FuelRequest {
   _id: string;
@@ -12,39 +12,70 @@ interface FuelRequest {
 
 export default function StationDashboard() {
   const [petrol, setPetrol] = useState(true);
+  const [petrolQty, setPetrolQty] = useState(0);
+  const [petrolPrice, setPetrolPrice] = useState(80);
   const [diesel, setDiesel] = useState(true);
+  const [dieselQty, setDieselQty] = useState(0);
+  const [dieselPrice, setDieselPrice] = useState(75);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
-  useEffect(() => {
-    fetch("/api/request/station")
-      .then(res => res.json())
-      .then(data => setRequests(data));
-
-    // Fetch current station status to initialize checkboxes
-    fetch("/api/stations/update", { method: "PUT", body: JSON.stringify({}), headers: { "Content-Type": "application/json" } })
-      .then(res => res.json())
-      .then(data => {
+  // This function refreshes both the stock and the request list
+  const refreshData = useCallback(async () => {
+    try {
+      // 1. Fetch current station status (quantities/prices) for the logged-in station user
+      const statusRes = await fetch("/api/stations/me");
+      if (statusRes.ok) {
+        const data = await statusRes.json();
         if (data && !data.error) {
           setPetrol(!!data.petrol);
+          setPetrolQty(data.petrolQty ?? 0);
+          setPetrolPrice(data.petrolPrice ?? 80);
           setDiesel(!!data.diesel);
+          setDieselQty(data.dieselQty ?? 0);
+          setDieselPrice(data.dieselPrice ?? 75);
         }
-      })
-      .catch(err => console.error("Failed to fetch initial status:", err));
+      }
+
+      // 2. Fetch recent requests
+      const reqRes = await fetch("/api/request/station");
+      const reqData = await reqRes.json();
+      setRequests(reqData);
+    } catch (err) {
+      console.error("Auto-refresh failed:", err);
+    }
   }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      await refreshData();
+    };
+    init();
+    
+    // Poll the server every 5 seconds for live updates (inventory changes)
+    const interval = setInterval(refreshData, 5000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
 
   const updateFuel = async () => {
     try {
       const response = await fetch("/api/stations/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ petrol, diesel }),
+        body: JSON.stringify({ 
+          petrol, petrolQty, petrolPrice, 
+          diesel, dieselQty, dieselPrice 
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setPetrol(!!data.petrol);
+        setPetrolQty(data.petrolQty ?? 0);
+        setPetrolPrice(data.petrolPrice ?? 80);
         setDiesel(!!data.diesel);
+        setDieselQty(data.dieselQty ?? 0);
+        setDieselPrice(data.dieselPrice ?? 75);
         alert("Fuel availability status updated successfully!");
       } else {
         const errorData = await response.json();
@@ -81,39 +112,88 @@ export default function StationDashboard() {
     rejectedToday: requests.filter(r => r.status === "REJECTED").length,
   };
 
-  return (
-   <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white p-6">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">
-            Station Console
-          </h1>
-          <p className="text-gray-300 mt-1">Monitor fuel stock and manage driver requests in real-time.</p>
-        </div>
+  const throughput = {
+    todayApproved: stats.approvedToday,
+    todayRejected: stats.rejectedToday,
+    queueSize: stats.pending,
+  };
 
-        <div className="flex gap-4">
-          <div className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${petrol ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
-            <div className={`w-12 h-12 flex items-center justify-center rounded-full text-2xl ${petrol ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
-              ⛽
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white p-6">
+      <header className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-4xl font-extrabold tracking-tight">
+              Station Console
+            </h1>
+            <p className="text-gray-300 mt-1">
+              Monitor stock, revenue signals, and driver requests in real-time.
+            </p>
+          </div>
+
+          <div className="flex gap-4">
+            <div className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${petrol ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
+              <div className={`w-12 h-12 flex items-center justify-center rounded-full text-2xl ${petrol ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                ⛽
+              </div>
+              <div>
+                <p className="text-xs uppercase font-bold tracking-wide opacity-70">Petrol Stock</p>
+                <div className="flex items-center gap-2">
+                  <p className={`font-bold text-lg ${petrol ? "text-green-400" : "text-red-400"}`}>{petrol ? `${petrolQty} L` : "Empty"}</p>
+                  <span className="text-xs opacity-60">@{petrolPrice} ETB</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase font-bold tracking-wide opacity-70">Petrol Stock</p>
-              <div className="flex items-center gap-2">
-                 <p className={`font-bold text-lg ${petrol ? "text-green-400" : "text-red-400"}`}>{petrol ? "Available" : "Empty"}</p>
+
+            <div className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${diesel ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
+              <div className={`w-12 h-12 flex items-center justify-center rounded-full text-2xl ${diesel ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+                🚛
+              </div>
+              <div>
+                <p className="text-xs uppercase font-bold tracking-wide opacity-70">Diesel Stock</p>
+                <div className="flex items-center gap-2">
+                  <p className={`font-bold text-lg ${diesel ? "text-green-400" : "text-red-400"}`}>{diesel ? `${dieselQty} L` : "Empty"}</p>
+                  <span className="text-xs opacity-60">@{dieselPrice} ETB</span>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${diesel ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
-            <div className={`w-12 h-12 flex items-center justify-center rounded-full text-2xl ${diesel ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
-              🚛
-            </div>
-            <div>
-              <p className="text-xs uppercase font-bold tracking-wide opacity-70">Diesel Stock</p>
-              <div className="flex items-center gap-2">
-                 <p className={`font-bold text-lg ${diesel ? "text-green-400" : "text-red-400"}`}>{diesel ? "Available" : "Empty"}</p>
-              </div>
-            </div>
+        {/* OPERATIONS INSIGHTS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-emerald-600/30 to-emerald-900/40 rounded-2xl p-4 border border-emerald-400/40 shadow-lg">
+            <p className="text-xs uppercase tracking-wide text-emerald-100 font-semibold">
+              Today&apos;s Queue
+            </p>
+            <p className="mt-2 text-3xl font-extrabold text-emerald-200">
+              {throughput.queueSize}
+            </p>
+            <p className="mt-1 text-xs text-emerald-100/80">
+              Requests currently waiting for approval or fulfillment.
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-4 border border-white/10 shadow-lg">
+            <p className="text-xs uppercase tracking-wide text-blue-200/80 font-semibold">
+              Fulfilled Today
+            </p>
+            <p className="mt-2 text-3xl font-extrabold text-blue-50">
+              {throughput.todayApproved}
+            </p>
+            <p className="mt-1 text-xs text-blue-200/70">
+              Tickets marked as approved and presumably filled.
+            </p>
+          </div>
+          <div className="bg-white/5 rounded-2xl p-4 border border-red-400/30 shadow-lg">
+            <p className="text-xs uppercase tracking-wide text-red-200 font-semibold">
+              Rejected / Lost
+            </p>
+            <p className="mt-2 text-3xl font-extrabold text-red-100">
+              {throughput.todayRejected}
+            </p>
+            <p className="mt-1 text-xs text-red-100/80">
+              Review rejections to reduce churn and disputes.
+            </p>
           </div>
         </div>
       </header>
@@ -125,29 +205,91 @@ export default function StationDashboard() {
           <section className="bg-gray-800 rounded-3xl p-6 shadow-lg space-y-6">
             <h2 className="text-xl font-bold tracking-tight">Inventory Management</h2>
             
-            <div className="space-y-4">
-              <label className="flex items-center justify-between p-4 rounded-2xl bg-gray-700 hover:bg-gray-600 cursor-pointer transition">
-                <span className="font-semibold">Petrol Availability</span>
-                <input
-                  type="checkbox"
-                  className="w-6 h-6 text-blue-500 rounded"
-                  checked={petrol}
-                  onChange={() => setPetrol(!petrol)}
-                />
-              </label>
+            <div className="space-y-6">
+              {/* Petrol Section */}
+              <div className="space-y-4 p-4 rounded-2xl bg-gray-700/50 border border-white/5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="petrolStatus" className="font-bold text-blue-400">Petrol (ETB {petrolPrice}/L)</label>
+                  <input
+                    id="petrolStatus"
+                    name="petrolStatus"
+                    type="checkbox"
+                    className="w-5 h-5 accent-blue-500"
+                    checked={petrol ?? false}
+                    onChange={() => setPetrol(!petrol)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="petrolQty" className="text-[10px] uppercase font-bold opacity-50">Stock (L)</label>
+                    <input 
+                      id="petrolQty"
+                      name="petrolQty"
+                      type="number" 
+                      placeholder="0"
+                      value={petrolQty ?? 0} 
+                      onChange={(e) => setPetrolQty(Number(e.target.value))}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="petrolPrice" className="text-[10px] uppercase font-bold opacity-50">Price (ETB)</label>
+                    <input 
+                      id="petrolPrice"
+                      name="petrolPrice"
+                      type="number" 
+                      placeholder="80"
+                      value={petrolPrice ?? 80} 
+                      onChange={(e) => setPetrolPrice(Number(e.target.value))}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
 
-              <label className="flex items-center justify-between p-4 rounded-2xl bg-gray-700 hover:bg-gray-600 cursor-pointer transition">
-                <span className="font-semibold">Diesel Availability</span>
-                <input
-                  type="checkbox"
-                  className="w-6 h-6 text-yellow-500 rounded"
-                  checked={diesel}
-                  onChange={() => setDiesel(!diesel)}
-                />
-              </label>
+              {/* Diesel Section */}
+              <div className="space-y-4 p-4 rounded-2xl bg-gray-700/50 border border-white/5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="dieselStatus" className="font-bold text-yellow-400">Diesel (ETB {dieselPrice}/L)</label>
+                  <input
+                    id="dieselStatus"
+                    name="dieselStatus"
+                    type="checkbox"
+                    className="w-5 h-5 accent-yellow-500"
+                    checked={diesel ?? false}
+                    onChange={() => setDiesel(!diesel)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label htmlFor="dieselQty" className="text-[10px] uppercase font-bold opacity-50">Stock (L)</label>
+                    <input 
+                      id="dieselQty"
+                      name="dieselQty"
+                      type="number" 
+                      placeholder="0"
+                      value={dieselQty ?? 0} 
+                      onChange={(e) => setDieselQty(Number(e.target.value))}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="dieselPrice" className="text-[10px] uppercase font-bold opacity-50">Price (ETB)</label>
+                    <input 
+                      id="dieselPrice"
+                      name="dieselPrice"
+                      type="number" 
+                      placeholder="75"
+                      value={dieselPrice ?? 75} 
+                      onChange={(e) => setDieselPrice(Number(e.target.value))}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <button onClick={updateFuel} className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold shadow-lg transition-all">
+            <button onClick={updateFuel} className="w-full py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold shadow-xl transition-all active:scale-95">
               Update Live Status
             </button>
           </section>

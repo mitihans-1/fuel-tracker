@@ -35,7 +35,6 @@ const Centerer = ({ center }: { center?: [number, number] }) => {
       return;
     }
     // keep zoom, animate to new center
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const zoom = (map.getZoom && map.getZoom()) || 12;
     map.setView(center, zoom, { animate: true });
   }, [center, map]);
@@ -44,16 +43,22 @@ const Centerer = ({ center }: { center?: [number, number] }) => {
 
 export default function OSMMap({ stations, centerTo }: { stations: Station[]; centerTo?: { lat: number; lng: number } }) {
   const first = stations.find((s) => {
-    const { lat, lng } = pickCoords(s);
-    return typeof lat === "number" && typeof lng === "number";
+    const p = pickCoords(s);
+    return typeof p.lat === "number" && typeof p.lng === "number";
   });
 
+  const coords = first ? pickCoords(first) : null;
   const center: [number, number] =
-    first ? [pickCoords(first).lat!, pickCoords(first).lng!] : [8.9806, 38.7578]; // Addis fallback
+    coords && typeof coords.lat === "number" && typeof coords.lng === "number"
+      ? [coords.lat, coords.lng]
+      : [8.9806, 38.7578]; // Addis fallback
 
   return (
-    <MapContainer center={center} zoom={12} className="w-full h-full">
-     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+    <MapContainer center={center} zoom={12} className="w-full h-full" scrollWheelZoom={false}>
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
       {centerTo ? <Centerer center={[centerTo.lat, centerTo.lng]} /> : null}
       {stations.map((s) => {
         const p = pickCoords(s);

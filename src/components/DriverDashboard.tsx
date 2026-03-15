@@ -77,6 +77,16 @@ export interface FullStation extends Station {
   dieselQty?: number;
 }
 
+interface Receipt {
+  _id: string;
+  stationName: string;
+  fuelType: string;
+  amount: number;
+  totalPrice: number;
+  paymentMethod: string;
+  ticketId: string;
+}
+
 export default function DriverDashboard() {
   const [stations, setStations] = useState<FullStation[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
@@ -86,6 +96,16 @@ export default function DriverDashboard() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Station | null>(null);
+  const [checkoutStation, setCheckoutStation] = useState<FullStation | null>(null);
+  const [checkoutFuelType, setCheckoutFuelType] = useState<"petrol" | "diesel" | null>(null);
+  const [checkoutAmount, setCheckoutAmount] = useState<number>(1);
+  const [paymentMethod, setPaymentMethod] = useState<"telebirr" | "cbebirr" | "cash">("telebirr");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletCurrency, setWalletCurrency] = useState<string>("ETB");
+  const [walletLoading, setWalletLoading] = useState(false);
+
   const mapSectionRef = useRef<HTMLDivElement>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [cancelId, setCancelId] = useState<string | null>(null);
@@ -101,6 +121,28 @@ export default function DriverDashboard() {
   }, []);
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Fetch wallet
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        setWalletLoading(true);
+        const res = await fetch("/api/wallet/me");
+        if (!res.ok) {
+          throw new Error("Failed to load wallet");
+        }
+        const data = await res.json();
+        setWalletBalance(typeof data.balance === "number" ? data.balance : 0);
+        if (data.currency) setWalletCurrency(data.currency);
+      } catch {
+        // keep card but show as unavailable
+        setWalletBalance(null);
+      } finally {
+        setWalletLoading(false);
+      }
+    };
+    loadWallet();
   }, []);
 
   // Fetch stations
@@ -157,24 +199,54 @@ export default function DriverDashboard() {
     return () => es.close();
   }, []);
 
-  const requestFuel = async (stationId: string, fuelType: string) => {
+  const startCheckout = (station: FullStation, fuelType: "petrol" | "diesel") => {
+    setCheckoutStation(station);
+    setCheckoutFuelType(fuelType);
+    setCheckoutAmount(1);
+    setReceipt(null);
+  };
+
+  const handlePayment = async () => {
+    if (!checkoutStation || !checkoutFuelType) return;
+    
+    setIsProcessingPayment(true);
     try {
-      // confirmation to avoid accidental multiple clicks
-      if (!confirm(`Request ${fuelType} from station?`)) return;
+      const pricePerLitre = checkoutFuelType === "petrol" ? 80 : 75; // Example prices
+      const totalPrice = checkoutAmount * pricePerLitre;
 
       const res = await fetch("/api/stations/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stationId, fuelType }),
+        body: JSON.stringify({ 
+          stationId: checkoutStation._id, 
+          fuelType: checkoutFuelType,
+          amount: checkoutAmount,
+          totalPrice,
+          paymentMethod
+        }),
       });
+
       if (res.ok) {
-        showToast(`${fuelType.charAt(0).toUpperCase() + fuelType.slice(1)} request sent!`, "success");
+        const data = await res.json();
+        setReceipt({
+          ...data,
+          stationName: checkoutStation.name,
+          fuelType: checkoutFuelType,
+          amount: checkoutAmount,
+          totalPrice,
+          paymentMethod,
+          ticketId: `FT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+        });
+        showToast("Payment successful! Your ticket is ready.", "success");
         await loadRequests();
       } else {
-        showToast("Failed to send request", "error");
+        const data = await res.json();
+        showToast(data.error || "Payment failed", "error");
       }
     } catch {
-      showToast("Error requesting fuel", "error");
+      showToast("Error processing payment", "error");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -235,6 +307,19 @@ export default function DriverDashboard() {
     approvedCount: requests.filter((r) => r.status === "APPROVED").length,
   };
 
+  const spendingStats = {
+    totalTickets: requests.filter((r) => r.status === "APPROVED").length,
+    lastTicketFuel:
+      requests
+        .filter((r) => r.status === "APPROVED")
+        .slice(-1)[0]?.fuelType ?? null,
+  };
+
+  const recommendedStation =
+    filteredStations.find(
+      (s) => (s.petrol || s.diesel) && (s.petrolQty ?? 0) + (s.dieselQty ?? 0) > 0
+    ) ?? filteredStations[0];
+
   const totalPages = Math.max(1, Math.ceil(filteredStations.length / PAGE_SIZE));
   const paginatedStations = filteredStations.slice(
     (page - 1) * PAGE_SIZE,
@@ -245,33 +330,107 @@ export default function DriverDashboard() {
     <div className="dashboard-root min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white p-6">
       <div className="max-w-7xl mx-auto space-y-12">
 
-        {/* HEADER */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-5xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-              Driver Dashboard
-            </h1>
-            <p className="text-blue-200/70 mt-2 text-lg">
-              Request fuel and find available stations easily.
-            </p>
-          </div>
-
-          {/* STATS */}
-          <div className="flex bg-white/10 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden shadow-xl">
-            <div className="px-6 py-3 text-center border-r border-white/10">
-              <p className="text-xs text-blue-200 uppercase">Total</p>
-              <p className="text-2xl font-bold">{stats.totalRequests}</p>
-            </div>
-            <div className="px-6 py-3 text-center border-r border-white/10">
-              <p className="text-xs text-blue-200 uppercase">Pending</p>
-              <p className="text-2xl font-bold text-orange-400">
-                {stats.pendingCount}
+        {/* HEADER + OVERVIEW */}
+        <header className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-5xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                Driver Dashboard
+              </h1>
+              <p className="text-blue-200/70 mt-2 text-lg">
+                Request fuel, manage your tickets, and discover the best nearby stations.
               </p>
             </div>
-            <div className="px-6 py-3 text-center">
-              <p className="text-xs text-blue-200 uppercase">Approved</p>
-              <p className="text-2xl font-bold text-green-400">
-                {stats.approvedCount}
+
+            {/* STATS */}
+            <div className="flex bg-white/10 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+              <div className="px-6 py-3 text-center border-r border-white/10">
+                <p className="text-xs text-blue-200 uppercase">Total</p>
+                <p className="text-2xl font-bold">{stats.totalRequests}</p>
+              </div>
+              <div className="px-6 py-3 text-center border-r border-white/10">
+                <p className="text-xs text-blue-200 uppercase">Pending</p>
+                <p className="text-2xl font-bold text-orange-400">
+                  {stats.pendingCount}
+                </p>
+              </div>
+              <div className="px-6 py-3 text-center">
+                <p className="text-xs text-blue-200 uppercase">Approved</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {stats.approvedCount}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* WALLET + RECOMMENDATION + INSIGHTS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 shadow-lg">
+              <p className="text-xs uppercase tracking-wide text-blue-200/70 font-semibold">
+                Driver Wallet (Preview)
+              </p>
+              <p className="mt-2 text-3xl font-extrabold">
+                {walletLoading
+                  ? "Loading..."
+                  : walletBalance === null
+                  ? "Unavailable"
+                  : `${walletBalance.toLocaleString()} ${walletCurrency}`}
+              </p>
+              <p className="mt-1 text-xs text-blue-200/70">
+                {walletBalance === null
+                  ? "Wallet will activate once billing is configured."
+                  : "Use this balance to pay for future fuel tickets."}
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-600/30 to-cyan-500/10 border border-emerald-400/40 rounded-2xl p-4 shadow-lg">
+              <p className="text-xs uppercase tracking-wide text-emerald-200 font-semibold">
+                Recommended Station
+              </p>
+              {recommendedStation ? (
+                <>
+                  <p className="mt-1 text-lg font-bold">
+                    {recommendedStation.name}
+                  </p>
+                  <p className="text-xs text-emerald-100/80 mt-1">
+                    📍{" "}
+                    {typeof recommendedStation.location === "string"
+                      ? recommendedStation.location
+                      : recommendedStation.location?.text}
+                  </p>
+                  <p className="mt-2 text-xs text-emerald-100/80">
+                    {recommendedStation.petrol && "Petrol available"}{" "}
+                    {recommendedStation.diesel && recommendedStation.petrol
+                      ? "• "
+                      : ""}
+                    {recommendedStation.diesel && "Diesel available"}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-xs text-emerald-100/80">
+                  No station matches your current filters.
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 shadow-lg">
+              <p className="text-xs uppercase tracking-wide text-blue-200/70 font-semibold">
+                Driving Insights
+              </p>
+              <p className="mt-2 text-sm">
+                Approved tickets:{" "}
+                <span className="font-semibold">
+                  {spendingStats.totalTickets}
+                </span>
+              </p>
+              <p className="mt-1 text-sm">
+                Last approved fuel:{" "}
+                <span className="font-semibold capitalize">
+                  {spendingStats.lastTicketFuel ?? "—"}
+                </span>
+              </p>
+              <p className="mt-2 text-[11px] text-blue-200/60">
+                More detailed efficiency metrics can be powered once trip data is available.
               </p>
             </div>
           </div>
@@ -374,7 +533,7 @@ export default function DriverDashboard() {
                     <div className="flex gap-3">
                       <button
                         disabled={!station.petrol}
-                        onClick={() => requestFuel(station._id, "petrol")}
+                        onClick={() => startCheckout(station, "petrol")}
                         className={`flex-1 rounded-xl py-3 font-semibold transition ${
                           station.petrol
                             ? "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
@@ -385,7 +544,7 @@ export default function DriverDashboard() {
                       </button>
                       <button
                         disabled={!station.diesel}
-                        onClick={() => requestFuel(station._id, "diesel")}
+                        onClick={() => startCheckout(station, "diesel")}
                         className={`flex-1 rounded-xl py-3 font-semibold transition ${
                           station.diesel
                             ? "bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-lg"
@@ -491,6 +650,152 @@ export default function DriverDashboard() {
           </div>
         </section>
       </div>
+
+      {/* CHECKOUT MODAL */}
+      {checkoutStation && checkoutFuelType && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isProcessingPayment && setCheckoutStation(null)}></div>
+          <div className="relative bg-slate-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+            {!receipt ? (
+              <div className="space-y-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-2xl font-bold">Fuel Checkout</h3>
+                    <p className="text-blue-200/60">{checkoutStation.name}</p>
+                  </div>
+                  <button onClick={() => setCheckoutStation(null)} className="p-2 hover:bg-white/10 rounded-full transition">✕</button>
+                </div>
+
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-blue-200/70 capitalize">{checkoutFuelType} Available</span>
+                    <span className="font-bold text-green-400">
+                      {checkoutFuelType === "petrol" ? checkoutStation.petrolQty : checkoutStation.dieselQty} Litres
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="fuelAmount" className="text-sm font-medium">Enter Amount (Litres)</label>
+                    <input 
+                      id="fuelAmount"
+                      name="fuelAmount"
+                      type="number" 
+                      min="1" 
+                      max={checkoutFuelType === "petrol" ? checkoutStation.petrolQty : checkoutStation.dieselQty}
+                      value={checkoutAmount}
+                      onChange={(e) => {
+                        const raw = parseInt(e.target.value) || 0;
+                        const maxAvailable =
+                          checkoutFuelType === "petrol"
+                            ? checkoutStation.petrolQty ?? 0
+                            : checkoutStation.dieselQty ?? 0;
+                        const clamped = Math.min(Math.max(1, raw), maxAvailable || 1);
+                        setCheckoutAmount(clamped);
+                      }}
+                      placeholder="e.g. 20"
+                      className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    />
+                    <p className="text-xs text-blue-200/70">
+                      You can order up to{" "}
+                      <span className="font-semibold">
+                        {checkoutFuelType === "petrol" ? checkoutStation.petrolQty : checkoutStation.dieselQty} L
+                      </span>{" "}
+                      at this station right now.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Select Payment Method</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {["telebirr", "cbebirr", "cash"].map((method) => (
+                      <button
+                        key={method}
+                        onClick={() => setPaymentMethod(method as "telebirr" | "cbebirr" | "cash")}
+                        className={`py-3 rounded-xl border capitalize text-sm font-bold transition ${
+                          paymentMethod === method 
+                            ? "bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/20" 
+                            : "bg-white/5 border-white/10 text-blue-200/60 hover:bg-white/10"
+                        }`}
+                      >
+                        {method}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10 space-y-4">
+                  <div className="flex justify-between items-center text-lg">
+                    <span className="font-medium text-blue-200">Total Price</span>
+                    <span className="font-bold text-white">
+                      {(checkoutAmount * (checkoutFuelType === "petrol" ? 80 : 75)).toLocaleString()} ETB
+                    </span>
+                  </div>
+                  <button
+                    disabled={isProcessingPayment || checkoutAmount <= 0}
+                    onClick={handlePayment}
+                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 py-4 rounded-2xl font-bold text-lg shadow-xl hover:from-blue-600 hover:to-indigo-700 transition disabled:opacity-50"
+                  >
+                    {isProcessingPayment ? "Processing..." : `Pay with ${paymentMethod.toUpperCase()}`}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 text-center py-4">
+                <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">✓</div>
+                <h3 className="text-3xl font-bold">Payment Success!</h3>
+                <p className="text-blue-200/60">Show this ticket at the station to get your fuel.</p>
+                
+                <div className="bg-white text-slate-900 rounded-3xl p-6 space-y-4 shadow-2xl relative overflow-hidden text-left">
+                  <div className="absolute top-0 left-0 right-0 h-2 bg-blue-500"></div>
+                  <div className="flex justify-between items-start border-b border-slate-100 pb-4">
+                    <div>
+                      <p className="text-xs uppercase font-bold text-slate-400">Fuel Ticket</p>
+                      <p className="text-xl font-black">{receipt.ticketId}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs uppercase font-bold text-slate-400">Station</p>
+                      <p className="font-bold">{receipt.stationName}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 py-2">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase">Fuel Type</p>
+                      <p className="font-bold capitalize">{receipt.fuelType}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase">Amount</p>
+                      <p className="font-bold">{receipt.amount} Litres</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase">Paid Via</p>
+                      <p className="font-bold capitalize">{receipt.paymentMethod}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase">Total</p>
+                      <p className="font-bold text-blue-600">{receipt.totalPrice} ETB</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-dashed border-slate-200 flex justify-center">
+                    <div className="bg-slate-100 p-2 rounded-lg">
+                      <div className="w-32 h-32 bg-slate-300 rounded flex items-center justify-center text-slate-500 text-xs italic">QR CODE</div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setCheckoutStation(null)}
+                  className="w-full bg-white/10 py-4 rounded-2xl font-bold hover:bg-white/20 transition"
+                >
+                  Close Receipt
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={confirmOpen}

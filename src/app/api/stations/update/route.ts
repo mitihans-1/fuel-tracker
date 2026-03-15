@@ -17,7 +17,21 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const { id, petrol, diesel, name, location } = await req.json();
+  interface StationUpdate {
+    petrol?: boolean;
+    petrolQty?: number;
+    petrolPrice?: number;
+    diesel?: boolean;
+    dieselQty?: number;
+    dieselPrice?: number;
+    name?: string;
+    location?: string;
+    latitude?: number;
+    longitude?: number;
+    updatedAt: Date;
+  }
+
+  const { id, petrol, petrolQty, petrolPrice, diesel, dieselQty, dieselPrice, name, location } = await req.json();
 
   let lat: number | undefined;
   let lon: number | undefined;
@@ -38,19 +52,9 @@ export async function PUT(req: Request) {
     }
   }
 
-  interface StationUpdate {
-    petrol?: boolean;
-    diesel?: boolean;
-    name?: string;
-    location?: string;
-    latitude?: number;
-    longitude?: number;
-    updatedAt: Date;
-  }
-
   let station;
   if (id) {
-    const updateData: StationUpdate = { petrol, diesel, updatedAt: new Date() };
+    const updateData: StationUpdate = { petrol, petrolQty, petrolPrice, diesel, dieselQty, dieselPrice, updatedAt: new Date() };
     if (name) updateData.name = name;
     if (location) updateData.location = location;
     if (lat !== undefined) updateData.latitude = lat;
@@ -62,7 +66,7 @@ export async function PUT(req: Request) {
       { new: true }
     );
   } else {
-    const updateData: StationUpdate = { petrol, diesel, updatedAt: new Date() };
+    const updateData: StationUpdate = { petrol, petrolQty, petrolPrice, diesel, dieselQty, dieselPrice, updatedAt: new Date() };
     if (name) updateData.name = name;
     if (location) updateData.location = location;
     if (lat !== undefined) updateData.latitude = lat;
@@ -78,7 +82,11 @@ export async function PUT(req: Request) {
         name: name || "Station",
         location: location || "Unknown",
         petrol: !!petrol,
+        petrolQty: petrolQty || 0,
+        petrolPrice: petrolPrice || 80,
         diesel: !!diesel,
+        dieselQty: dieselQty || 0,
+        dieselPrice: dieselPrice || 75,
         ownerUserId: user.id,
         latitude: lat,
         longitude: lon,
