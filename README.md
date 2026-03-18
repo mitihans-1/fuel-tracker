@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FuelSync | Next-Gen Fuel Infrastructure ⛽
 
-## Getting Started
+FuelSync is a professional, real-time fuel management and queue optimization platform designed for the modern driver and fuel station owner. It solves the critical problem of fuel uncertainty and long wait times by providing a live, data-driven ecosystem.
 
-First, run the development server:
+## 🌟 Purpose
+The core mission of FuelSync is to eliminate wasted time and fuel by connecting drivers with real-time station data. It transforms the traditional "drive and hope" approach into a predictable, digital experience.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🖥️ Dashboards
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🚗 Driver Dashboard
+Designed for agility and quick decision-making.
+- **Real-time Map**: Visual markers for all nearby stations using OpenStreetMap.
+- **Live Inventory**: Instantly see if a station has Petrol or Diesel in stock.
+- **Smart Checkout**: Select the exact amount of fuel needed, calculate prices automatically, and pay via Telebirr, CBE Birr, or Cash.
+- **Digital Ticketing**: Receive a unique ticket ID and receipt immediately after purchase to show at the station.
+- **History Management**: Keep track of all previous fuel fulfillments and statuses, with the option to remove old records from history.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### ⛽ Station Dashboard (Console)
+A powerful management suite for station owners.
+- **Inventory Management**: Real-time control over fuel quantities (Litres) and prices (ETB).
+- **Live Status Toggle**: Instantly update the public status of Petrol/Diesel pumps.
+- **Queue Management**: Monitor and manage incoming driver requests in real-time.
+- **Automatic Sync**: Stock levels automatically decrease when a driver completes a checkout, ensuring perfect inventory consistency.
+- **Live Insights**: Quick stats on daily approvals, pending requests, and rejections.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Steps to Use
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Registration & Setup
+1.  **Visit the App**: Navigate to [http://localhost:3000](http://localhost:3000).
+2.  **Sign Up**: Go to the [register](file:///c:/fuel-tracker/src/app/auth/register/page.tsx) page.
+3.  **Choose Your Role**: 
+    - **Driver**: For those looking for fuel.
+    - **Station Owner**: For those managing a fuel station (requires entering Station Name and Location).
+4.  **Automatic Geocoding**: For stations, our system automatically converts your address into map coordinates.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. For Station Owners (Updating Stock)
+1.  Log in to your **Station Console**.
+2.  Go to **Inventory Management**.
+3.  Enter your current fuel quantities in Litres and set your prices.
+4.  Click **"Update Live Status"** to broadcast your stock to all drivers.
 
-## Deploy on Vercel
+### 3. For Drivers (Ordering Fuel)
+1.  Log in to your **Driver Dashboard**.
+2.  Browse the list or the map to find a station with available stock.
+3.  Click **"Request Petrol"** or **"Request Diesel"**.
+4.  Enter the amount of litres you need and choose a payment method.
+5.  **Pay & Get Ticket**: Once confirmed, your digital ticket will appear.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Fulfillment
+1.  Drive to the station.
+2.  Show your **Digital Ticket** (found in your Request History) to the station attendant.
+3.  The attendant verifies the ticket ID and fills your tank!
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🛠️ Tech Stack
+- **Framework**: Next.js 16 (Turbopack)
+- **Database**: MongoDB with Mongoose
+- **Mapping**: Leaflet & OpenStreetMap
+- **Styling**: Tailwind CSS
+- **Authentication**: JWT & Cookies
+- **Real-time**: Background Polling & SSE Support
+
+---
+
+*FuelSync - Keeping you moving.* 🚀

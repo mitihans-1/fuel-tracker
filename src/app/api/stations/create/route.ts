@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import FuelRequest from "@/models/FuelRequest";
-import Station from "@/models/Station";
 
 export async function POST(req: NextRequest) {
   await connectDB();
@@ -32,21 +31,6 @@ export async function POST(req: NextRequest) {
       paymentStatus: "PENDING",
       status: "PENDING"
     });
-
-    // 2. Automatically decrement the station's quantity in the database
-    const updateField = fuelType === "petrol" ? "petrolQty" : "dieselQty";
-    const station = await Station.findById(stationId);
-    
-    if (station) {
-      const currentQty = station[updateField] || 0;
-      const newQty = Math.max(0, currentQty - amount);
-      
-      await Station.findByIdAndUpdate(stationId, {
-        [updateField]: newQty,
-        // If stock hits 0, set availability to false automatically
-        [fuelType]: newQty > 0
-      });
-    }
 
     return NextResponse.json(newRequest, { status: 201 });
   } catch {

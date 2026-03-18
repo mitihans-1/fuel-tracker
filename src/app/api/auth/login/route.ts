@@ -1,10 +1,8 @@
 import { connectDB } from "@/lib/db";
-import UserModel from "@/models/user";
+import UserModel from "@/models/User";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { signToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
-
-const SECRET = process.env.JWT_SECRET || "secretkey";
 
 export async function POST(req: Request) {
   try {
@@ -34,15 +32,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Sign JWT token with user id + role
-   const token = jwt.sign(
-  {
-    id: user._id,
-    role: user.role
-  },
-  SECRET,
-  { expiresIn: "1d" }
-); // Return response with HTTP-only cookie
+    // Sign JWT token with user id + role using shared helper
+    const token = signToken({
+      id: user._id,
+      role: user.role
+    });
+
+    // Return response with HTTP-only cookie
     const response = NextResponse.json({
       message: "Login successful",
       role: user.role,
@@ -52,8 +48,8 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24, // 1 day
-      path: "/", // important: accessible from all pages
-      sameSite: "strict",
+      path: "/",
+      sameSite: "lax",
     });
 
     return response;

@@ -12,6 +12,12 @@ const userSchema = new mongoose.Schema({
     enum: ["ADMIN", "DRIVER", "STATION"],
     default: "DRIVER",
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: String,
+  verificationTokenExpires: Date,
 });
 
 export default mongoose.models.user || mongoose.model("user", userSchema);

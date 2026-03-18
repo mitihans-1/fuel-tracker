@@ -14,10 +14,11 @@ export default function Register() {
   const [stationName, setStationName] = useState("");
   const [stationLocation, setStationLocation] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password || !form.role) return;
+    if (!form.name || !form.email || !form.password || !form.role || !verified) return;
     if (form.role === "STATION" && (!stationName || !stationLocation)) return;
 
     setLoading(true);
@@ -88,6 +89,9 @@ export default function Register() {
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
             />
+            <p className="mt-1 text-[11px] text-blue-200/70">
+              Enter your real name so stations and admins can recognize your account.
+            </p>
           </div>
 
           {/* Email */}
@@ -102,6 +106,9 @@ export default function Register() {
               onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
               className={inputClass}
             />
+            <p className="mt-1 text-[11px] text-blue-200/70">
+              Use a valid email you can access for security and account recovery.
+            </p>
           </div>
 
           {/* Password */}
@@ -112,10 +119,14 @@ export default function Register() {
               name="password"
               type="password"
               required
+              minLength={8}
               value={form.password}
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
               className={inputClass}
             />
+            <p className="mt-1 text-[11px] text-blue-200/70">
+              At least 8 characters. Use a strong, unique password.
+            </p>
           </div>
 
           {/* Role */}
@@ -142,6 +153,9 @@ export default function Register() {
                 🛡️ Administrator
               </option>
             </select>
+            <p className="mt-1 text-[11px] text-blue-200/70">
+              Choose whether you are a driver, fuel station, or administrator.
+            </p>
           </div>
 
           {/* Station fields (shown only for STATION role) */}
@@ -159,6 +173,9 @@ export default function Register() {
                   value={stationName}
                   onChange={(e) => setStationName(e.target.value)}
                 />
+                <p className="mt-1 text-[11px] text-blue-200/70">
+                  This is how drivers will see your station in the app.
+                </p>
               </div>
 
               <div>
@@ -173,15 +190,37 @@ export default function Register() {
                   value={stationLocation}
                   onChange={(e) => setStationLocation(e.target.value)}
                 />
+                <p className="mt-1 text-[11px] text-blue-200/70">
+                  Provide a clear address or area so drivers can find you easily.
+                </p>
               </div>
             </>
           )}
+
+          {/* Verification */}
+          <div className="pt-2 flex items-start gap-2">
+            <input
+              id="register-verify"
+              type="checkbox"
+              checked={verified}
+              onChange={(e) => setVerified(e.target.checked)}
+              className="mt-1 w-4 h-4 accent-blue-500"
+              required
+            />
+            <label
+              htmlFor="register-verify"
+              className="text-[11px] text-blue-100/80"
+            >
+              I confirm that all information I entered is correct and I agree to use this platform
+              responsibly.
+            </label>
+          </div>
 
           {/* Submit Button */}
           <div className="flex justify-center pt-2">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !verified}
               className={`cursor-pointer w-56 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${
                 loading
                   ? "bg-white/10 text-white/40 cursor-not-allowed"

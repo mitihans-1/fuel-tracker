@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Station } from "./OSMMap";
+import { QRCodeCanvas } from "qrcode.react";
 const OSMMap = dynamic(() => import("@/components/OSMMap"), { ssr: false });
+
+import { formatDateTime } from "@/lib/utils";
 
 interface FuelRequest {
   _id: string;
@@ -55,29 +58,19 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel }: { open: boo
   );
 }
 
-function timeAgo(dateStr?: string) {
-  if (!dateStr) return "N/A";
-  const d = new Date(dateStr);
-  const diff = Date.now() - d.getTime();
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day}d ago`;
-  return d.toLocaleDateString();
-}
-
 export interface FullStation extends Station {
   petrol: boolean;
   diesel: boolean;
   petrolQty?: number;
   dieselQty?: number;
+  queueLength?: number;
+  estimatedWaitMinutes?: number;
+  avgRating?: number;
+  ratingCount?: number;
 }
 
 interface Receipt {
+  createdAt: Date;
   _id: string;
   stationName: string;
   fuelType: string;
@@ -85,6 +78,12 @@ interface Receipt {
   totalPrice: number;
   paymentMethod: string;
   ticketId: string;
+}
+
+interface FuelAlertSubscription {
+  _id: string;
+  fuelType: "petrol" | "diesel";
+  active: boolean;
 }
 
 export default function DriverDashboard() {
@@ -105,6 +104,17 @@ export default function DriverDashboard() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletCurrency, setWalletCurrency] = useState<string>("ETB");
   const [walletLoading, setWalletLoading] = useState(false);
+  const [ratingStationId, setRatingStationId] = useState<string | null>(null);
+  const [ratingValue, setRatingValue] = useState<number>(5);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [fuelAlertEnabled, setFuelAlertEnabled] = useState<{
+    petrol: boolean;
+    diesel: boolean;
+  }>({ petrol: false, diesel: false });
+  const [notifications, setNotifications] = useState<
+    { _id: string; title: string; message: string; read: boolean; createdAt?: string }[]
+  >([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const mapSectionRef = useRef<HTMLDivElement>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -145,12 +155,43 @@ export default function DriverDashboard() {
     loadWallet();
   }, []);
 
-  // Fetch stations
+  // Load alert subscriptions and notifications
+  useEffect(() => {
+    const loadAlerts = async () => {
+      try {
+        const [subsRes, notifRes] = await Promise.all([
+          fetch("/api/alerts/subscriptions"),
+          fetch("/api/alerts/notifications"),
+        ]);
+
+        if (subsRes.ok) {
+          const subs: FuelAlertSubscription[] = await subsRes.json();
+          const petrol = subs.some(
+            (s) => s.fuelType === "petrol" && s.active
+          );
+          const diesel = subs.some(
+            (s) => s.fuelType === "diesel" && s.active
+          );
+          setFuelAlertEnabled({ petrol, diesel });
+        }
+
+        if (notifRes.ok) {
+          const list = await notifRes.json();
+          setNotifications(list);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadAlerts();
+  }, []);
+
+  // Fetch stations (with queue / wait info)
   useEffect(() => {
     const fetchStations = async () => {
       try {
         setLoadingStations(true);
-        const res = await fetch(`/api/stations?page=${page}&limit=${PAGE_SIZE}&q=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(`/api/stations/with-queue`);
         if (!res.ok) throw new Error("Failed to fetch stations");
         const data = await res.json();
         setStations(data);
@@ -290,6 +331,31 @@ export default function DriverDashboard() {
     }
   };
 
+  const removeRequest = async (id: string) => {
+    if (!id) return;
+    if (!confirm("Are you sure you want to remove this from your history?")) return;
+    
+    setMutatingId(id);
+    try {
+      const res = await fetch("/api/request/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: id }),
+      });
+
+      if (res.ok) {
+        setRequests((prev) => prev.filter((r) => r._id !== id));
+        showToast("Record removed from history", "success");
+      } else {
+        showToast("Failed to remove record", "error");
+      }
+    } catch {
+      showToast("Error removing record", "error");
+    } finally {
+      setMutatingId(null);
+    }
+  };
+
   // Filter stations by search query
   const filteredStations = stations.filter(
     (s) => {
@@ -413,9 +479,9 @@ export default function DriverDashboard() {
               )}
             </div>
 
-            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 shadow-lg">
+            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 shadow-lg space-y-3">
               <p className="text-xs uppercase tracking-wide text-blue-200/70 font-semibold">
-                Driving Insights
+                Driving Insights & Alerts
               </p>
               <p className="mt-2 text-sm">
                 Approved tickets:{" "}
@@ -429,9 +495,63 @@ export default function DriverDashboard() {
                   {spendingStats.lastTicketFuel ?? "—"}
                 </span>
               </p>
-              <p className="mt-2 text-[11px] text-blue-200/60">
-                More detailed efficiency metrics can be powered once trip data is available.
-              </p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-blue-200/70">
+                  Fuel alerts
+                </span>
+                <div className="flex gap-1">
+                  {(["petrol", "diesel"] as const).map((ft) => (
+                    <button
+                      key={ft}
+                      onClick={async () => {
+                        const enabled = fuelAlertEnabled[ft];
+                        try {
+                          if (enabled) {
+                            const params = new URLSearchParams({
+                              fuelType: ft,
+                            });
+                            await fetch(
+                              `/api/alerts/subscriptions?${params.toString()}`,
+                              { method: "DELETE" }
+                            );
+                          } else {
+                            await fetch("/api/alerts/subscriptions", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ fuelType: ft }),
+                            });
+                          }
+                          setFuelAlertEnabled((prev) => ({
+                            ...prev,
+                            [ft]: !enabled,
+                          }));
+                          showToast(
+                            `Alerts for ${ft} ${
+                              enabled ? "disabled" : "enabled"
+                            }.`,
+                            "success"
+                          );
+                        } catch {
+                          showToast("Failed to update alerts", "error");
+                        }
+                      }}
+                      className={`px-2 py-1 rounded-full text-[11px] capitalize ${
+                        fuelAlertEnabled[ft]
+                          ? "bg-green-500/30 text-green-200"
+                          : "bg-white/10 text-blue-200/70"
+                      }`}
+                    >
+                      {ft}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => setShowNotifications(true)}
+                className="mt-1 text-[11px] text-cyan-300 underline underline-offset-4"
+              >
+                View notifications ({notifications.filter((n) => !n.read).length} new)
+              </button>
             </div>
           </div>
         </header>
@@ -528,6 +648,31 @@ export default function DriverDashboard() {
                           <span className="ml-2 text-xs opacity-70">({station.dieselQty ?? 0} L)</span>
                         </span>
                       </div>
+                      <div className="flex justify-between items-center text-xs text-yellow-200 mt-1">
+                        <span>⭐ Rating</span>
+                        <span className="flex items-center gap-1">
+                          <span className="font-semibold">
+                            {typeof station.avgRating === "number"
+                              ? station.avgRating.toFixed(1)
+                              : "—"}
+                          </span>
+                          <span className="opacity-80">
+                            ({station.ratingCount ?? 0})
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-blue-200/80 mt-1">
+                        <span>🚗 Queue</span>
+                        <span className="text-blue-100 font-semibold">
+                          {typeof station.queueLength === "number" ? station.queueLength : 0}{" "}
+                          vehicles
+                          {typeof station.estimatedWaitMinutes === "number" && (
+                            <span className="ml-2 opacity-80">
+                              (~{station.estimatedWaitMinutes} min)
+                            </span>
+                          )}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex gap-3">
@@ -552,6 +697,19 @@ export default function DriverDashboard() {
                         }`}
                       >
                         Request Diesel
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRatingStationId(station._id);
+                          setRatingValue(5);
+                        }}
+                        className="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-200 hover:bg-yellow-500/30 transition"
+                      >
+                        Rate this station
                       </button>
                     </div>
                   </div>
@@ -617,7 +775,7 @@ export default function DriverDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-blue-200 text-sm">
-                      {timeAgo(r.createdAt)}
+                      {formatDateTime(r.createdAt)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -630,8 +788,12 @@ export default function DriverDashboard() {
                             {mutatingId === r._id ? "Canceling..." : "Cancel"}
                           </button>
                         ) : (
-                          <button className="px-3 py-2 rounded bg-gray-700 text-sm" disabled>
-                            -
+                          <button
+                            onClick={() => removeRequest(r._id)}
+                            disabled={mutatingId === r._id}
+                            className="px-3 py-2 rounded bg-gray-700 text-sm hover:bg-gray-600 transition disabled:opacity-50"
+                          >
+                            {mutatingId === r._id ? "Removing..." : "Remove"}
                           </button>
                         )}
                       </div>
@@ -746,7 +908,7 @@ export default function DriverDashboard() {
                 <h3 className="text-3xl font-bold">Payment Success!</h3>
                 <p className="text-blue-200/60">Show this ticket at the station to get your fuel.</p>
                 
-                <div className="bg-white text-slate-900 rounded-3xl p-6 space-y-4 shadow-2xl relative overflow-hidden text-left">
+                  <div className="bg-white text-slate-900 rounded-3xl p-6 space-y-4 shadow-2xl relative overflow-hidden text-left">
                   <div className="absolute top-0 left-0 right-0 h-2 bg-blue-500"></div>
                   <div className="flex justify-between items-start border-b border-slate-100 pb-4">
                     <div>
@@ -760,6 +922,10 @@ export default function DriverDashboard() {
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 py-2">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase">Date</p>
+                      <p className="font-bold">{formatDateTime(receipt.createdAt || new Date())}</p>
+                    </div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase">Fuel Type</p>
                       <p className="font-bold capitalize">{receipt.fuelType}</p>
@@ -779,8 +945,14 @@ export default function DriverDashboard() {
                   </div>
 
                   <div className="pt-4 border-t border-dashed border-slate-200 flex justify-center">
-                    <div className="bg-slate-100 p-2 rounded-lg">
-                      <div className="w-32 h-32 bg-slate-300 rounded flex items-center justify-center text-slate-500 text-xs italic">QR CODE</div>
+                    <div className="bg-slate-100 p-3 rounded-lg">
+                      <QRCodeCanvas
+                        value={receipt.ticketId}
+                        size={128}
+                        bgColor="#e5e7eb"
+                        fgColor="#111827"
+                        includeMargin
+                      />
                     </div>
                   </div>
                 </div>
@@ -792,6 +964,148 @@ export default function DriverDashboard() {
                   Close Receipt
                 </button>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* RATING SHEET */}
+      {ratingStationId && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => !submittingRating && setRatingStationId(null)}
+          />
+          <div className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-xl font-bold">Rate this station</h3>
+            <p className="text-xs text-blue-200/70">
+              Only drivers who have actually received fuel at this station can submit a rating.
+            </p>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRatingValue(n)}
+                  className={`text-2xl ${
+                    n <= ratingValue ? "text-yellow-300" : "text-slate-600"
+                  }`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                disabled={submittingRating}
+                onClick={() => setRatingStationId(null)}
+                className="px-4 py-2 rounded bg-gray-700 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={submittingRating}
+                onClick={async () => {
+                  if (!ratingStationId) return;
+                  setSubmittingRating(true);
+                  try {
+                    const res = await fetch(`/api/stations/${ratingStationId}/rate`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ score: ratingValue }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error) {
+                      showToast(data.error || "Failed to submit rating", "error");
+                    } else {
+                      showToast("Rating submitted. Thank you!", "success");
+                      setStations((prev) =>
+                        prev.map((s) =>
+                          s._id === ratingStationId
+                            ? {
+                                ...s,
+                                avgRating: data.avgRating,
+                                ratingCount: data.ratingCount,
+                              }
+                            : s
+                        )
+                      );
+                      setRatingStationId(null);
+                    }
+                  } catch {
+                    showToast("Failed to submit rating", "error");
+                  } finally {
+                    setSubmittingRating(false);
+                  }
+                }}
+                className="px-4 py-2 rounded bg-yellow-500 text-slate-900 font-semibold text-sm disabled:opacity-60"
+              >
+                {submittingRating ? "Submitting..." : "Submit rating"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICATIONS PANEL */}
+      {showNotifications && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setShowNotifications(false)}
+          />
+          <div className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">Fuel Alerts</h3>
+              <button
+                onClick={() => setShowNotifications(false)}
+                className="p-1 rounded-full hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+            {notifications.length === 0 ? (
+              <p className="text-sm text-blue-200/70">
+                No alerts yet. Turn on alerts for petrol or diesel to be notified when fuel becomes
+                available.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {notifications.map((n) => (
+                  <li
+                    key={n._id}
+                    className={`p-3 rounded-xl border text-sm ${
+                      n.read
+                        ? "border-white/10 bg-white/5 text-blue-100/80"
+                        : "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
+                    }`}
+                  >
+                    <p className="font-semibold">{n.title}</p>
+                    <p className="text-xs mt-1">{n.message}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {notifications.length > 0 && (
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch("/api/alerts/notifications", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ markAllRead: true }),
+                    });
+                    setNotifications((prev) =>
+                      prev.map((n) => ({ ...n, read: true }))
+                    );
+                  } catch {
+                    showToast("Failed to mark alerts as read", "error");
+                  }
+                }}
+                className="w-full mt-2 py-2 rounded-xl bg-white/10 text-xs font-semibold hover:bg-white/20"
+              >
+                Mark all as read
+              </button>
             )}
           </div>
         </div>

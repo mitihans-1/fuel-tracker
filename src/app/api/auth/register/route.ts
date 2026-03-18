@@ -1,8 +1,10 @@
 import { connectDB } from "@/lib/db";
-import UserModel from "@/models/user";
+import UserModel from "@/models/User";
 import Station from "@/models/Station";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   await connectDB();
@@ -18,13 +20,28 @@ export async function POST(req: NextRequest) {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
   const user = await UserModel.create({
     name,
     email,
     password: hashedPassword,
     role, // "DRIVER", "STATION", "ADMIN"
+    isVerified: false,
+    verificationToken,
+    verificationTokenExpires,
   });
+
+  let emailSent = false;
+  let emailError = "";
+  try {
+    await sendVerificationEmail(email, verificationToken);
+    emailSent = true;
+  } catch (err: unknown) {
+    console.error("Email sending failed, but user was created:", err);
+    emailError = err instanceof Error ? err.message : "Unknown SMTP error";
+  }
 
   if (role === "STATION") {
     let lat: number | undefined;
@@ -56,5 +73,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ message: "User registered successfully" }, { status: 201 });
+  return NextResponse.json({ 
+    message: emailSent 
+      ? "User registered successfully! Please check your email to verify." 
+      : `User registered, but email failed: ${emailError}. Please check your SMTP settings or try again.`, 
+    status: 201 
+  });
 }

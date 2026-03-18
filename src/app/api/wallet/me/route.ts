@@ -17,11 +17,11 @@ export async function GET() {
     }
 
     const user = verifyToken(token);
-    if (!user?._id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    const userId = user._id;
+    const userId = user.id;
 
     let wallet = await Wallet.findOne({ userId });
     if (!wallet) {

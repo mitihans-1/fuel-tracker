@@ -10,7 +10,7 @@ export default function DashboardPage() {
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/auth/me", { credentials: "include" })
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));

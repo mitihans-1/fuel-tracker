@@ -1,18 +1,106 @@
 "use client";
 
-import React, { useState, FormEvent } from "react";
+import React, { useState, FormEvent, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+declare global {
+  interface Window {
+    google: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement | null,
+            options: {
+              theme?: string;
+              size?: string;
+              width?: string;
+              shape?: string;
+              text?: string;
+              logo_alignment?: string;
+            }
+          ) => void;
+        };
+      };
+    };
+  }
+}
 
 export default function Login() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  const handleGoogleLogin = useCallback(async (response: { credential?: string }) => {
+    setLoading(true);
+    const res = await fetch("/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: response.credential }),
+      credentials: "include",
+    });
+
+    if (res.ok) {
+      router.push("/dashboard");
+    } else {
+      alert("Google login failed");
+      setLoading(false);
+    }
+  }, [router]);
+
+  const googleInitializedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || googleInitializedRef.current) return;
+
+    const scriptId = "google-client-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    const initGoogle = () => {
+      if (!window.google || googleInitializedRef.current) return;
+      googleInitializedRef.current = true;
+
+      window.google.accounts.id.initialize({
+        client_id:
+          "678586604246-o3oms8le08dt87ibe80q0s4e3iqcjo9m.apps.googleusercontent.com",
+        callback: handleGoogleLogin,
+      });
+
+      window.google.accounts.id.renderButton(
+        document.getElementById("googleBtn"),
+        {
+          theme: "outline",
+          size: "large",
+          width: "192",
+          shape: "pill",
+          text: "continue_with",
+          logo_alignment: "center",
+        }
+      );
+    };
+
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = initGoogle;
+      document.body.appendChild(script);
+    } else {
+      initGoogle();
+    }
+  }, [handleGoogleLogin]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!form.email || !form.password) {
+    if (!form.email || !form.password || !verified) {
       return;
     }
 
@@ -74,6 +162,9 @@ export default function Login() {
                 onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
                 className="w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
               />
+              <p className="mt-1 text-[11px] text-blue-200/70">
+                Please enter a valid email address you can access.
+              </p>
             </div>
 
             <div>
@@ -84,15 +175,36 @@ export default function Login() {
               title="password"
                 type="password"
                 required
+                minLength={8}
                 value={form.password}
                 onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
                 className="w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none" />
+              <p className="mt-1 text-[11px] text-blue-200/70">
+                Use at least 8 characters. Avoid reusing passwords from other sites.
+              </p>
             </div>
           </div>
-          <div className=" flex justify-center ">
+          <div className="pt-2 flex items-center gap-2">
+            <input
+              id="login-verify"
+              type="checkbox"
+              checked={verified}
+              onChange={(e) => setVerified(e.target.checked)}
+              className="w-4 h-4 accent-blue-500"
+              required
+            />
+            <label
+              htmlFor="login-verify"
+              className="text-[11px] text-blue-100/80"
+            >
+              I confirm that my email and password are correct and I’m using this device in a safe place.
+            </label>
+          </div>
+
+          <div className="flex flex-col items-center gap-4 pt-2">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !verified}
               className={` cursor-pointer w-48 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${loading
                 ? "bg-white/10 text-white/40 cursor-not-allowed"
                 : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
@@ -100,6 +212,14 @@ export default function Login() {
             >
               {loading ? "Authenticating..." : "✦ Sign In"}
             </button>
+
+            <div className="flex items-center w-full max-w-[200px] gap-3 py-2">
+              <div className="h-px flex-1 bg-white/10"></div>
+              <span className="text-[10px] font-black text-blue-200/40 uppercase tracking-[0.2em]">OR</span>
+              <div className="h-px flex-1 bg-white/10"></div>
+            </div>
+
+            <div id="googleBtn" className="w-48 flex justify-center"></div>
           </div>
 
 

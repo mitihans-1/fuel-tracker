@@ -43,6 +43,16 @@ const StationSchema = new mongoose.Schema({
     required: false,
   },
 
+  avgRating: {
+    type: Number,
+    default: 0,
+  },
+
+  ratingCount: {
+    type: Number,
+    default: 0,
+  },
+
   latitude: {
     type: Number,
     required: false,

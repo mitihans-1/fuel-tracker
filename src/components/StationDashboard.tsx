@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { formatDateTime } from "@/lib/utils";
 
 interface FuelRequest {
   _id: string;
@@ -18,7 +19,17 @@ export default function StationDashboard() {
   const [dieselQty, setDieselQty] = useState(0);
   const [dieselPrice, setDieselPrice] = useState(75);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "history" | "analytics">("pending");
+  const [analyticsRange, setAnalyticsRange] = useState<"today" | "7d" | "30d">("7d");
+  const [analytics, setAnalytics] = useState<{
+    totals: { totalLitres: number; totalRevenue: number; count: number };
+    byDay: { _id: { y: number; m: number; d: number }; litres: number; revenue: number }[];
+    byFuel: { _id: string; litres: number; revenue: number }[];
+    byHour: { _id: number; count: number }[];
+  } | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [ratingCount, setRatingCount] = useState(0);
 
   // This function refreshes both the stock and the request list
   const refreshData = useCallback(async () => {
@@ -34,6 +45,8 @@ export default function StationDashboard() {
           setDiesel(!!data.diesel);
           setDieselQty(data.dieselQty ?? 0);
           setDieselPrice(data.dieselPrice ?? 75);
+          setAvgRating(typeof data.avgRating === "number" ? data.avgRating : null);
+          setRatingCount(data.ratingCount ?? 0);
         }
       }
 
@@ -45,7 +58,22 @@ export default function StationDashboard() {
       console.error("Auto-refresh failed:", err);
     }
   }, []);
-
+  const loadAnalytics = useCallback(async (range: "today" | "7d" | "30d" = "7d") => {
+    try {
+      setLoadingAnalytics(true);
+      const res = await fetch(`/api/stations/me/analytics?range=${range}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setAnalytics(data);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    // initial load
+    loadAnalytics(analyticsRange);
+  }, [loadAnalytics, analyticsRange]);
   useEffect(() => {
     const init = async () => {
       await refreshData();
@@ -69,17 +97,29 @@ export default function StationDashboard() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setPetrol(!!data.petrol);
-        setPetrolQty(data.petrolQty ?? 0);
-        setPetrolPrice(data.petrolPrice ?? 80);
-        setDiesel(!!data.diesel);
-        setDieselQty(data.dieselQty ?? 0);
-        setDieselPrice(data.dieselPrice ?? 75);
-        alert("Fuel availability status updated successfully!");
+        try {
+          const data = await response.json();
+          setPetrol(!!data.petrol);
+          setPetrolQty(data.petrolQty ?? 0);
+          setPetrolPrice(data.petrolPrice ?? 80);
+          setDiesel(!!data.diesel);
+          setDieselQty(data.dieselQty ?? 0);
+          setDieselPrice(data.dieselPrice ?? 75);
+          alert("Fuel availability status updated successfully!");
+        } catch (jsonError) {
+          console.error("Failed to parse success response:", jsonError);
+          alert("Update completed but failed to parse response");
+        }
       } else {
-        const errorData = await response.json();
-        alert(`Update failed: ${errorData.error || response.statusText}`);
+        let errorMessage = response.statusText;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || response.statusText;
+        } catch (jsonError) {
+          console.error("Failed to parse error response:", jsonError);
+          errorMessage = `Server error (${response.status})`;
+        }
+        alert(`Update failed: ${errorMessage}`);
       }
     } catch (error) {
        console.error("Failed to update fuel:", error);
@@ -95,11 +135,35 @@ export default function StationDashboard() {
         body: JSON.stringify({ requestId: id, status }),
       });
 
+
       setRequests(prev =>
         prev.map(r => (r._id === id ? { ...r, status } : r))
       );
     } catch (error) {
-       console.error("Failed to update request:", error);
+        console.error("Failed to update request:", error);
+    }
+  };
+
+  const removeRequest = async (id: string) => {
+    if (!id) return;
+    if (!confirm("Delete this request record permanently?")) return;
+
+    try {
+      const res = await fetch("/api/request/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: id }),
+      });
+
+      if (res.ok) {
+        setRequests(prev => prev.filter(r => r._id !== id));
+        alert("Record deleted successfully.");
+      } else {
+        alert("Failed to delete record.");
+      }
+    } catch (error) {
+      console.error("Error deleting request:", error);
+      alert("An error occurred while deleting.");
     }
   };
 
@@ -131,8 +195,8 @@ export default function StationDashboard() {
             </p>
           </div>
 
-          <div className="flex gap-4">
-            <div className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${petrol ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 w-full md:w-auto">
+            <div className={`w-full sm:w-auto flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${petrol ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
               <div className={`w-12 h-12 flex items-center justify-center rounded-full text-2xl ${petrol ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
                 ⛽
               </div>
@@ -145,7 +209,7 @@ export default function StationDashboard() {
               </div>
             </div>
 
-            <div className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${diesel ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
+            <div className={`w-full sm:w-auto flex items-center gap-4 p-4 rounded-2xl shadow-lg border ${diesel ? "border-green-500 bg-green-950" : "border-red-500 bg-red-950"}`}>
               <div className={`w-12 h-12 flex items-center justify-center rounded-full text-2xl ${diesel ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
                 🚛
               </div>
@@ -154,6 +218,24 @@ export default function StationDashboard() {
                 <div className="flex items-center gap-2">
                   <p className={`font-bold text-lg ${diesel ? "text-green-400" : "text-red-400"}`}>{diesel ? `${dieselQty} L` : "Empty"}</p>
                   <span className="text-xs opacity-60">@{dieselPrice} ETB</span>
+                </div>
+              </div>
+            </div>
+            <div className="w-full sm:w-auto flex items-center gap-4 p-4 rounded-2xl shadow-lg border border-yellow-500 bg-yellow-950">
+              <div className="w-12 h-12 flex items-center justify-center rounded-full text-2xl bg-yellow-500 text-slate-900">
+                ⭐
+              </div>
+              <div>
+                <p className="text-xs uppercase font-bold tracking-wide opacity-70">
+                  Station Rating
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className="font-bold text-lg text-yellow-300">
+                    {avgRating !== null ? avgRating.toFixed(1) : "—"}
+                  </p>
+                  <span className="text-[11px] opacity-70">
+                    ({ratingCount} review{ratingCount === 1 ? "" : "s"})
+                  </span>
                 </div>
               </div>
             </div>
@@ -314,70 +396,228 @@ export default function StationDashboard() {
           </section>
         </div>
 
-        {/* Right Column: Requests */}
+        {/* Right Column: Requests / Analytics */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex border-b border-gray-600">
-            <button 
+            <button
               onClick={() => setActiveTab("pending")}
-              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === 'pending' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400'}`}
+              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
+                activeTab === "pending"
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-gray-400"
+              }`}
             >
               Queue Management ({pendingRequests.length})
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab("history")}
-              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === 'history' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400'}`}
+              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
+                activeTab === "history"
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-gray-400"
+              }`}
             >
               Recent Fulfillment
             </button>
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
+                activeTab === "analytics"
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-gray-400"
+              }`}
+            >
+              Analytics
+            </button>
           </div>
 
-          <div className="space-y-4">
-            {(activeTab === "pending" ? pendingRequests : historyRequests).map(r => (
-              <div key={r._id} className="bg-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-lg transition-shadow border border-gray-700">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 font-bold">
-                    {r.driverId?.name?.charAt(0) ?? "?"}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white">{r.driverId?.name ?? "Unknown Driver"}</h4>
-                    <p className="text-xs text-gray-400"> Requested {r.fuelType} • {r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently"}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {r.status === "PENDING" ? (
-                    <>
-                      <button
-                        onClick={() => updateRequest(r._id, "REJECTED")}
-                        className="px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-600/20 rounded-xl transition"
-                      >
-                        Decline
-                      </button>
-                      <button
-                        onClick={() => updateRequest(r._id, "APPROVED")}
-                        className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl shadow-md transition"
-                      >
-                        Approve & Fill
-                      </button>
-                    </>
-                  ) : (
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
-                      r.status === "APPROVED" ? "bg-green-700 text-green-300" : "bg-red-700 text-red-300"
-                    }`}>
-                      {r.status}
-                    </span>
-                  )}
+          {activeTab === "analytics" ? (
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Analytics</h2>
+                <div className="flex gap-2 text-xs">
+                  {(["today", "7d", "30d"] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setAnalyticsRange(r)}
+                      className={`px-3 py-1 rounded-full ${
+                        analyticsRange === r
+                          ? "bg-blue-600 text-white"
+                          : "bg-white/10 text-blue-200"
+                      }`}
+                    >
+                      {r === "today"
+                        ? "Today"
+                        : r === "7d"
+                        ? "Last 7 days"
+                        : "Last 30 days"}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
 
-            {(activeTab === "pending" ? pendingRequests : historyRequests).length === 0 && (
-              <div className="text-center py-20 opacity-50">
-                <p className="text-5xl mb-4">🛸</p>
-                <p className="text-gray-300 font-bold text-lg">No requests in this queue.</p>
-              </div>
-            )}
-          </div>
+              {loadingAnalytics || !analytics ? (
+                <p className="text-sm text-blue-200/70">Loading analytics…</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
+                      <p className="text-xs uppercase text-blue-200/70">
+                        Total litres
+                      </p>
+                      <p className="mt-2 text-2xl font-bold">
+                        {analytics.totals?.totalLitres ?? 0} L
+                      </p>
+                    </div>
+                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
+                      <p className="text-xs uppercase text-blue-200/70">
+                        Revenue
+                      </p>
+                      <p className="mt-2 text-2xl font-bold">
+                        {(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB
+                      </p>
+                    </div>
+                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
+                      <p className="text-xs uppercase text-blue-200/70">
+                        Requests
+                      </p>
+                      <p className="mt-2 text-2xl font-bold">
+                        {analytics.totals?.count ?? 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-800 rounded-2xl p-4 border border-white/10">
+                      <p className="text-xs uppercase text-blue-200/70 mb-2">
+                        Sales by day
+                      </p>
+                      {analytics.byDay && analytics.byDay.length > 0 ? (
+                        <ul className="text-xs space-y-1 text-blue-100">
+                          {analytics.byDay.map((d) => (
+                            <li key={`${d._id.y}-${d._id.m}-${d._id.d}`}>
+                              {d._id.y}/{d._id.m}/{d._id.d}: {d.litres} L,{" "}
+                              {d.revenue} ETB
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-blue-200/70">
+                          No sales in this range.
+                        </p>
+                      )}
+                    </div>
+                    <div className="bg-gray-800 rounded-2xl p-4 border border-white/10">
+                      <p className="text-xs uppercase text-blue-200/70 mb-2">
+                        Fuel mix
+                      </p>
+                      {analytics.byFuel && analytics.byFuel.length > 0 ? (
+                        <ul className="text-xs space-y-1 text-blue-100">
+                          {analytics.byFuel.map((f) => (
+                            <li key={f._id}>
+                              {f._id}: {f.litres} L, {f.revenue} ETB
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-blue-200/70">
+                          No data for fuel mix.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          ) : (
+            <div className="space-y-4">
+              {(activeTab === "pending" ? pendingRequests : historyRequests).map(
+                (r) => (
+                  <div
+                    key={r._id}
+                    className="bg-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-lg transition-shadow border border-gray-700"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 font-bold">
+                        {r.driverId?.name?.charAt(0) ?? "?"}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white">
+                          {r.driverId?.name ?? "Unknown Driver"}
+                        </h4>
+                        <p className="text-xs text-gray-400">
+                          {" "}
+                          Requested {r.fuelType} •{" "}
+                          {formatDateTime(r.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {r.status === "PENDING" ? (
+                        <>
+                          <button
+                            onClick={() => updateRequest(r._id, "REJECTED")}
+                            className="px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-600/20 rounded-xl transition"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            onClick={() => updateRequest(r._id, "APPROVED")}
+                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl shadow-md transition"
+                          >
+                            Approve & Fill
+                          </button>
+                        </>
+                      ) : r.status === "APPROVED" ? (
+                        <button
+                          onClick={() => updateRequest(r._id, "COMPLETED")}
+                          className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-md transition"
+                        >
+                          Mark Completed
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
+                              r.status === "APPROVED"
+                                ? "bg-green-700 text-green-300"
+                                : r.status === "COMPLETED"
+                                ? "bg-emerald-700 text-emerald-200"
+                                : r.status === "CANCELED"
+                                ? "bg-gray-700 text-gray-300"
+                                : "bg-red-700 text-red-300"
+                            }`}
+                          >
+                            {r.status}
+                          </span>
+                          <button
+                            onClick={() => removeRequest(r._id)}
+                            className="p-2 text-gray-400 hover:text-red-500 transition"
+                            title="Delete record"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+
+              {(activeTab === "pending"
+              ? pendingRequests
+              : historyRequests
+              ).length === 0 && (
+                <div className="text-center py-20 opacity-50">
+                  <p className="text-5xl mb-4">🛸</p>
+                  <p className="text-gray-300 font-bold text-lg">
+                    No requests in this queue.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
