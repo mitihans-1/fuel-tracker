@@ -1,13 +1,34 @@
 "use client";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const isDashboard = pathname?.startsWith("/dashboard");
+
+  useEffect(() => {
+    if (isDashboard) {
+      const fetchUser = async () => {
+        try {
+          const res = await fetch("/api/auth/me");
+          if (res.ok) {
+            const data = await res.json();
+            setUserRole(data.role);
+          }
+        } catch (err) {
+          console.error("Navbar fetchUser error:", err);
+        }
+      };
+      fetchUser();
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUserRole(null);
+    }
+  }, [isDashboard]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -19,6 +40,10 @@ export default function Navbar() {
     { name: "Home", path: "/" },
     { name: "Dashboard", path: "/dashboard" },
   ];
+
+  if (isDashboard && userRole === "STATION") {
+    coreLinks.push({ name: "Inventory Management", path: "/dashboard/inventory" });
+  }
 
   const marketingLinks = [
      { name: "How It Works", path: "/#features" },

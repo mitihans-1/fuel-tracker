@@ -35,14 +35,23 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const load = async () => {
-      const [usersRes, stationsRes, requestsRes] = await Promise.all([
-        fetch("/api/admin/users"),
-        fetch("/api/admin/stations"),
-        fetch("/api/request/station"),
-      ]);
-      setUsers(await usersRes.json());
-      setStations(await stationsRes.json());
-      setRequests(await requestsRes.json());
+      try {
+        const [usersRes, stationsRes, requestsRes] = await Promise.all([
+          fetch("/api/admin/users"),
+          fetch("/api/admin/stations"),
+          fetch("/api/admin/requests"),
+        ]);
+        
+        const usersData = await usersRes.json();
+        const stationsData = await stationsRes.json();
+        const requestsData = await requestsRes.json();
+
+        setUsers(Array.isArray(usersData) ? usersData : []);
+        setStations(Array.isArray(stationsData) ? stationsData : []);
+        setRequests(Array.isArray(requestsData) ? requestsData : []);
+      } catch (error) {
+        console.error("Dashboard load error:", error);
+      }
     };
 
     load();
@@ -55,8 +64,8 @@ export default function AdminDashboard() {
     drivers: users.filter(u => u.role === "DRIVER").length,
     stations: stations.length,
     requests: requests.length,
-    pending: requests.filter(r => r.status === "PENDING").length,
-    approved: requests.filter(r => r.status === "APPROVED").length
+    pending: (Array.isArray(requests) ? requests : []).filter(r => r.status === "PENDING").length,
+    approved: (Array.isArray(requests) ? requests : []).filter(r => r.status === "APPROVED").length
   };
 
   const platformSignals = {
@@ -66,7 +75,7 @@ export default function AdminDashboard() {
       requests.length === 0
         ? 0
         : Math.round(
-            (requests.filter(r => r.status === "APPROVED").length / requests.length) * 100
+            ((Array.isArray(requests) ? requests : []).filter(r => r.status === "APPROVED").length / requests.length) * 100
           ),
   };
 

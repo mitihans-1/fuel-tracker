@@ -16,10 +16,25 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
 
+  const passwordRequirements = {
+    length: form.password.length >= 8,
+    hasUpper: /[A-Z]/.test(form.password),
+    hasLower: /[a-z]/.test(form.password),
+    hasNumber: /[0-9]/.test(form.password),
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(form.password),
+  };
+
+  const isPasswordStrong = Object.values(passwordRequirements).every(Boolean);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password || !form.role || !verified) return;
     if (form.role === "STATION" && (!stationName || !stationLocation)) return;
+
+    if (!isPasswordStrong) {
+      alert("Please ensure your password meets all the security requirements.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -119,14 +134,19 @@ export default function Register() {
               name="password"
               type="password"
               required
-              minLength={8}
               value={form.password}
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              className={inputClass}
+              className={`${inputClass} ${form.password && !isPasswordStrong ? "border-red-500/50" : ""}`}
             />
-            <p className="mt-1 text-[11px] text-blue-200/70">
-              At least 8 characters. Use a strong, unique password.
-            </p>
+            
+            {/* Password Requirements Checklist */}
+            <div className="mt-3 grid grid-cols-2 gap-2 p-4 rounded-2xl bg-white/5 border border-white/5">
+              <Requirement met={passwordRequirements.length} text="8+ Characters" />
+              <Requirement met={passwordRequirements.hasUpper} text="Uppercase (A-Z)" />
+              <Requirement met={passwordRequirements.hasLower} text="Lowercase (a-z)" />
+              <Requirement met={passwordRequirements.hasNumber} text="Number (0-9)" />
+              <Requirement met={passwordRequirements.hasSpecial} text="Special Character" />
+            </div>
           </div>
 
           {/* Role */}
@@ -149,12 +169,9 @@ export default function Register() {
               <option value="STATION" className="bg-slate-800">
                 ⛽ Fuel Station
               </option>
-              <option value="ADMIN" className="bg-slate-800">
-                🛡️ Administrator
-              </option>
             </select>
             <p className="mt-1 text-[11px] text-blue-200/70">
-              Choose whether you are a driver, fuel station, or administrator.
+              Choose whether you are a driver or fuel station.
             </p>
           </div>
 
@@ -247,6 +264,15 @@ export default function Register() {
           </Link>
         </p>
       </div>
+    </div>
+  );
+}
+
+function Requirement({ met, text }: { met: boolean; text: string }) {
+  return (
+    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${met ? "text-emerald-400" : "text-white/30"}`}>
+      <div className={`w-1.5 h-1.5 rounded-full ${met ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-white/20"}`} />
+      {text}
     </div>
   );
 }
