@@ -17,7 +17,7 @@ const getTransporter = () => {
 };
 
 export async function sendVerificationEmail(email: string, token: string) {
-  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify?token=${token}`;
+  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${token}`;
   console.log(`Attempting to send verification email to: ${email}`);
 
   const transporter = getTransporter();

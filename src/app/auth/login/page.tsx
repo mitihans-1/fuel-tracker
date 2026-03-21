@@ -1,106 +1,26 @@
 "use client";
 
-import React, { useState, FormEvent, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, FormEvent } from "react";
 import Link from "next/link";
 
-declare global {
-  interface Window {
-    google: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: { credential?: string }) => void;
-          }) => void;
-          renderButton: (
-            parent: HTMLElement | null,
-            options: {
-              theme?: string;
-              size?: string;
-              width?: string;
-              shape?: string;
-              text?: string;
-              logo_alignment?: string;
-            }
-          ) => void;
-        };
-      };
-    };
-  }
-}
-
 export default function Login() {
-  const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
 
-  const handleGoogleLogin = useCallback(async (response: { credential?: string }) => {
-    setLoading(true);
-    const res = await fetch("/api/auth/google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: response.credential }),
-      credentials: "include",
-    });
-
-    if (res.ok) {
-      router.push("/dashboard");
-    } else {
-      alert("Google login failed");
-      setLoading(false);
-    }
-  }, [router]);
-
-  const googleInitializedRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || googleInitializedRef.current) return;
-
-    const scriptId = "google-client-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-
-    const initGoogle = () => {
-      if (!window.google || googleInitializedRef.current) return;
-      googleInitializedRef.current = true;
-
-      window.google.accounts.id.initialize({
-        client_id:
-          "678586604246-o3oms8le08dt87ibe80q0s4e3iqcjo9m.apps.googleusercontent.com",
-        callback: handleGoogleLogin,
-      });
-
-      window.google.accounts.id.renderButton(
-        document.getElementById("googleBtn"),
-        {
-          theme: "outline",
-          size: "large",
-          width: "192",
-          shape: "pill",
-          text: "continue_with",
-          logo_alignment: "center",
-        }
-      );
-    };
-
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      script.onload = initGoogle;
-      document.body.appendChild(script);
-    } else {
-      initGoogle();
-    }
-  }, [handleGoogleLogin]);
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!form.email || !form.password || !verified) {
+    if (!form.email) {
+      alert("Please enter your email address.");
+      return;
+    }
+    if (!form.password) {
+      alert("Please enter your password.");
+      return;
+    }
+    if (!verified) {
+      alert("Please confirm the security checkbox before signing in.");
       return;
     }
 
@@ -122,7 +42,7 @@ export default function Login() {
       }
 
       if (res.ok) {
-        router.push("/dashboard");
+       window.location.href = "/dashboard";
       } else {
         alert(data.message || "Invalid credentials");
       }
@@ -202,25 +122,17 @@ export default function Login() {
           </div>
 
           <div className="flex flex-col items-center gap-4 pt-2">
-            <button
-              type="submit"
-              disabled={loading || !verified}
-              className={` cursor-pointer w-48 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${loading
-                ? "bg-white/10 text-white/40 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
-                }`}
-            >
-              {loading ? "Authenticating..." : "✦ Sign In"}
-            </button>
-
-            <div className="flex items-center w-full max-w-[200px] gap-3 py-2">
-              <div className="h-px flex-1 bg-white/10"></div>
-              <span className="text-[10px] font-black text-blue-200/40 uppercase tracking-[0.2em]">OR</span>
-              <div className="h-px flex-1 bg-white/10"></div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={` cursor-pointer w-48 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${loading
+                  ? "bg-white/10 text-white/40 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
+                  }`}
+              >
+                {loading ? "Authenticating..." : "✦ Sign In"}
+              </button>
             </div>
-
-            <div id="googleBtn" className="w-48 flex justify-center"></div>
-          </div>
 
 
           <div className="pt-4 text-center">

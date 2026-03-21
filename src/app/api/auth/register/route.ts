@@ -14,6 +14,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "All fields are required" }, { status: 400 });
   }
 
+  // Server-side password strength check
+  const isStrong = 
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  if (!isStrong) {
+    return NextResponse.json({ 
+      message: "Password is not strong enough. Use 8+ characters with uppercase, lowercase, numbers, and symbols." 
+    }, { status: 400 });
+  }
+
   const existingUser = await UserModel.findOne({ email });
   if (existingUser) {
     return NextResponse.json({ message: "Email already exists" }, { status: 400 });
@@ -23,11 +37,19 @@ export async function POST(req: NextRequest) {
   const verificationToken = crypto.randomBytes(32).toString("hex");
   const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+  // SECURITY FIX: Only allow your email to become an admin during registration
+  const finalRole = role;
+  if (role === "ADMIN") {
+    if (email !== "mitikumitihans@gmail.com") {
+      return NextResponse.json({ message: "Unauthorized role assignment" }, { status: 403 });
+    }
+  }
+
   const user = await UserModel.create({
     name,
     email,
     password: hashedPassword,
-    role, // "DRIVER", "STATION", "ADMIN"
+    role: finalRole, // Use the verified role
     isVerified: false,
     verificationToken,
     verificationTokenExpires,

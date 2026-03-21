@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth";
-
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
 
@@ -10,15 +8,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  // Verify token early in middleware
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    // If token is invalid → clear it and go to login
-    const response = NextResponse.redirect(new URL("/auth/login", request.url));
-    response.cookies.delete("token");
-    return response;
-  }
-
+  // NOTE: We only check for the existence of the token here.
+  // The actual verification happens in the Dashboard via /api/auth/me,
+  // because jsonwebtoken is not compatible with the Edge Runtime.
   return NextResponse.next();
 }
 
