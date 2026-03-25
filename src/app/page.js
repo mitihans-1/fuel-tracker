@@ -257,7 +257,7 @@ export default function Home() {
           {/* Bottom Bar */}
           <div className="pt-6 sm:pt-8 mt-6 sm:mt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
             <p className="text-xs sm:text-sm font-medium text-slate-500">
-              © 2024 FuelSync. All rights reserved.
+              © 2026 FuelSync. All rights reserved.
             </p>
             <div className="flex gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-slate-500">
               <Link href="#" className="hover:text-white transition-colors">Privacy</Link>

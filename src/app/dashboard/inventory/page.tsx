@@ -2,20 +2,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/navigation";
-
-interface Station {
-  _id: string;
-  ownerUserId: string;
-  petrol: boolean;
-  diesel: boolean;
-  petrolQty: number;
-  dieselQty: number;
-  petrolPrice: number;
-  dieselPrice: number;
-}
+import { useUser } from "@/contexts/UserContext";
 
 export default function InventoryPage() {
   const router = useRouter();
+  const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [petrol, setPetrol] = useState(false);
   const [diesel, setDiesel] = useState(false);
@@ -24,47 +15,48 @@ export default function InventoryPage() {
   const [petrolPrice, setPetrolPrice] = useState(0);
   const [dieselPrice, setDieselPrice] = useState(0);
   const [stationId, setStationId] = useState("");
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
 
-  const refreshData = useCallback(async () => {
-    try {
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
-      
-      if (meData.role !== "STATION") {
-        router.push("/dashboard");
-        return;
-      }
 
-      const stationRes = await fetch("/api/admin/stations");
-      const stations = await stationRes.json();
-      
-      const myStation = stations.find((s: Station) => s.ownerUserId === meData._id);
+const refreshData = useCallback(async () => {
+  try {
+    const stationRes = await fetch("/api/stations/me");
+    const myStation = await stationRes.json();
 
-      if (myStation) {
-        setStationId(myStation._id);
-        setPetrol(myStation.petrol);
-        setDiesel(myStation.diesel);
-        setPetrolQty(myStation.petrolQty || 0);
-        setDieselQty(myStation.dieselQty || 0);
-        setPetrolPrice(myStation.petrolPrice || 0);
-        setDieselPrice(myStation.dieselPrice || 0);
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
+    if (myStation && !myStation.error) {
+      setStationId(myStation._id);
+      setPetrol(myStation.petrol);
+      setDiesel(myStation.diesel);
+      setPetrolQty(myStation.petrolQty || 0);
+      setDieselQty(myStation.dieselQty || 0);
+      setPetrolPrice(myStation.petrolPrice || 0);
+      setDieselPrice(myStation.dieselPrice || 0);
     }
-  }, [router]);
+  } catch {
+    // silent — page will display last known values
+  }
+}, [router]);
+
+  // Guard: redirect non-STATION users without an extra API call
+  useEffect(() => {
+    if (user !== null && user.role !== "STATION") {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+    if (user?.role === "STATION") refreshData();
+  }, [refreshData, user]);
 
   const handleUpdateStatus = async () => {
     setLoading(true);
+    setStatus("idle");
     try {
-      const res = await fetch(`/api/admin/stations/${stationId}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/stations/update`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: stationId,
           petrol,
           diesel,
           petrolQty,
@@ -75,11 +67,13 @@ export default function InventoryPage() {
       });
 
       if (res.ok) {
-        alert("Inventory updated successfully!");
+        setStatus("success");
         refreshData();
+      } else {
+        setStatus("error");
       }
-    } catch (err) {
-      console.error("Update failed:", err);
+    } catch {
+      setStatus("error");
     } finally {
       setLoading(false);
     }
@@ -91,7 +85,7 @@ export default function InventoryPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20">
         <div className="mb-12">
           <h1 className="text-4xl font-black text-white mb-2">Inventory Management</h1>
-          <p className="text-blue-400 font-bold uppercase tracking-widest text-xs">Update your stations live fuel stock and pricing</p>
+          <p className="text-blue-400 font-bold uppercase tracking-widest text-xs">Update your station&apos;s live fuel stock and pricing</p>
         </div>
 
         <div className="bg-slate-900/50 backdrop-blur-xl rounded-[2.5rem] p-10 border border-white/5 shadow-2xl max-w-4xl">
@@ -189,7 +183,16 @@ export default function InventoryPage() {
               </div>
             </div>
           </div>
-
+{status === "success" && (
+  <div className="mb-4 px-5 py-3 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-sm font-bold">
+    ✓ Inventory updated successfully!
+  </div>
+)}
+{status === "error" && (
+  <div className="mb-4 px-5 py-3 rounded-xl bg-red-500/20 border border-red-400/30 text-red-300 text-sm font-bold">
+    ✕ Failed to update inventory. Please try again.
+  </div>
+)}
           <button
             onClick={handleUpdateStatus}
             disabled={loading}

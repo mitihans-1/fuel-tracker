@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
+import {
+  Chart as ChartJS,
+  CategoryScale, LinearScale, BarElement,
+  ArcElement, Tooltip, Legend, Title,
+} from "chart.js";
+import { Bar, Doughnut } from "react-chartjs-2";
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Title);
 
+type Toast = { id: number; message: string; type: "success" | "error" | "info" };
 interface FuelRequest {
   _id: string;
   driverId: { name: string };
@@ -12,6 +21,7 @@ interface FuelRequest {
 }
 
 export default function StationDashboard() {
+  const router = useRouter();
   const [petrol, setPetrol] = useState(true);
   const [petrolQty, setPetrolQty] = useState(0);
   const [petrolPrice, setPetrolPrice] = useState(80);
@@ -28,8 +38,17 @@ export default function StationDashboard() {
     byHour: { _id: number; count: number }[];
   } | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [priceHistory, setPriceHistory] = useState<{ _id: string; fuelType: string; price: number; createdAt: string }[]>([]);
+  const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
   const [avgRating, setAvgRating] = useState<number | null>(null);
   const [ratingCount, setRatingCount] = useState(0);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastIdRef = useRef(0);
+  const showToast = useCallback((message: string, type: Toast["type"] = "info") => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
 
   // This function refreshes both the stock and the request list
   const refreshData = useCallback(async () => {
@@ -39,6 +58,11 @@ export default function StationDashboard() {
       if (statusRes.ok) {
         const data = await statusRes.json();
         if (data && !data.error) {
+          // Redirect to setup wizard if station has not completed onboarding
+          if (!data.isSetupComplete) {
+            router.replace("/dashboard/station/setup");
+            return;
+          }
           setPetrol(!!data.petrol);
           setPetrolQty(data.petrolQty ?? 0);
           setPetrolPrice(data.petrolPrice ?? 80);
@@ -54,8 +78,8 @@ export default function StationDashboard() {
       const reqRes = await fetch("/api/request/station");
       const reqData = await reqRes.json();
       setRequests(reqData);
-    } catch (err) {
-      console.error("Auto-refresh failed:", err);
+    } catch {
+      // silent — background refresh; no user-facing action needed
     }
   }, []);
   const loadAnalytics = useCallback(async (range: "today" | "7d" | "30d" = "7d") => {
@@ -69,11 +93,53 @@ export default function StationDashboard() {
       setLoadingAnalytics(false);
     }
   }, []);
+
+  const loadPriceHistory = useCallback(async () => {
+    try {
+      setLoadingPriceHistory(true);
+      const res = await fetch("/api/stations/me/price-history");
+      if (res.ok) setPriceHistory(await res.json());
+    } finally {
+      setLoadingPriceHistory(false);
+    }
+  }, []);
+
+  const exportCSV = () => {
+    if (!analytics) return;
+    const rows = [
+      ["Date", "Litres", "Revenue (ETB)"],
+      ...analytics.byDay.map(d => [
+        `${d._id.d}/${d._id.m}/${d._id.y}`,
+        String(d.litres),
+        String(d.revenue),
+      ]),
+      [],
+      ["Fuel Type", "Litres", "Revenue (ETB)"],
+      ...analytics.byFuel.map(f => [f._id, String(f.litres), String(f.revenue)]),
+      [],
+      ["Summary", "", ""],
+      ["Total Litres", String(analytics.totals.totalLitres), ""],
+      ["Total Revenue", String(analytics.totals.totalRevenue), "ETB"],
+      ["Total Requests", String(analytics.totals.count), ""],
+    ];
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `station-analytics-${analyticsRange}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("CSV exported!", "success");
+  };
   
   useEffect(() => {
-    // initial load
     loadAnalytics(analyticsRange);
   }, [loadAnalytics, analyticsRange]);
+
+  useEffect(() => {
+    if (activeTab === "analytics") loadPriceHistory();
+  }, [activeTab, loadPriceHistory]);
   useEffect(() => {
     const init = async () => {
       await refreshData();
@@ -86,8 +152,8 @@ export default function StationDashboard() {
         const reqRes = await fetch("/api/request/station");
         const reqData = await reqRes.json();
         setRequests(reqData);
-      } catch (err) {
-        console.error("Auto-refresh requests failed:", err);
+      } catch {
+        // silent — background refresh; no user-facing action needed
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -105,8 +171,8 @@ export default function StationDashboard() {
       setRequests(prev =>
         prev.map(r => (r._id === id ? { ...r, status } : r))
       );
-    } catch (error) {
-        console.error("Failed to update request:", error);
+    } catch {
+      // no-op: the optimistic UI update is already applied
     }
   };
 
@@ -123,13 +189,12 @@ export default function StationDashboard() {
 
       if (res.ok) {
         setRequests(prev => prev.filter(r => r._id !== id));
-        alert("Record deleted successfully.");
+        showToast("Record deleted successfully.", "success");
       } else {
-        alert("Failed to delete record.");
+        showToast("Failed to delete record.", "error");
       }
-    } catch (error) {
-      console.error("Error deleting request:", error);
-      alert("An error occurred while deleting.");
+    } catch {
+      showToast("An error occurred while deleting the record.", "error");
     }
   };
 
@@ -155,10 +220,10 @@ export default function StationDashboard() {
           <div className="flex items-center gap-8">
             <div>
               <h1 className="text-4xl font-extrabold tracking-tight">
-                Station Console
+                Operations Center
               </h1>
               <p className="text-gray-300 mt-1">
-                Monitor stock, revenue signals, and driver requests in real-time.
+                Monitor inventory levels, sales performance, and incoming driver requests in real time.
               </p>
             </div>
             <nav className="hidden lg:flex items-center gap-6 ml-6 border-l border-white/10 pl-6">
@@ -236,18 +301,18 @@ export default function StationDashboard() {
               {throughput.todayApproved}
             </p>
             <p className="mt-1 text-xs text-blue-200/70">
-              Tickets marked as approved and presumably filled.
+              Fuel requests approved and fulfilled today.
             </p>
           </div>
           <div className="bg-white/5 rounded-2xl p-4 border border-red-400/30 shadow-lg">
             <p className="text-xs uppercase tracking-wide text-red-200 font-semibold">
-              Rejected / Lost
+              Declined Today
             </p>
             <p className="mt-2 text-3xl font-extrabold text-red-100">
               {throughput.todayRejected}
             </p>
             <p className="mt-1 text-xs text-red-100/80">
-              Review rejections to reduce churn and disputes.
+              Review declined requests to improve service quality.
             </p>
           </div>
         </div>
@@ -255,7 +320,7 @@ export default function StationDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
         {/* Left Column: Management */}
-        <div className="lg:col-span-1 space-y-8">
+        <div className="lg:col-span-1 space-y-8 mt-8">
           {/* Stats */}
           <section className="bg-gradient-to-br from-indigo-700 to-blue-700 rounded-3xl p-6 shadow-xl space-y-4 text-white">
             <h3 className="uppercase text-xs font-bold tracking-wider opacity-80">Live Insights</h3>
@@ -279,7 +344,7 @@ export default function StationDashboard() {
         {/* Right Column: Requests / Analytics */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex border-b border-gray-600">
-            <button
+            {/* <button
               onClick={() => setActiveTab("pending")}
               className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
                 activeTab === "pending"
@@ -288,6 +353,17 @@ export default function StationDashboard() {
               }`}
             >
               Queue Management ({pendingRequests.length})
+            </button> */}
+
+               <button
+              onClick={() => setActiveTab("analytics")}
+              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
+                activeTab === "analytics"
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-gray-400"
+              }`}
+            >
+              Analytics
             </button>
             <button
               onClick={() => setActiveTab("history")}
@@ -299,7 +375,7 @@ export default function StationDashboard() {
             >
               Recent Fulfillment
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab("analytics")}
               className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
                 activeTab === "analytics"
@@ -308,107 +384,155 @@ export default function StationDashboard() {
               }`}
             >
               Analytics
+            </button> */}
+
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`px-6 py-3 font-bold text-sm transition-all border-b-2 ${
+                activeTab === "pending"
+                  ? "border-blue-500 text-blue-400"
+                  : "border-transparent text-gray-400"
+              }`}
+            >
+              Queue Management ({pendingRequests.length})
             </button>
           </div>
 
-          {activeTab === "analytics" ? (
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Analytics</h2>
-                <div className="flex gap-2 text-xs">
-                  {(["today", "7d", "30d"] as const).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setAnalyticsRange(r)}
-                      className={`px-3 py-1 rounded-full ${
-                        analyticsRange === r
-                          ? "bg-blue-600 text-white"
-                          : "bg-white/10 text-blue-200"
-                      }`}
-                    >
-                      {r === "today"
-                        ? "Today"
-                        : r === "7d"
-                        ? "Last 7 days"
-                        : "Last 30 days"}
-                    </button>
+        {activeTab === "analytics" ? (
+  <section className="space-y-6">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="text-2xl font-bold">Analytics</h2>
+      <div className="flex flex-wrap gap-2 text-xs items-center">
+        {(["today", "7d", "30d"] as const).map((r) => (
+          <button key={r} onClick={() => setAnalyticsRange(r)}
+            className={`px-3 py-1 rounded-full ${analyticsRange === r ? "bg-blue-600 text-white" : "bg-white/10 text-blue-200"}`}>
+            {r === "today" ? "Today" : r === "7d" ? "Last 7 days" : "Last 30 days"}
+          </button>
+        ))}
+        <button
+          onClick={exportCSV}
+          disabled={!analytics}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold disabled:opacity-40 transition"
+        >
+          ⬇ Export CSV
+        </button>
+      </div>
+    </div>
+
+    {loadingAnalytics || !analytics ? (
+      <p className="text-sm text-blue-200/70">Loading analytics…</p>
+    ) : (
+      <>
+        {/* Totals */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { label: "Total Litres", value: `${analytics.totals?.totalLitres ?? 0} L` },
+            { label: "Revenue", value: `${(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB` },
+            { label: "Requests", value: analytics.totals?.count ?? 0 },
+          ].map((s) => (
+            <div key={s.label} className="bg-white/10 rounded-2xl p-4 border border-white/10">
+              <p className="text-xs uppercase text-blue-200/70">{s.label}</p>
+              <p className="mt-2 text-2xl font-bold">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Sales by Day — Bar chart */}
+        {analytics.byDay && analytics.byDay.length > 0 && (
+          <div className="bg-gray-800 rounded-2xl p-4 border border-white/10">
+            <p className="text-xs uppercase text-blue-200/70 mb-4">Sales by Day</p>
+            <Bar
+              data={{
+                labels: analytics.byDay.map((d) => `${d._id.d}/${d._id.m}`),
+                datasets: [
+                  {
+                    label: "Litres",
+                    data: analytics.byDay.map((d) => d.litres),
+                    backgroundColor: "rgba(59,130,246,0.6)",
+                    borderRadius: 6,
+                  },
+                  {
+                    label: "Revenue (ETB)",
+                    data: analytics.byDay.map((d) => d.revenue),
+                    backgroundColor: "rgba(16,185,129,0.6)",
+                    borderRadius: 6,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                plugins: { legend: { labels: { color: "#93c5fd" } } },
+                scales: {
+                  x: { ticks: { color: "#93c5fd" }, grid: { color: "#ffffff10" } },
+                  y: { ticks: { color: "#93c5fd" }, grid: { color: "#ffffff10" } },
+                },
+              }}
+            />
+          </div>
+        )}
+
+        {/* Fuel Mix — Doughnut */}
+        {analytics.byFuel && analytics.byFuel.length > 0 && (
+          <div className="bg-gray-800 rounded-2xl p-4 border border-white/10 flex flex-col items-center">
+            <p className="text-xs uppercase text-blue-200/70 mb-4 self-start">Fuel Mix</p>
+            <div className="w-48 h-48">
+              <Doughnut
+                data={{
+                  labels: analytics.byFuel.map((f) => f._id),
+                  datasets: [{
+                    data: analytics.byFuel.map((f) => f.litres),
+                    backgroundColor: ["rgba(59,130,246,0.7)", "rgba(251,191,36,0.7)"],
+                    borderColor: ["#3b82f6", "#fbbf24"],
+                    borderWidth: 2,
+                  }],
+                }}
+                options={{
+                  plugins: { legend: { labels: { color: "#93c5fd" } } },
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Price History */}
+        <div className="bg-gray-800 rounded-2xl p-4 border border-white/10 space-y-4">
+          <p className="text-xs uppercase text-blue-200/70 font-semibold">Fuel Price History</p>
+          {loadingPriceHistory ? (
+            <p className="text-sm text-blue-200/50">Loading price history…</p>
+          ) : priceHistory.length === 0 ? (
+            <p className="text-sm text-blue-200/50">No price changes recorded yet. Prices are tracked automatically when you update your inventory.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-[400px] w-full text-sm">
+                <thead>
+                  <tr className="text-blue-200/60 text-xs">
+                    <th className="text-left py-2 px-3">Fuel Type</th>
+                    <th className="text-left py-2 px-3">Price (ETB/L)</th>
+                    <th className="text-left py-2 px-3">Recorded At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceHistory.map((p) => (
+                    <tr key={p._id} className="border-t border-white/5 hover:bg-white/5">
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold capitalize ${p.fuelType === "petrol" ? "bg-blue-500/20 text-blue-300" : "bg-yellow-500/20 text-yellow-300"}`}>
+                          {p.fuelType}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-white">{p.price.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-blue-200/60 text-xs">
+                        {new Date(p.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              </div>
-
-              {loadingAnalytics || !analytics ? (
-                <p className="text-sm text-blue-200/70">Loading analytics…</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                      <p className="text-xs uppercase text-blue-200/70">
-                        Total litres
-                      </p>
-                      <p className="mt-2 text-2xl font-bold">
-                        {analytics.totals?.totalLitres ?? 0} L
-                      </p>
-                    </div>
-                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                      <p className="text-xs uppercase text-blue-200/70">
-                        Revenue
-                      </p>
-                      <p className="mt-2 text-2xl font-bold">
-                        {(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB
-                      </p>
-                    </div>
-                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                      <p className="text-xs uppercase text-blue-200/70">
-                        Requests
-                      </p>
-                      <p className="mt-2 text-2xl font-bold">
-                        {analytics.totals?.count ?? 0}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gray-800 rounded-2xl p-4 border border-white/10">
-                      <p className="text-xs uppercase text-blue-200/70 mb-2">
-                        Sales by day
-                      </p>
-                      {analytics.byDay && analytics.byDay.length > 0 ? (
-                        <ul className="text-xs space-y-1 text-blue-100">
-                          {analytics.byDay.map((d) => (
-                            <li key={`${d._id.y}-${d._id.m}-${d._id.d}`}>
-                              {d._id.y}/{d._id.m}/{d._id.d}: {d.litres} L,{" "}
-                              {d.revenue} ETB
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-blue-200/70">
-                          No sales in this range.
-                        </p>
-                      )}
-                    </div>
-                    <div className="bg-gray-800 rounded-2xl p-4 border border-white/10">
-                      <p className="text-xs uppercase text-blue-200/70 mb-2">
-                        Fuel mix
-                      </p>
-                      {analytics.byFuel && analytics.byFuel.length > 0 ? (
-                        <ul className="text-xs space-y-1 text-blue-100">
-                          {analytics.byFuel.map((f) => (
-                            <li key={f._id}>
-                              {f._id}: {f.litres} L, {f.revenue} ETB
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-blue-200/70">
-                          No data for fuel mix.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </section>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </>
+    )}
+  </section>
           ) : (
             <div className="space-y-4">
               {(activeTab === "pending" ? pendingRequests : historyRequests).map(
@@ -490,9 +614,9 @@ export default function StationDashboard() {
               : historyRequests
               ).length === 0 && (
                 <div className="text-center py-20 opacity-50">
-                  <p className="text-5xl mb-4">🛸</p>
+                  <p className="text-5xl mb-4">📋</p>
                   <p className="text-gray-300 font-bold text-lg">
-                    No requests in this queue.
+                    All caught up — no pending requests.
                   </p>
                 </div>
               )}
@@ -500,6 +624,17 @@ export default function StationDashboard() {
           )}
         </div>
       </div>
+      <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none">
+  {toasts.map((t) => (
+    <div key={t.id} className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl backdrop-blur-xl border text-sm font-medium ${
+      t.type === "success" ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-200"
+      : t.type === "error" ? "bg-red-500/20 border-red-400/30 text-red-200"
+      : "bg-sky-500/20 border-sky-400/30 text-sky-200"}`}>
+      <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
+      <span>{t.message}</span>
+    </div>
+  ))}
+</div>
     </div>
   );
 }

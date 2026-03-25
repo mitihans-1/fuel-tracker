@@ -15,6 +15,8 @@ export default function Register() {
   const [stationLocation, setStationLocation] = useState("");
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const passwordRequirements = {
     length: form.password.length >= 8,
@@ -52,18 +54,17 @@ export default function Register() {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        alert(`Registration failed: ${text}`);
+        const data = await res.json();
+        setError(data.message || "Registration failed");
         setLoading(false);
         return;
       }
 
       const data = await res.json();
-      alert(data.message);
-      router.push("/auth/login");
-    } catch (err) {
-      console.error(err);
-      alert("An unexpected error occurred.");
+      setSuccessMessage(data.message || "Account created successfully! Please check your email to verify your account.");
+      setTimeout(() => router.push("/auth/login"), 3500);
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -86,8 +87,8 @@ export default function Register() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
             ⛽
           </div>
-          <h2 className="text-4xl font-black tracking-tight text-white">Get Started</h2>
-          <p className="text-blue-100/70 font-medium italic">Join the digital fuel network today</p>
+          <h2 className="text-4xl font-black tracking-tight text-white">Create Your Account</h2>
+          <p className="text-blue-100/70 font-medium italic">Join drivers and stations on FuelSync today</p>
         </div>
 
         {/* Form Card */}
@@ -105,7 +106,7 @@ export default function Register() {
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
             />
             <p className="mt-1 text-[11px] text-blue-200/70">
-              Enter your real name so stations and admins can recognize your account.
+              Your display name as shown to stations and administrators.
             </p>
           </div>
 
@@ -122,7 +123,7 @@ export default function Register() {
               className={inputClass}
             />
             <p className="mt-1 text-[11px] text-blue-200/70">
-              Use a valid email you can access for security and account recovery.
+              Used for login, notifications, and account recovery.
             </p>
           </div>
 
@@ -171,7 +172,7 @@ export default function Register() {
               </option>
             </select>
             <p className="mt-1 text-[11px] text-blue-200/70">
-              Choose whether you are a driver or fuel station.
+              Select your role to personalise your dashboard experience.
             </p>
           </div>
 
@@ -228,11 +229,19 @@ export default function Register() {
               htmlFor="register-verify"
               className="text-[11px] text-blue-100/80"
             >
-              I confirm that all information I entered is correct and I agree to use this platform
-              responsibly.
+              I confirm the details above are accurate and agree to use FuelSync responsibly.
             </label>
           </div>
-
+            {successMessage && (
+              <div className="px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-sm font-medium">
+                ✓ {successMessage}
+              </div>
+            )}
+            {error && (
+              <div className="px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium">
+                {error}
+              </div>
+            )}
           {/* Submit Button */}
           <div className="flex justify-center pt-2">
             <button

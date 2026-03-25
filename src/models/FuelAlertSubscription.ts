@@ -1,6 +1,13 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Model } from "mongoose";
 
-const fuelAlertSubscriptionSchema = new mongoose.Schema(
+export interface IFuelAlertSubscription extends Document {
+  driverId: mongoose.Types.ObjectId;
+  stationId?: mongoose.Types.ObjectId;
+  fuelType: "petrol" | "diesel";
+  active: boolean;
+}
+
+const fuelAlertSubscriptionSchema = new mongoose.Schema<IFuelAlertSubscription>(
   {
     driverId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -30,6 +37,6 @@ fuelAlertSubscriptionSchema.index(
   { unique: true }
 );
 
-export default mongoose.models.FuelAlertSubscription ||
-  mongoose.model("FuelAlertSubscription", fuelAlertSubscriptionSchema);
+export default (mongoose.models.FuelAlertSubscription as Model<IFuelAlertSubscription>) ||
+  mongoose.model<IFuelAlertSubscription>("FuelAlertSubscription", fuelAlertSubscriptionSchema);
 

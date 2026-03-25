@@ -5,30 +5,46 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { sendVerificationEmail } from "@/lib/email";
+import { z } from "zod";
+
+// Zod schema for registration validation
+const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: z.enum(["DRIVER", "STATION", "ADMIN"]),
+  stationName: z.string().optional(),
+  stationLocation: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
-  await connectDB();
-  const { name, email, password, role, stationName, stationLocation } = await req.json();
+  try {
+    await connectDB();
+    const body = await req.json();
+    
+    // Zod validation logic (assuming registerSchema is imported)
+    const parsed = registerSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ message: parsed.error.issues[0].message }, { status: 400 });
+    }
 
-  if (!name || !email || !password || !role) {
-    return NextResponse.json({ message: "All fields are required" }, { status: 400 });
-  }
+    const { name, email, password, role, stationName, stationLocation } = parsed.data;
 
-  // Server-side password strength check
-  const isStrong = 
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /[0-9]/.test(password) &&
-    /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    // Server-side password strength check
+    const isStrong = 
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[a-z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-  if (!isStrong) {
-    return NextResponse.json({ 
-      message: "Password is not strong enough. Use 8+ characters with uppercase, lowercase, numbers, and symbols." 
-    }, { status: 400 });
-  }
+    if (!isStrong) {
+      return NextResponse.json({ 
+        message: "Password is not strong enough. Use 8+ characters with uppercase, lowercase, numbers, and symbols." 
+      }, { status: 400 });
+    }
 
-  const existingUser = await UserModel.findOne({ email });
+    const existingUser = await UserModel.findOne({ email });
   if (existingUser) {
     return NextResponse.json({ message: "Email already exists" }, { status: 400 });
   }
@@ -71,14 +87,16 @@ export async function POST(req: NextRequest) {
 
     try {
       // Basic geocoding with Nominatim (OpenStreetMap)
-      const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(stationLocation)}&format=json&limit=1`,
-        { headers: { "User-Agent": "FuelTrackerApp/1.0" } }
-      );
-      const geoData = await geoRes.json();
-      if (geoData && geoData.length > 0) {
-        lat = parseFloat(geoData[0].lat);
-        lon = parseFloat(geoData[0].lon);
+      if (stationLocation) {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(stationLocation)}&format=json&limit=1`,
+          { headers: { "User-Agent": "FuelTrackerApp/1.0" } }
+        );
+        const geoData = await geoRes.json();
+        if (geoData && geoData.length > 0) {
+          lat = parseFloat(geoData[0].lat);
+          lon = parseFloat(geoData[0].lon);
+        }
       }
     } catch (err) {
       console.error("Geocoding failed:", err);
@@ -95,10 +113,14 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ 
-    message: emailSent 
-      ? "User registered successfully! Please check your email to verify." 
-      : `User registered, but email failed: ${emailError}. Please check your SMTP settings or try again.`, 
-    status: 201 
-  });
+    return NextResponse.json({ 
+      message: emailSent 
+        ? "User registered successfully! Please check your email to verify." 
+        : `User registered, but email failed: ${emailError}. Please check your SMTP settings or try again.`, 
+      status: 201 
+    });
+  } catch (err) {
+    console.error("REGISTRATION ERROR:", err);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+  }
 }

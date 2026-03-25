@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
   },
   verificationToken: String,
   verificationTokenExpires: Date,
+  passwordResetToken: String,
+  passwordResetTokenExpires: Date,
 });
 
 export default mongoose.models.user || mongoose.model("user", userSchema);

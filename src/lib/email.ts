@@ -51,3 +51,39 @@ export async function sendVerificationEmail(email: string, token: string) {
     throw error; // Throw the actual error so it can be handled/displayed by the caller
   }
 }
+
+export async function sendPasswordResetEmail(email: string, token: string) {
+  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
+  console.log(`Attempting to send password reset email to: ${email}`);
+
+  const transporter = getTransporter();
+
+  const mailOptions = {
+    from: `"FuelSync Support" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: "Reset your FuelSync Password",
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #2563eb; text-align: center;">Password Reset Request</h2>
+        <p>We received a request to reset your FuelSync account password. Click the button below to choose a new password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">This link will expire in <strong>1 hour</strong>. If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="color: #2563eb; font-size: 14px; word-break: break-all;">${resetUrl}</p>
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #e2e8f0;" />
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.verify();
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Password reset email sent to ${email}. Message ID: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  } catch (error: unknown) {
+    console.error("❌ Error sending password reset email:", error);
+    throw error;
+  }
+}
