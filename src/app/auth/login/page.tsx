@@ -2,25 +2,27 @@
 
 import React, { useState, FormEvent } from "react";
 import Link from "next/link";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!form.email) {
-      alert("Please enter your email address.");
+      setError("Please enter your email address.");
       return;
     }
     if (!form.password) {
-      alert("Please enter your password.");
+     setError("Please enter your password.");
       return;
     }
     if (!verified) {
-      alert("Please confirm the security checkbox before signing in.");
+      setError("Please confirm the security checkbox before signing in.");
       return;
     }
 
@@ -44,10 +46,10 @@ export default function Login() {
       if (res.ok) {
        window.location.href = "/dashboard";
       } else {
-        alert(data.message || "Invalid credentials");
+        setError(data.message || "Invalid credentials");
       }
-    } catch (err) {
-      console.error("Login error:", err);
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export default function Login() {
             Welcome back
           </h2>
           <p className="text-blue-100/70 font-medium italic">
-            Access your FuelSync console
+            Sign in to your FuelSync account
           </p>
         </div>
 
@@ -83,7 +85,7 @@ export default function Login() {
                 className="w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
               />
               <p className="mt-1 text-[11px] text-blue-200/70">
-                Please enter a valid email address you can access.
+                Enter your registered email address.
               </p>
             </div>
 
@@ -100,8 +102,13 @@ export default function Login() {
                 onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
                 className="w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none" />
               <p className="mt-1 text-[11px] text-blue-200/70">
-                Use at least 8 characters. Avoid reusing passwords from other sites.
+                Minimum 8 characters required.
               </p>
+              <div className="flex justify-end mt-1">
+                <Link href="/auth/forgot-password" className="text-[11px] text-blue-300 hover:text-white hover:underline transition-colors font-semibold">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
           </div>
           <div className="pt-2 flex items-center gap-2">
@@ -117,10 +124,14 @@ export default function Login() {
               htmlFor="login-verify"
               className="text-[11px] text-blue-100/80"
             >
-              I confirm that my email and password are correct and I’m using this device in a safe place.
+              I confirm that I am authorised to access this account on this device.
             </label>
           </div>
-
+          {error && (
+               <div className="px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium">
+               {error}
+             </div>
+           )}
           <div className="flex flex-col items-center gap-4 pt-2">
               <button
                 type="submit"
@@ -142,11 +153,38 @@ export default function Login() {
 
           </div>
         </form>
+<div className="relative flex items-center justify-center gap-4 mt-2">
+  <div className="flex-1 h-px bg-white/10" />
+  <span className="text-xs text-blue-200/40 font-bold uppercase tracking-widest">or</span>
+  <div className="flex-1 h-px bg-white/10" />
+</div>
 
+<div className="flex justify-center mt-2">
+  <GoogleLogin
+    onSuccess={async (credentialResponse) => {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: credentialResponse.credential }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.href = "/dashboard";
+      } else {
+        const data = await res.json();
+        alert(data.error || "Google sign-in failed");
+      }
+    }}
+    onError={() => alert("Google sign-in failed")}
+    theme="filled_black"
+    shape="pill"
+    text="signin_with"
+  />
+</div>
         <p className="text-center text-sm font-bold text-blue-200/60 mt-8">
-          New to the platform?{" "}
+          New to FuelSync?{" "}
           <Link href="/auth/register" className="text-blue-300 hover:text-white hover:underline transition-colors">
-            Register Account
+            Create an account
           </Link>
         </p>
 

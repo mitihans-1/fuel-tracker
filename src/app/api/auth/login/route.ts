@@ -3,20 +3,29 @@ import UserModel from "@/models/User";
 import bcrypt from "bcryptjs";
 import { signToken } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 export async function POST(req: Request) {
   try {
     await connectDB();
 
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const parsed = loginSchema.safeParse(body);
 
-    if (!email || !password) {
-      console.log("LOGIN API: Missing email or password");
+    if (!parsed.success) {
+      console.log("LOGIN API: Validation failed", parsed.error.issues[0].message);
       return NextResponse.json(
-        { message: "Email and password required" },
+        { message: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
+
+    const { email, password } = parsed.data;
 
     const user = await UserModel.findOne({ email });
 
@@ -57,12 +66,12 @@ export async function POST(req: Request) {
     });
 
     // Use a more robust cookie configuration for local development
-    response.cookies.set("token", token, {
+    response.cookies.set("token",token,{
       httpOnly: true,
-      secure: false, // Must be false for http://localhost
-      maxAge: 60 * 60 * 24, // 1 day
+      secure:process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24,
       path: "/",
-      sameSite: "lax", // Good for cross-origin navigation but same-site cookie
+      sameSite: "lax",
     });
 
     console.log("LOGIN API: Login successful, cookie set for user:", user.email);

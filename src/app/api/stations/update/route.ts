@@ -1,7 +1,8 @@
 import { connectDB } from "@/lib/db";
-import Station from "@/models/Station";
-import FuelAlertSubscription from "@/models/FuelAlertSubscription";
+import Station, { IStation } from "@/models/Station";
+import FuelAlertSubscription, { IFuelAlertSubscription } from "@/models/FuelAlertSubscription";
 import Notification from "@/models/Notification";
+import PriceHistory from "@/models/PriceHistory";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
@@ -61,9 +62,11 @@ export async function PUT(req: Request) {
         if (location) station.location = location;
         if (lat !== undefined) station.latitude = lat;
         if (lon !== undefined) station.longitude = lon;
-        const previous = await Station.findById(id).lean();
+        const previous = await Station.findById(id).lean<IStation>();
         await station.save();
 
+        // Record price history on price change
+        await recordPriceHistory(station, previous, user.id);
         // Trigger fuel-availability alerts when going from unavailable to available
         await triggerFuelAlerts(station, previous);
         return NextResponse.json(station);
@@ -79,8 +82,9 @@ export async function PUT(req: Request) {
         station.diesel = diesel;
         station.dieselQty = dieselQty;
         station.dieselPrice = dieselPrice;
-        const previous = await Station.findById(station._id).lean();
+        const previous = await Station.findById(station._id).lean<IStation>();
         await station.save();
+        await recordPriceHistory(station, previous, user.id);
         await triggerFuelAlerts(station, previous);
         return NextResponse.json(station);
       } else {
@@ -107,9 +111,30 @@ export async function PUT(req: Request) {
   }
 }
 
+async function recordPriceHistory(
+  station: IStation,
+  previous: IStation | null,
+  userId: string
+) {
+  try {
+    const entries: { stationId: unknown; fuelType: string; price: number; recordedBy: string }[] = [];
+    if (!previous || previous.petrolPrice !== station.petrolPrice) {
+      entries.push({ stationId: station._id, fuelType: "petrol", price: station.petrolPrice, recordedBy: userId });
+    }
+    if (!previous || previous.dieselPrice !== station.dieselPrice) {
+      entries.push({ stationId: station._id, fuelType: "diesel", price: station.dieselPrice, recordedBy: userId });
+    }
+    if (entries.length > 0) {
+      await PriceHistory.insertMany(entries);
+    }
+  } catch (err) {
+    console.error("recordPriceHistory error", err);
+  }
+}
+
 async function triggerFuelAlerts(
-  station: any,
-  previous: any | null
+  station: IStation,
+  previous: IStation | null
 ) {
   try {
     const nowHasPetrol = !!station.petrol && (station.petrolQty ?? 0) > 0;
@@ -133,11 +158,11 @@ async function triggerFuelAlerts(
         stationId,
         fuelType,
         active: true,
-      }).lean();
+      }).lean<IFuelAlertSubscription[]>();
 
       if (!subs.length) continue;
 
-      const notifications = subs.map((s: any) => ({
+      const notifications = subs.map((s) => ({
         userId: s.driverId,
         type: "FUEL_AVAILABLE" as const,
         title: "Fuel available",

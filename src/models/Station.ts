@@ -1,6 +1,24 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Model } from "mongoose";
 
-const StationSchema = new mongoose.Schema({
+export interface IStation extends Document {
+  name: string;
+  location: string;
+  petrol: boolean;
+  petrolQty: number;
+  petrolPrice: number;
+  diesel: boolean;
+  dieselQty: number;
+  dieselPrice: number;
+  ownerUserId?: mongoose.Types.ObjectId;
+  avgRating: number;
+  ratingCount: number;
+  latitude?: number;
+  longitude?: number;
+  updatedAt: Date;
+  isSetupComplete: boolean;
+}
+
+const StationSchema = new mongoose.Schema<IStation>({
   name: {
     type: String,
     required: true,
@@ -67,7 +85,11 @@ const StationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isSetupComplete: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-export default mongoose.models.Station ||
-  mongoose.model("Station", StationSchema);
+export default (mongoose.models.Station as Model<IStation>) ||
+  mongoose.model<IStation>("Station", StationSchema);
