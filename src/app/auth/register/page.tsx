@@ -1,287 +1,209 @@
-"use client"
+"use client";
+
 import React, { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Shield, User, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function Register() {
   const router = useRouter();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
-    role: "",
   });
-  const [stationName, setStationName] = useState("");
-  const [stationLocation, setStationLocation] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Password validation
   const passwordRequirements = {
     length: form.password.length >= 8,
-    hasUpper: /[A-Z]/.test(form.password),
-    hasLower: /[a-z]/.test(form.password),
-    hasNumber: /[0-9]/.test(form.password),
-    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(form.password),
+    upper: /[A-Z]/.test(form.password),
+    lower: /[a-z]/.test(form.password),
+    number: /[0-9]/.test(form.password),
   };
 
   const isPasswordStrong = Object.values(passwordRequirements).every(Boolean);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password || !form.role || !verified) return;
-    if (form.role === "STATION" && (!stationName || !stationLocation)) return;
+
+    if (!form.name || !form.email || !form.password) {
+      setError("Please fill in all fields.");
+      return;
+    }
 
     if (!isPasswordStrong) {
-      alert("Please ensure your password meets all the security requirements.");
+      setError("Password does not meet requirements.");
       return;
     }
 
     setLoading(true);
     try {
-      // Build payload: include station fields only when role is STATION
-      const payload: Record<string, unknown> = { ...form };
-      if (form.role === "STATION") {
-        payload.stationName = stationName;
-        payload.stationLocation = stationLocation;
-      }
-
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(form),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.message || "Registration failed");
-        setLoading(false);
+        setError(data.message || "Registration failed.");
         return;
       }
 
-      const data = await res.json();
-      setSuccessMessage(data.message || "Account created successfully! Please check your email to verify your account.");
-      setTimeout(() => router.push("/auth/login"), 3500);
+      setSuccessMessage("Account created successfully. Redirecting...");
+      setTimeout(() => router.push("/auth/login"), 2000);
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const labelClass =
-    "text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent";
-  const inputClass =
-    "w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none";
-
   return (
-    <div className="min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
-      {/* Glow blobs */}
-      <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-[#0b0f19] px-4 py-10">
 
-      <div className="w-full max-w-lg space-y-8 relative z-10">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
-            ⛽
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-[#111827] border border-white/5 rounded-2xl p-8 shadow-xl"
+      >
+        {/* HEADER */}
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 mx-auto mb-4 bg-indigo-600 rounded-xl flex items-center justify-center">
+            <Shield className="text-white w-6 h-6" />
           </div>
-          <h2 className="text-4xl font-black tracking-tight text-white">Create Your Account</h2>
-          <p className="text-blue-100/70 font-medium italic">Join drivers and stations on FuelSync today</p>
+
+          <h2 className="text-2xl font-semibold text-white">
+            Create your account
+          </h2>
+
+          <p className="text-sm text-slate-400 mt-1">
+            Start using the platform in seconds
+          </p>
         </div>
 
-        {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-5">
-          {/* Full Name */}
-          <div>
-            <label className={labelClass}>Full Name</label>
-            <input
-              title="name"
-              name="name"
-              type="text"
-              required
-              className={inputClass}
-              value={form.name}
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-            />
-            <p className="mt-1 text-[11px] text-blue-200/70">
-              Your display name as shown to stations and administrators.
-            </p>
-          </div>
+        {/* FORM */}
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Email */}
+          {/* NAME */}
           <div>
-            <label className={labelClass}>Email Address</label>
-            <input
-              title="email"
-              name="email"
-              type="email"
-              required
-              value={form.email}
-              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              className={inputClass}
-            />
-            <p className="mt-1 text-[11px] text-blue-200/70">
-              Used for login, notifications, and account recovery.
-            </p>
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className={labelClass}>Password</label>
-            <input
-              title="password"
-              name="password"
-              type="password"
-              required
-              value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              className={`${inputClass} ${form.password && !isPasswordStrong ? "border-red-500/50" : ""}`}
-            />
-            
-            {/* Password Requirements Checklist */}
-            <div className="mt-3 grid grid-cols-2 gap-2 p-4 rounded-2xl bg-white/5 border border-white/5">
-              <Requirement met={passwordRequirements.length} text="8+ Characters" />
-              <Requirement met={passwordRequirements.hasUpper} text="Uppercase (A-Z)" />
-              <Requirement met={passwordRequirements.hasLower} text="Lowercase (a-z)" />
-              <Requirement met={passwordRequirements.hasNumber} text="Number (0-9)" />
-              <Requirement met={passwordRequirements.hasSpecial} text="Special Character" />
+            <label className="text-sm text-slate-400">
+              Full name
+            </label>
+            <div className="relative mt-1">
+              <User className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="John Doe"
+                value={form.name}
+                onChange={(e) =>
+                  setForm({ ...form, name: e.target.value })
+                }
+                className="w-full pl-10 pr-4 py-3 bg-[#0b0f19] border border-white/10 rounded-lg text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
             </div>
           </div>
 
-          {/* Role */}
+          {/* EMAIL */}
           <div>
-            <label className={labelClass}>Account Type</label>
-            <select
-              title="role"
-              name="role"
-              required
-              value={form.role}
-              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-              className={`${inputClass} appearance-none cursor-pointer`}
-            >
-              <option value="" className="bg-slate-800">
-                Select your role
-              </option>
-              <option value="DRIVER" className="bg-slate-800">
-                🚗 Driver
-              </option>
-              <option value="STATION" className="bg-slate-800">
-                ⛽ Fuel Station
-              </option>
-            </select>
-            <p className="mt-1 text-[11px] text-blue-200/70">
-              Select your role to personalise your dashboard experience.
-            </p>
+            <label className="text-sm text-slate-400">
+              Email address
+            </label>
+            <div className="relative mt-1">
+              <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={(e) =>
+                  setForm({ ...form, email: e.target.value })
+                }
+                className="w-full pl-10 pr-4 py-3 bg-[#0b0f19] border border-white/10 rounded-lg text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
           </div>
 
-          {/* Station fields (shown only for STATION role) */}
-          {form.role === "STATION" && (
-            <>
-              <div>
-                <label className={labelClass}>Station Name</label>
-                <input
-                  title="stationName"
-                  name="stationName"
-                  type="text"
-                  required
-                  placeholder="e.g. Central Fuel Depot"
-                  className={inputClass}
-                  value={stationName}
-                  onChange={(e) => setStationName(e.target.value)}
-                />
-                <p className="mt-1 text-[11px] text-blue-200/70">
-                  This is how drivers will see your station in the app.
-                </p>
-              </div>
+          {/* PASSWORD */}
+          <div>
+            <label className="text-sm text-slate-400">
+              Password
+            </label>
+            <div className="relative mt-1">
+              <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+              <input
+                type="password"
+                placeholder="Create a strong password"
+                value={form.password}
+                onChange={(e) =>
+                  setForm({ ...form, password: e.target.value })
+                }
+                className="w-full pl-10 pr-4 py-3 bg-[#0b0f19] border border-white/10 rounded-lg text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
 
-              <div>
-                <label className={labelClass}>Station Location</label>
-                <input
-                  title="stationLocation"
-                  name="stationLocation"
-                  type="text"
-                  required
-                  placeholder="Address or coordinates"
-                  className={inputClass}
-                  value={stationLocation}
-                  onChange={(e) => setStationLocation(e.target.value)}
-                />
-                <p className="mt-1 text-[11px] text-blue-200/70">
-                  Provide a clear address or area so drivers can find you easily.
-                </p>
-              </div>
-            </>
+            {/* PASSWORD RULES */}
+            <div className="mt-3 text-xs text-slate-500 space-y-1">
+              <p className={passwordRequirements.length ? "text-emerald-400" : ""}>
+                • At least 8 characters
+              </p>
+              <p className={passwordRequirements.upper ? "text-emerald-400" : ""}>
+                • One uppercase letter
+              </p>
+              <p className={passwordRequirements.lower ? "text-emerald-400" : ""}>
+                • One lowercase letter
+              </p>
+              <p className={passwordRequirements.number ? "text-emerald-400" : ""}>
+                • One number
+              </p>
+            </div>
+          </div>
+
+          {/* ERROR / SUCCESS */}
+          {(error || successMessage) && (
+            <div
+              className={`text-sm p-3 rounded-lg ${error
+                ? "text-red-400 bg-red-500/10 border border-red-500/20"
+                : "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                }`}
+            >
+              {error || successMessage}
+            </div>
           )}
 
-          {/* Verification */}
-          <div className="pt-2 flex items-start gap-2">
-            <input
-              id="register-verify"
-              type="checkbox"
-              checked={verified}
-              onChange={(e) => setVerified(e.target.checked)}
-              className="mt-1 w-4 h-4 accent-blue-500"
-              required
-            />
-            <label
-              htmlFor="register-verify"
-              className="text-[11px] text-blue-100/80"
-            >
-              I confirm the details above are accurate and agree to use FuelSync responsibly.
-            </label>
-          </div>
-            {successMessage && (
-              <div className="px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-sm font-medium">
-                ✓ {successMessage}
-              </div>
+          {/* BUTTON */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-medium flex items-center justify-center gap-2 transition"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                Create account
+                <ArrowRight size={16} />
+              </>
             )}
-            {error && (
-              <div className="px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium">
-                {error}
-              </div>
-            )}
-          {/* Submit Button */}
-          <div className="flex justify-center pt-2">
-            <button
-              type="submit"
-              disabled={loading || !verified}
-              className={`cursor-pointer w-56 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${
-                loading
-                  ? "bg-white/10 text-white/40 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
-              }`}
-            >
-              {loading ? "Creating Account..." : "✦ Create Account"}
-            </button>
-          </div>
-
-          {/* Security note */}
-          <div className="pt-2 text-center">
-            <p className="text-xs font-bold text-green-300/70 uppercase tracking-widest flex items-center justify-center gap-2">
-              🔒 Secure & Encrypted Connection
-            </p>
-          </div>
+          </button>
         </form>
 
-        {/* Login link */}
-        <p className="text-center text-sm font-bold text-blue-200/60 mt-8">
+        {/* FOOTER */}
+        <p className="text-center text-sm text-slate-400 mt-6">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-blue-300 hover:text-white hover:underline transition-colors">
-            Sign In
+          <Link
+            href="/auth/login"
+            className="text-indigo-400 hover:text-indigo-300"
+          >
+            Sign in
           </Link>
         </p>
-      </div>
-    </div>
-  );
-}
-
-function Requirement({ met, text }: { met: boolean; text: string }) {
-  return (
-    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${met ? "text-emerald-400" : "text-white/30"}`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${met ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-white/20"}`} />
-      {text}
+      </motion.div>
     </div>
   );
 }

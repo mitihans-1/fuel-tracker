@@ -9,6 +9,8 @@ if (!JWT_SECRET) {
 export interface UserToken {
   id: string;
   role: string;
+  name?: string;
+  email?: string;
 }
 
 export function signToken(payload: { id: { toString(): string }; role: string }) {

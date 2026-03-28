@@ -3,12 +3,14 @@
 import React, { useState, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Lock, Shield, ArrowRight, CheckCircle2, Activity, AlertCircle } from "lucide-react";
 
-function Requirement({ met, text }: { met: boolean; text: string }) {
+function Req({ met, text }: { met: boolean; text: string }) {
   return (
-    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${met ? "text-emerald-400" : "text-white/30"}`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${met ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-white/20"}`} />
-      {text}
+    <div className={`flex items-center gap-1.5 transition-colors ${met ? "text-emerald-400" : "text-slate-800"}`}>
+      <div className={`w-1 h-1 rounded-full ${met ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/10"}`} />
+      <span className="text-[9px] font-bold uppercase tracking-tighter">{text}</span>
     </div>
   );
 }
@@ -24,11 +26,6 @@ function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const labelClass =
-    "text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent";
-  const inputClass =
-    "w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none";
-
   const reqs = {
     length: password.length >= 8,
     hasUpper: /[A-Z]/.test(password),
@@ -40,12 +37,16 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 text-center space-y-4">
-        <div className="text-4xl">⚠️</div>
-        <h3 className="text-xl font-black text-white">Invalid Reset Link</h3>
-        <p className="text-blue-100/60 text-sm">This link is missing a reset token. Please request a new one.</p>
-        <Link href="/auth/forgot-password" className="inline-block mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black text-sm uppercase tracking-widest hover:-translate-y-0.5 transition-all duration-300 shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)]">
-          Request New Link
+      <div className="bg-slate-900/50 backdrop-blur-3xl p-10 rounded-[3rem] border border-red-500/20 text-center space-y-6">
+        <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto border border-red-500/20">
+          <AlertCircle className="w-8 h-8 text-red-500" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-black text-white italic">Invalid Protocol Token</h3>
+          <p className="text-slate-500 text-xs">The recovery link is missing its authorization token. Termination of sequence required.</p>
+        </div>
+        <Link href="/auth/forgot-password" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">
+          Request New Link <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     );
@@ -53,12 +54,21 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-4xl mx-auto">✅</div>
-        <h3 className="text-xl font-black text-white">Password Reset!</h3>
-        <p className="text-blue-100/60 text-sm">Your password has been updated. Redirecting you to sign in…</p>
-        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500 animate-pulse rounded-full" />
+      <div className="bg-slate-900/50 backdrop-blur-3xl p-10 rounded-[3rem] border border-emerald-500/20 text-center space-y-8">
+        <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-black text-white italic">Cipher Updated</h3>
+          <p className="text-slate-400 text-xs">Your system access cipher has been successfully re-established. Redirecting to terminal...</p>
+        </div>
+        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 2.5, ease: "linear" }}
+            className="h-full bg-indigo-500"
+          />
         </div>
       </div>
     );
@@ -67,8 +77,8 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    if (!isStrong) { setError("Please meet all password requirements."); return; }
-    if (password !== confirm) { setError("Passwords do not match."); return; }
+    if (!isStrong) { setError("Security protocol failure: Meet all requirements."); return; }
+    if (password !== confirm) { setError("Validation error: Cipher mismatch."); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -76,110 +86,123 @@ function ResetPasswordForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.message || "Something went wrong."); return; }
-      setSuccess(true);
-      setTimeout(() => router.push("/auth/login"), 3000);
+      if (res.ok) {
+        setSuccess(true);
+        setTimeout(() => router.push("/auth/login"), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.message || "Failed to update protocol.");
+      }
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("System relay failure.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-5">
-      <div>
-        <label className={labelClass}>New Password</label>
-        <input
-          title="password"
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={`${inputClass} ${password && !isStrong ? "border-red-500/50" : ""}`}
-        />
-        <div className="mt-3 grid grid-cols-2 gap-2 p-4 rounded-2xl bg-white/5 border border-white/5">
-          <Requirement met={reqs.length} text="8+ Characters" />
-          <Requirement met={reqs.hasUpper} text="Uppercase (A-Z)" />
-          <Requirement met={reqs.hasLower} text="Lowercase (a-z)" />
-          <Requirement met={reqs.hasNumber} text="Number (0-9)" />
-          <Requirement met={reqs.hasSpecial} text="Special Character" />
+    <form onSubmit={handleSubmit} className="bg-slate-900/50 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 shadow-2xl space-y-8">
+      <div className="space-y-4">
+        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">New Access Cipher</label>
+        <div className="relative group">
+          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+          <input
+            type="password"
+            required
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/5 text-white placeholder-slate-600 border border-white/5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+          />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+          <Req met={reqs.length} text="8+ CHARS" />
+          <Req met={reqs.hasUpper} text="UPPERCASE" />
+          <Req met={reqs.hasLower} text="LOWERCASE" />
+          <Req met={reqs.hasNumber} text="NUMBER" />
+          <Req met={reqs.hasSpecial} text="SYMBOL" />
+          <div className="flex items-center gap-2">
+            <Activity className={`w-3 h-3 ${isStrong ? "text-emerald-500" : "text-slate-800"}`} />
+            <span className="text-[8px] font-black uppercase text-slate-600">STRENGTH</span>
+          </div>
         </div>
       </div>
 
-      <div>
-        <label className={labelClass}>Confirm Password</label>
-        <input
-          title="confirm"
-          type="password"
-          required
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          className={`${inputClass} ${confirm && confirm !== password ? "border-red-500/50" : ""}`}
-        />
-        {confirm && confirm !== password && (
-          <p className="mt-1 text-[11px] text-red-400/80 font-semibold ml-1">Passwords do not match.</p>
-        )}
+      <div className="space-y-4">
+        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Confirm Cipher</label>
+        <div className="relative group">
+          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+          <input
+            type="password"
+            required
+            placeholder="••••••••"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/5 text-white placeholder-slate-600 border border-white/5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+          />
+        </div>
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium">{error}</div>
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center">
+          {error}
+        </div>
       )}
 
-      <div className="flex justify-center pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className={`cursor-pointer w-56 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${
-            loading
-              ? "bg-white/10 text-white/40 cursor-not-allowed"
-              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
-          }`}
-        >
-          {loading ? "Resetting..." : "✦ Reset Password"}
-        </button>
-      </div>
-
-      <div className="pt-2 text-center">
-        <p className="text-xs font-bold text-green-300/70 uppercase tracking-widest flex items-center justify-center gap-2">
-          🔒 Secure & Encrypted Connection
-        </p>
-      </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full py-5 rounded-3xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-[0.3em] shadow-xl shadow-indigo-600/20 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+      >
+        {loading ? (
+          <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+        ) : (
+          <>Apply New Cipher <ArrowRight className="w-4 h-4" /></>
+        )}
+      </button>
     </form>
   );
 }
 
 export default function ResetPassword() {
   return (
-    <div className="min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
-      <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden selection:bg-indigo-500/30">
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      </div>
 
-      <div className="w-full max-w-md space-y-8 relative z-10">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
-            🔐
-          </div>
-          <h2 className="text-4xl font-black tracking-tight text-white">Reset Password</h2>
-          <p className="text-blue-100/70 font-medium italic">Choose a strong new password for your account</p>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-lg relative z-10"
+      >
+        <div className="text-center mb-10">
+          <motion.div 
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl text-indigo-400 shadow-xl border border-white/5 mb-8"
+          >
+            <Shield className="w-8 h-8" />
+          </motion.div>
+          <h2 className="text-3xl font-black text-white tracking-tight mb-2 uppercase italic">Cipher Overwrite</h2>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Configure new access credentials</p>
         </div>
 
         <Suspense fallback={
-          <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/10 text-center text-blue-200/50 text-sm">
-            Loading…
+          <div className="bg-slate-900/50 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 text-center text-slate-500 text-xs font-black uppercase tracking-widest animate-pulse">
+            Syncing...
           </div>
         }>
           <ResetPasswordForm />
         </Suspense>
 
-        <p className="text-center text-sm font-bold text-blue-200/60 mt-8">
-          Back to{" "}
-          <Link href="/auth/login" className="text-blue-300 hover:text-white hover:underline transition-colors">
-            Sign In
-          </Link>
-        </p>
-      </div>
+        <div className="mt-10 text-center">
+          <a href="/auth/login" className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-all border-b border-transparent hover:border-white/20">
+            Return to Login Terminal
+          </a>
+        </div>
+      </motion.div>
     </div>
   );
 }

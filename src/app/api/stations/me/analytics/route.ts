@@ -20,12 +20,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const station = await Station.findOne({ ownerUserId: decoded.id });
+  const { searchParams } = new URL(req.url);
+  const stationIdQuery = searchParams.get("stationId");
+  
+  const query: any = { ownerUserId: decoded.id };
+  if (stationIdQuery) query._id = stationIdQuery;
+
+  const station = await Station.findOne(query);
   if (!station) {
     return NextResponse.json({ error: "Station not found" }, { status: 404 });
   }
 
-  const { searchParams } = new URL(req.url);
   const range = searchParams.get("range") || "7d"; // "today" | "7d" | "30d"
   const now = new Date();
   const from = new Date(now);

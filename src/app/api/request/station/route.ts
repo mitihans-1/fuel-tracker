@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   await connectDB();
 
   const cookieStore = await cookies();
@@ -19,7 +19,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const station = await Station.findOne({ ownerUserId: decoded.id });
+  const { searchParams } = new URL(req.url);
+  const stationIdQuery = searchParams.get("stationId");
+  
+  const query: any = { ownerUserId: decoded.id };
+  if (stationIdQuery) query._id = stationIdQuery;
+
+  const station = await Station.findOne(query);
   if (!station) {
     return NextResponse.json({ error: "Station not found" }, { status: 404 });
   }

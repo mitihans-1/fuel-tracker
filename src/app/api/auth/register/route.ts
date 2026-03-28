@@ -12,9 +12,6 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["DRIVER", "STATION", "ADMIN"]),
-  stationName: z.string().optional(),
-  stationLocation: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -28,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { name, email, password, role, stationName, stationLocation } = parsed.data;
+    const { name, email, password } = parsed.data;
 
     // Server-side password strength check
     const isStrong = 
@@ -53,19 +50,15 @@ export async function POST(req: NextRequest) {
   const verificationToken = crypto.randomBytes(32).toString("hex");
   const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-  // SECURITY FIX: Only allow your email to become an admin during registration
-  const finalRole = role;
-  if (role === "ADMIN") {
-    if (email !== "mitikumitihans@gmail.com") {
-      return NextResponse.json({ message: "Unauthorized role assignment" }, { status: 403 });
-    }
-  }
+  // AUTOMATIC BOOTSTRAP: Only a specific 'seed' email becomes admin.
+  // Everyone else defaults to DRIVER.
+  const finalRole = email === "mitikumitihans@gmail.com" ? "ADMIN" : "DRIVER";
 
   const user = await UserModel.create({
     name,
     email,
     password: hashedPassword,
-    role: finalRole, // Use the verified role
+    role: finalRole,
     isVerified: false,
     verificationToken,
     verificationTokenExpires,
@@ -81,37 +74,6 @@ export async function POST(req: NextRequest) {
     emailError = err instanceof Error ? err.message : "Unknown SMTP error";
   }
 
-  if (role === "STATION") {
-    let lat: number | undefined;
-    let lon: number | undefined;
-
-    try {
-      // Basic geocoding with Nominatim (OpenStreetMap)
-      if (stationLocation) {
-        const geoRes = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(stationLocation)}&format=json&limit=1`,
-          { headers: { "User-Agent": "FuelTrackerApp/1.0" } }
-        );
-        const geoData = await geoRes.json();
-        if (geoData && geoData.length > 0) {
-          lat = parseFloat(geoData[0].lat);
-          lon = parseFloat(geoData[0].lon);
-        }
-      }
-    } catch (err) {
-      console.error("Geocoding failed:", err);
-    }
-
-    await Station.create({
-      name: stationName || name || "Station",
-      location: stationLocation || "Unknown",
-      petrol: false,
-      diesel: false,
-      ownerUserId: user._id,
-      latitude: lat,
-      longitude: lon,
-    });
-  }
 
     return NextResponse.json({ 
       message: emailSent 

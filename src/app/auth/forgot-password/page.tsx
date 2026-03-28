@@ -1,18 +1,15 @@
 "use client";
 
 import React, { useState, FormEvent } from "react";
-import Link from "next/link";
+import Link from "react-redux";
+import { motion } from "framer-motion";
+import { Key, Mail, ArrowRight, CheckCircle2, Shield } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-
-  const labelClass =
-    "text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent";
-  const inputClass =
-    "w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none";
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,123 +23,111 @@ export default function ForgotPassword() {
         body: JSON.stringify({ email }),
       });
 
-      if (!res.ok) {
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
         const data = await res.json();
-        setError(data.message || "Something went wrong. Please try again.");
-        return;
+        setError(data.message || "Credential recovery failed.");
       }
-
-      setSubmitted(true);
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("System relay error.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-80px)] flex items-start sm:items-center justify-center py-10 px-4 sm:p-6 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
-      {/* Glow blobs */}
-      <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 pointer-events-none" />
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden selection:bg-indigo-500/30">
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      </div>
 
-      <div className="w-full max-w-md space-y-8 relative z-10">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl text-white text-3xl mb-4 shadow-xl shadow-blue-500/30">
-            🔑
-          </div>
-          <h2 className="text-4xl font-black tracking-tight text-white">
-            Forgot Password
-          </h2>
-          <p className="text-blue-100/70 font-medium italic">
-            Enter your email and we&apos;ll send you a reset link
-          </p>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-lg relative z-10"
+      >
+        <div className="text-center mb-10">
+          <motion.div 
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl text-indigo-400 shadow-xl border border-white/5 mb-8"
+          >
+            <Key className="w-8 h-8" />
+          </motion.div>
+          <h2 className="text-3xl font-black text-white tracking-tight mb-2 uppercase italic">Protocol Recovery</h2>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Re-establish access credentials</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10">
+        <motion.div 
+          className="bg-slate-900/50 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/5 shadow-2xl relative"
+        >
           {submitted ? (
-            <div className="space-y-6 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 border border-emerald-400/30 rounded-full text-4xl mx-auto">
-                ✉️
+            <div className="text-center py-6 space-y-8">
+              <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400" />
               </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-black text-white">Check your inbox</h3>
-                <p className="text-blue-100/60 text-sm leading-relaxed">
-                  If an account exists for{" "}
-                  <span className="text-blue-300 font-bold">{email}</span>, a
-                  password reset link has been sent. The link expires in{" "}
-                  <span className="text-white font-bold">1 hour</span>.
-                </p>
-                <p className="text-blue-100/40 text-xs mt-3">
-                  Didn&apos;t receive it? Check your spam folder or try again.
+              <div className="space-y-4">
+                <h3 className="text-xl font-black text-white italic lowercase">Transmission Successful</h3>
+                <p className="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto">
+                  If <span className="text-indigo-400 font-bold">{email}</span> is recognized by our nodes, an encrypted reset protocol has been dispatched.
                 </p>
               </div>
               <button
                 onClick={() => { setSubmitted(false); setEmail(""); }}
-                className="cursor-pointer w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 bg-white/10 hover:bg-white/15 text-white/70 hover:text-white border border-white/10"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
               >
-                Try a Different Email
+                Retry Dispatch
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className={labelClass}>Email Address</label>
-                <input
-                  title="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className={inputClass}
-                />
-                <p className="mt-1 text-[11px] text-blue-200/70">
-                  Enter the email address linked to your FuelSync account.
-                </p>
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Registered ID</label>
+                <div className="relative group">
+                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/5 text-white placeholder-slate-600 border border-white/5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                  />
+                </div>
               </div>
 
               {error && (
-                <div className="px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium">
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center">
                   {error}
                 </div>
               )}
 
-              <div className="flex justify-center pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`cursor-pointer w-56 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${
-                    loading
-                      ? "bg-white/10 text-white/40 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)] hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)]"
-                  }`}
-                >
-                  {loading ? "Sending..." : "✦ Send Reset Link"}
-                </button>
-              </div>
-
-              <div className="pt-2 text-center">
-                <p className="text-xs font-bold text-green-300/70 uppercase tracking-widest flex items-center justify-center gap-2">
-                  🔒 Secure & Encrypted Connection
-                </p>
-              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-5 rounded-3xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-[0.3em] shadow-xl shadow-indigo-600/20 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Initiate Reset Protocol
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
             </form>
           )}
-        </div>
+        </motion.div>
 
-        <p className="text-center text-sm font-bold text-blue-200/60 mt-8">
-          Remembered your password?{" "}
-          <Link
-            href="/auth/login"
-            className="text-blue-300 hover:text-white hover:underline transition-colors"
-          >
-            Sign In
-          </Link>
-        </p>
-      </div>
+        <div className="mt-10 text-center">
+          <a href="/auth/login" className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-all border-b border-transparent hover:border-white/20">
+            Return to Login Terminal
+          </a>
+        </div>
+      </motion.div>
     </div>
   );
 }

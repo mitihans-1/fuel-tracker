@@ -3,10 +3,82 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
+  /* 🌙 Default Theme (Dark Blue) */
+  --bg-main: #0f172a;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --text-main: #f1f5f9;
+
+  --brand-primary: #3b82f6;
+  --brand-secondary: #8b5cf6;
+
+  --accent: #22d3ee;
+  --border: rgba(255, 255, 255, 0.1);
 }
 
+/* 🌲 Forest Theme */
+[data-theme='forest'] {
+  --bg-main: #064e3b;
+  --bg-card: rgba(16, 185, 129, 0.1);
+  --text-main: #ecfdf5;
+
+  --brand-primary: #10b981;
+  --brand-secondary: #34d399;
+
+  --accent: #6ee7b7;
+  --border: rgba(16, 185, 129, 0.2);
+}
+
+/* 🌅 Sunset Theme */
+[data-theme='sunset'] {
+  --bg-main: #1e293b;
+  --bg-card: rgba(251, 146, 60, 0.1);
+  --text-main: #fff7ed;
+
+  --brand-primary: #f97316;
+  --brand-secondary: #fb923c;
+
+  --accent: #fde68a;
+  --border: rgba(249, 115, 22, 0.2);
+}
+
+/* 🌌 Purple Night */
+[data-theme='purple'] {
+  --bg-main: #1e1b4b;
+  --bg-card: rgba(139, 92, 246, 0.1);
+  --text-main: #ede9fe;
+
+  --brand-primary: #8b5cf6;
+  --brand-secondary: #a78bfa;
+
+  --accent: #c4b5fd;
+  --border: rgba(139, 92, 246, 0.2);
+}
+
+/* ☀️ Light Theme */
+[data-theme='light'] {
+  --bg-main: #f8fafc;
+  --bg-card: rgba(0, 0, 0, 0.03);
+  --text-main: #0f172a;
+
+  --brand-primary: #2563eb;
+  --brand-secondary: #7c3aed;
+
+  --accent: #0ea5e9;
+  --border: rgba(0, 0, 0, 0.1);
+}
+
+/* 💎 Cyber Theme */
+[data-theme='cyber'] {
+  --bg-main: #020617;
+  --bg-card: rgba(0, 255, 255, 0.05);
+  --text-main: #67e8f9;
+
+  --brand-primary: #06b6d4;
+  --brand-secondary: #22d3ee;
+
+  --accent: #0ea5e9;
+  --border: rgba(34, 211, 238, 0.2);
+}
 /* 
   ULTIMATE DOUBLE SCROLLBAR REMOVAL:
   We force the HTML to be the only scrollable element.
@@ -18,7 +90,7 @@ html {
   overflow-y: auto; /* The only scrollbar allowed */
   overflow-x: hidden;
   scroll-behavior: smooth;
-  background: var(--background);
+  background: var(--bg-main);
 }
 
 body {
@@ -26,7 +98,7 @@ body {
   padding: 0;
   min-height: 100%;
   background: transparent; /* Let HTML background show through */
-  color: var(--foreground);
+  color: var(--text-main);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow: visible !important; /* Force body to never scroll */
 }
@@ -37,9 +109,11 @@ main {
 
 /* Custom Utilities */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
+   background: var(--bg-card);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--border);
+  /* backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2); */
 }
 
 @keyframes blob {
@@ -99,4 +173,96 @@ main {
   border-radius: 50%;
   background: inherit;
   animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Tactical Pulse & Glow */
+@keyframes tactical-pulsate {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+.animate-pulsate {
+  animation: tactical-pulsate 2s infinite ease-in-out;
+}
+
+.tactical-glow-indigo {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+.tactical-glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+.tactical-glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+}
+.tactical-glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+/* Leaflet Custom Marker Fixes */
+.custom-tactical-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* ===== HERO TEXT ANIMATIONS ===== */
+@keyframes heroSlideUp {
+  0%   { opacity: 0; transform: translateY(60px); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes heroFadeIn {
+  0%   { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-8px); }
+}
+
+.animate-hero-heading {
+  animation: heroSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+.animate-hero-sub {
+  animation: heroFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  opacity: 0;
+}
+.animate-hero-cta {
+  animation: heroFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s forwards;
+  opacity: 0;
+}
+.animate-hero-trust {
+  animation: heroFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.75s forwards;
+  opacity: 0;
+}
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 4s linear infinite;
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+
+/* Tactical Map Popups */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: white !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: normal !important;
+}
+.tactical-map-popup .leaflet-popup-close-button {
+  color: rgba(255, 255, 255, 0.4) !important;
+  top: 10px !important;
+  right: 10px !important;
+}
+.tactical-map-popup .leaflet-popup-close-button:hover {
+  color: white !important;
 }

@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale, LinearScale, BarElement, PointElement, LineElement,
-  ArcElement, Tooltip, Legend, Title, Filler,
-} from "chart.js";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
-ChartJS.register(
-  CategoryScale, LinearScale, BarElement, PointElement, LineElement,
-  ArcElement, Tooltip, Legend, Title, Filler
-);
+import { useRouter, useSearchParams } from "next/navigation";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler } from "chart.js";
+import { Doughnut, Line } from "react-chartjs-2";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Users, Fuel, MapPin, BarChart3, Settings, 
+  Trash2, UserPlus, Shield, CheckCircle, Search, 
+  DollarSign, Activity, Zap, ExternalLink,
+  LayoutDashboard, Menu, LogOut, History
+} from "lucide-react";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler);
 
 interface User {
   _id: string;
@@ -51,22 +53,47 @@ interface CreateStationForm {
   ownerEmail: string;
 }
 
-type Tab = "users" | "stations" | "requests" | "analytics";
+type Tab = "users" | "stations" | "requests" | "analytics" | "settings";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchUser, setSearchUser] = useState("");
-  const [tab, setTab] = useState<Tab>("users");
-  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d">("30d");
+  const [tab, setTab] = useState<Tab>("analytics");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+
+  const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
+    { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5" /> },
+    { id: "requests", label: "Requests", icon: <History className="w-5 h-5" /> },
+    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
+  ];
+  const [analyticsRange] = useState<"7d" | "30d">("30d");
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [showCreateStation, setShowCreateStation] = useState(false);
   const [createForm, setCreateForm] = useState<CreateStationForm>({ name: "", location: "", ownerEmail: "" });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [createSuccess, setCreateSuccess] = useState(false);
+
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "DRIVER" });
+  const [userLoading, setUserLoading] = useState(false);
+  const [userError, setUserError] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "register") {
+      setShowCreateStation(true);
+      setTab("stations");
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
 
   const loadAnalytics = useCallback(async (range: "7d" | "30d") => {
     try {
@@ -92,9 +119,7 @@ export default function AdminDashboard() {
         setUsers(Array.isArray(usersData) ? usersData : []);
         setStations(Array.isArray(stationsData) ? stationsData : []);
         setRequests(Array.isArray(requestsData) ? requestsData : []);
-      } catch {
-        // silent
-      }
+      } catch { /* silent */ }
     };
     load();
     const interval = setInterval(load, 10000);
@@ -117,10 +142,7 @@ export default function AdminDashboard() {
   const platformSignals = {
     activeStations: stations.filter(s => s.petrol || s.diesel).length,
     idleStations: stations.filter(s => !s.petrol && !s.diesel).length,
-    approvalRate:
-      requests.length === 0
-        ? 0
-        : Math.round((requests.filter(r => r.status === "APPROVED").length / requests.length) * 100),
+    approvalRate: requests.length === 0 ? 0 : Math.round((requests.filter(r => r.status === "APPROVED").length / requests.length) * 100),
   };
 
   const deleteUser = async (id: string) => {
@@ -129,11 +151,7 @@ export default function AdminDashboard() {
     setUsers(prev => prev.filter(u => u._id !== id));
   };
 
-  const filteredUsers = users.filter(
-    u =>
-      u.name.toLowerCase().includes(searchUser.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchUser.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => u.name.toLowerCase().includes(searchUser.toLowerCase()) || u.email.toLowerCase().includes(searchUser.toLowerCase()));
 
   const handleCreateStation = async () => {
     setCreateError("");
@@ -149,511 +167,410 @@ export default function AdminDashboard() {
         body: JSON.stringify(createForm),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setCreateError(data.error || "Failed to create station");
-        return;
-      }
+      if (!res.ok) { setCreateError(data.error || "Failed to create station"); return; }
       setStations(prev => [...prev, data]);
-      setCreateSuccess(true);
       setCreateForm({ name: "", location: "", ownerEmail: "" });
-      setTimeout(() => { setCreateSuccess(false); setShowCreateStation(false); }, 1800);
-    } catch {
-      setCreateError("Network error");
-    } finally {
-      setCreateLoading(false);
-    }
+      setTimeout(() => { setShowCreateStation(false); }, 1800);
+    } catch { setCreateError("Network error"); } finally { setCreateLoading(false); }
   };
 
-  // --- Analytics chart data helpers ---
+  const updateUserRole = async (userId: string, role: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role }),
+      });
+      if (res.ok) setUsers(prev => prev.map(u => u._id === userId ? { ...u, role } : u));
+    } catch (err) { console.error("Update role failed:", err); }
+  };
+
+  const handleCreateUser = async () => {
+    setUserError("");
+    if(!userForm.email || !userForm.password || !userForm.name) { setUserError("All fields are required"); return; }
+    setUserLoading(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userForm),
+      });
+      const data = await res.json();
+      if (!res.ok) { setUserError(data.error || "Failed to create user"); return; }
+      setUsers(prev => [...prev, data]);
+      setUserForm({ name: "", email: "", password: "", role: "DRIVER" });
+      setTimeout(() => { setShowCreateUser(false); }, 1500);
+    } catch { setUserError("Network error"); } finally { setUserLoading(false); }
+  };
+
   const buildRequestsOverTime = () => {
     if (!analytics?.byDay) return null;
-    const dayMap = new Map<string, { petrol: number; diesel: number; total: number }>();
+    const dayMap = new Map<string, { total: number }>();
     for (const d of analytics.byDay) {
       const key = `${d._id.d}/${d._id.m}`;
-      const existing = dayMap.get(key) ?? { petrol: 0, diesel: 0, total: 0 };
+      const existing = dayMap.get(key) ?? { total: 0 };
       existing.total += d.count;
-      if (d._id.fuelType === "petrol") existing.petrol += d.count;
-      else existing.diesel += d.count;
       dayMap.set(key, existing);
     }
     const labels = [...dayMap.keys()];
     const totals = labels.map(k => dayMap.get(k)!.total);
-    const petrolData = labels.map(k => dayMap.get(k)!.petrol);
-    const dieselData = labels.map(k => dayMap.get(k)!.diesel);
-    return { labels, totals, petrolData, dieselData };
+    return { labels, totals };
   };
 
   const requestsOverTime = buildRequestsOverTime();
 
-  const TABS: { id: Tab; label: string }[] = [
-    { id: "users", label: "USERS" },
-    { id: "stations", label: "STATIONS" },
-    { id: "requests", label: "REQUESTS" },
-    { id: "analytics", label: "📊 ANALYTICS" },
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white p-6">
-      <div className="max-w-7xl mx-auto space-y-10">
-
-        {/* HEADER */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-              Admin Dashboard
-            </h1>
-            <p className="text-purple-200/70 mt-2">
-              Oversee platform users, fuel stations, and transaction records.
-            </p>
+    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/50 border-r border-white/5 backdrop-blur-3xl transition-transform duration-300 md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex flex-col h-full p-4">
+          <div className="flex items-center gap-3 mb-10 px-2 py-4">
+             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                <Shield className="w-5 h-5 text-white" />
+             </div>
+             <div>
+                <h1 className="text-sm font-bold text-white tracking-tight leading-none">SYSTEM CONTROL</h1>
+                <p className="text-[10px] text-slate-500 font-medium tracking-wide mt-1 uppercase">Admin Terminal v2.5</p>
+             </div>
           </div>
-          <div className="flex bg-white/10 rounded-2xl backdrop-blur border border-white/10 overflow-hidden">
-            {TABS.map(t => (
+          <nav className="flex-1 space-y-1">
+            {sidebarItems.map((item) => (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-5 py-3 text-xs font-bold transition ${tab === t.id ? "bg-white/20 text-white" : "opacity-60 hover:opacity-80"}`}
+                key={item.id}
+                onClick={() => { setTab(item.id); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium group ${
+                  tab === item.id 
+                    ? "bg-indigo-600/10 text-indigo-400 border border-indigo-500/10" 
+                    : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                }`}
               >
-                {t.label}
+                <div className={`${tab === item.id ? "text-indigo-400" : "group-hover:text-white"} transition-colors`}>{item.icon}</div>
+                {item.label}
               </button>
             ))}
-          </div>
-        </header>
+          </nav>
+          <button onClick={() => router.push('/auth/logout')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all text-sm font-medium mt-auto">
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
 
-        {/* STATS + PLATFORM OVERVIEW */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { label: "Total Users", value: stats.users, icon: "👥", color: "text-purple-300" },
-            { label: "Drivers", value: stats.drivers, icon: "🚗", color: "text-blue-300" },
-            { label: "Stations", value: stats.stations, icon: "⛽", color: "text-emerald-300" },
-            { label: "Requests", value: stats.requests, icon: "📄", color: "text-orange-300" },
-          ].map((s, i) => (
-            <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-xs text-purple-200 uppercase tracking-wide">{s.label}</p>
-                  <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
-                </div>
-                <span className="text-3xl">{s.icon}</span>
-              </div>
-            </div>
-          ))}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative">
+        <div className="md:hidden flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-[40]">
+           <Shield className="w-5 h-5 text-indigo-500" />
+           <button title="sidebar" onClick={() => setSidebarOpen(true)} className="p-2 text-slate-400 hover:text-white"><Menu className="w-5 h-5" /></button>
+        </div>
 
-          <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-900/40 rounded-2xl p-4 border border-emerald-400/40">
-              <p className="text-xs uppercase text-emerald-100 tracking-wide font-semibold">Active vs Idle Stations</p>
-              <p className="mt-2 text-sm text-emerald-50">
-                Active: <span className="font-bold text-emerald-300">{platformSignals.activeStations}</span>{" "}
-                • Idle: <span className="font-bold text-red-300">{platformSignals.idleStations}</span>
-              </p>
-              <p className="mt-1 text-[11px] text-emerald-100/80">
-                Idle stations may need onboarding, support, or pricing review.
-              </p>
-            </div>
-            <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-              <p className="text-xs uppercase text-purple-100 tracking-wide font-semibold">Request Approval Rate</p>
-              <p className="mt-2 text-3xl font-extrabold text-purple-50">{platformSignals.approvalRate}%</p>
-              <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all"
-                  style={{ width: `${platformSignals.approvalRate}%` }}
-                />
-              </div>
-              <p className="mt-1 text-[11px] text-purple-100/80">Approved vs total requests.</p>
-            </div>
-            <div className="bg-gradient-to-br from-orange-500/10 to-orange-900/30 rounded-2xl p-4 border border-orange-400/30">
-              <p className="text-xs uppercase text-orange-100 tracking-wide font-semibold">Pending Requests</p>
-              <p className="mt-2 text-3xl font-extrabold text-orange-200">{stats.pending}</p>
-              <p className="mt-1 text-[11px] text-orange-100/80">
-                {stats.pending > 0
-                  ? "Review the Requests tab to process outstanding items."
-                  : "All requests are up to date. Great work!"}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* USERS TAB */}
-        {tab === "users" && (
-          <section className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold">User Management</h2>
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm"
-                value={searchUser}
-                onChange={e => setSearchUser(e.target.value)}
-              />
-            </div>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl overflow-x-auto border border-white/10">
-              <table className="min-w-[600px] w-full">
-                <thead className="text-purple-200 text-sm">
-                  <tr>
-                    <th className="px-6 py-4 text-left">Name</th>
-                    <th className="px-6 py-4 text-left">Email</th>
-                    <th className="px-6 py-4 text-left">Role</th>
-                    <th className="px-6 py-4 text-left">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map(u => (
-                    <tr key={u._id} className="border-t border-white/10 hover:bg-white/10">
-                      <td className="px-6 py-4 font-semibold">{u.name}</td>
-                      <td className="px-6 py-4 text-purple-200/80">{u.email}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          u.role === "ADMIN" ? "bg-purple-500/20 text-purple-300"
-                          : u.role === "STATION" ? "bg-orange-500/20 text-orange-300"
-                          : "bg-blue-500/20 text-blue-300"
-                        }`}>{u.role}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button onClick={() => deleteUser(u._id)} className="text-red-400 hover:text-red-300 text-sm transition">Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredUsers.length === 0 && (
-                    <tr><td colSpan={4} className="text-center py-10 text-purple-200/50">No users found.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        {/* STATIONS TAB */}
-        {tab === "stations" && (
-          <section className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold">Fuel Stations</h2>
-              <button
-                onClick={() => { setShowCreateStation(true); setCreateError(""); setCreateSuccess(false); }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl text-sm font-bold shadow-lg transition"
-              >
-                <span>+</span> Create Station
-              </button>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {stations.map(s => (
-                <div key={s._id} className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:scale-[1.02] transition">
-                  <h3 className="text-xl font-bold">{s.name}</h3>
-                  <p className="text-purple-200 text-sm mt-1">📍 {s.location}</p>
-                  {s.ownerUserId && (
-                    <p className="text-xs text-purple-300/60 mt-1">Owner assigned</p>
-                  )}
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Petrol</span>
-                      <span className={s.petrol ? "text-green-400" : "text-red-400"}>{s.petrol ? "Available" : "Empty"}</span>
+        <div className="relative z-10 p-6 sm:p-10 space-y-10">
+           <AnimatePresence mode="wait">
+            {tab === "users" && (
+              <motion.div key="users" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><Users className="w-6 h-6 text-indigo-400" />Personnel Directory</h2>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">{filteredUsers.length} system accounts detected</p>
+                  </div>
+                  <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-80">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input type="text" placeholder="Search personnel..." className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" value={searchUser} onChange={e => setSearchUser(e.target.value)} />
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Diesel</span>
-                      <span className={s.diesel ? "text-green-400" : "text-red-400"}>{s.diesel ? "Available" : "Empty"}</span>
-                    </div>
+                    <button onClick={() => setShowCreateUser(true)} className="px-5 py-2.5 bg-indigo-600 rounded-xl text-xs font-bold text-white hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20"><UserPlus className="w-4 h-4" /> Add Account</button>
                   </div>
                 </div>
-              ))}
-              {stations.length === 0 && (
-                <div className="col-span-3 text-center py-16 text-purple-200/50">
-                  <p className="text-4xl mb-4">⛽</p>
-                  <p>No stations yet. Create one to get started.</p>
+                <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden shadow-sm">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-900/50 border-b border-white/5">
+                      <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                        <th className="px-6 py-4">Full Identity</th>
+                        <th className="px-6 py-4">Email Protocol</th>
+                        <th className="px-6 py-4 text-center">System Authority</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filteredUsers.map((u) => (
+                        <tr key={u._id} className="group hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-4">
+                             <div className="flex items-center gap-3">
+                               <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xs border border-indigo-500/10">{u.name.charAt(0)}</div>
+                               <span className="font-semibold text-white text-sm">{u.name}</span>
+                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-400 text-sm">{u.email}</td>
+                          <td className="px-6 py-4 text-center">
+                              <select 
+                                title="Change User Role"
+                                value={u.role} 
+                                onChange={(e) => updateUserRole(u._id, e.target.value)} 
+                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border outline-none bg-slate-950 ${u.role === "ADMIN" ? "border-purple-500/20 text-purple-400" : u.role === "STATION" ? "border-amber-500/20 text-amber-400" : "border-emerald-500/20 text-emerald-400"}`}
+                              >
+                                 <option value="DRIVER">Driver</option>
+                                 <option value="STATION">Station</option>
+                                 <option value="ADMIN">Admin</option>
+                              </select>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                             <button 
+                               title="Delete User"
+                               onClick={() => deleteUser(u._id)} 
+                               className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                             >
+                               <Trash2 className="w-4 h-4" />
+                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
-          </section>
-        )}
+              </motion.div>
+            )}
 
-        {/* REQUESTS TAB */}
-        {tab === "requests" && (
-          <section className="space-y-6">
-            <h2 className="text-3xl font-bold">Fuel Requests</h2>
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 overflow-x-auto">
-              <table className="min-w-[600px] w-full">
-                <thead className="text-purple-200 text-sm">
-                  <tr>
-                    <th className="px-6 py-4 text-left">Driver</th>
-                    <th className="px-6 py-4 text-left">Station</th>
-                    <th className="px-6 py-4 text-left">Fuel</th>
-                    <th className="px-6 py-4 text-left">Status</th>
-                    <th className="px-6 py-4 text-left">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map(r => (
-                    <tr key={r._id} className="border-t border-white/10 hover:bg-white/10">
-                      <td className="px-6 py-4">{r.driverId?.name}</td>
-                      <td className="px-6 py-4">{r.stationId?.name}</td>
-                      <td className="px-6 py-4 capitalize">{r.fuelType}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          r.status === "PENDING" ? "bg-orange-500/20 text-orange-300"
-                          : r.status === "APPROVED" ? "bg-green-500/20 text-green-300"
-                          : "bg-red-500/20 text-red-300"
-                        }`}>{r.status}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-purple-200/70">
-                        {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "N/A"}
-                      </td>
-                    </tr>
+            {tab === "stations" && (
+              <motion.div key="stations" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><Fuel className="w-6 h-6 text-emerald-400" />Fuel Grid Nodes</h2>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">{stations.length} distribution points synchronized</p>
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {stations.map((s) => (
+                    <div key={s._id} className="group bg-slate-900/50 rounded-2xl p-6 border border-white/5 hover:border-indigo-500/20 hover:bg-slate-900/80 transition-all">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors truncate">{s.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                             <MapPin className="w-3 h-3 text-slate-500" />
+                             <p className="text-xs text-slate-400 font-medium truncate">{s.location}</p>
+                          </div>
+                        </div>
+                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${s.petrol || s.diesel ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                          {s.petrol || s.diesel ? "Online" : "Static"}
+                        </div>
+                      </div>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                           <span className="text-xs text-slate-500 font-medium">Benzene Flux</span>
+                           <span className={`text-xs font-bold ${s.petrol ? "text-indigo-400" : "text-slate-700"}`}>{s.petrol ? "ACTIVE" : "VOID"}</span>
+                        </div>
+                        <div className="flex justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                           <span className="text-xs text-slate-500 font-medium">Nafta Unit</span>
+                           <span className={`text-xs font-bold ${s.diesel ? "text-amber-400" : "text-slate-700"}`}>{s.diesel ? "ACTIVE" : "VOID"}</span>
+                        </div>
+                      </div>
+                      <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                           <Shield className={`w-3.5 h-3.5 ${s.ownerUserId ? "text-indigo-500" : "text-slate-700"}`} />
+                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{s.ownerUserId ? "Validated" : "Unverified"}</span>
+                         </div>
+                         <button className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 uppercase tracking-tight">Configure <ExternalLink className="w-3 h-3" /></button>
+                      </div>
+                    </div>
                   ))}
-                  {requests.length === 0 && (
-                    <tr><td colSpan={5} className="text-center py-10 text-purple-200/50">No requests yet.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        {/* ANALYTICS TAB */}
-        {tab === "analytics" && (
-          <section className="space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-3xl font-bold">Platform Analytics</h2>
-              <div className="flex gap-2">
-                {(["7d", "30d"] as const).map(r => (
-                  <button key={r}
-                    onClick={() => setAnalyticsRange(r)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition ${analyticsRange === r ? "bg-purple-600 text-white" : "bg-white/10 text-purple-200 hover:bg-white/20"}`}
-                  >
-                    {r === "7d" ? "Last 7 days" : "Last 30 days"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {loadingAnalytics || !analytics ? (
-              <div className="flex items-center justify-center py-24">
-                <div className="text-center space-y-3">
-                  <div className="w-10 h-10 border-2 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-purple-200/60 text-sm">Loading analytics…</p>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Summary cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              </motion.div>
+            )}
+
+            {tab === "requests" && (
+              <motion.div key="requests" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><Activity className="w-6 h-6 text-indigo-400" />Transaction Ledger</h2>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">Complete platform activity logs</p>
+                  </div>
+                </div>
+                <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-900/50 border-b border-white/5">
+                        <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
+                          <th className="px-6 py-4">Orchestrator</th>
+                          <th className="px-6 py-4">Node Destination</th>
+                          <th className="px-6 py-4">Resource</th>
+                          <th className="px-6 py-4 text-center">Protocol Status</th>
+                          <th className="px-6 py-4 text-right">Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {requests.map((r) => (
+                          <tr key={r._id} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="px-6 py-4">
+                               <div className="flex items-center gap-3">
+                                 <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-[10px] border border-indigo-500/10">{r.driverId?.name.charAt(0)}</div>
+                                 <span className="font-semibold text-white text-sm">{r.driverId?.name}</span>
+                               </div>
+                            </td>
+                            <td className="px-6 py-4 text-xs font-medium text-slate-400">{r.stationId?.name}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-1 h-1 rounded-full ${r.fuelType === "petrol" ? "bg-indigo-500" : "bg-amber-500"}`} />
+                                <span className="text-[10px] font-bold uppercase text-slate-300">{r.fuelType}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${r.status === "PENDING" ? "border-amber-500/20 text-amber-500" : r.status === "APPROVED" ? "border-emerald-500/20 text-emerald-500" : "border-rose-500/20 text-rose-500"}`}>{r.status}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-medium text-slate-500 text-[10px] tabular-nums">{r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {tab === "analytics" && (
+              <motion.div key="analytics" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-12">
+                <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
-                    { label: "Total Requests", value: analytics.totals.requests.toLocaleString(), icon: "📄", color: "text-purple-300" },
-                    { label: "Total Litres", value: `${analytics.totals.litres.toLocaleString()} L`, icon: "⛽", color: "text-blue-300" },
-                    { label: "Revenue", value: `${analytics.totals.revenue.toLocaleString()} ETB`, icon: "💰", color: "text-emerald-300" },
-                    { label: "Approved", value: analytics.totals.approved.toLocaleString(), icon: "✅", color: "text-green-300" },
+                    { label: "Total Users", value: stats.users, icon: <Users className="w-4 h-4" /> },
+                    { label: "Fleet Drivers", value: stats.drivers, icon: <Activity className="w-4 h-4" /> },
+                    { label: "Grid Nodes", value: stats.stations, icon: <Fuel className="w-4 h-4" /> },
+                    { label: "Gross Data Flow", value: stats.requests, icon: <History className="w-4 h-4" /> },
                   ].map((s, i) => (
-                    <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
+                    <div key={i} className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 shadow-sm">
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-xs text-purple-200/70 uppercase tracking-wide">{s.label}</p>
-                          <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{s.label}</p>
+                          <p className="text-2xl font-bold mt-2 text-white">{s.value.toLocaleString()}</p>
                         </div>
-                        <span className="text-2xl">{s.icon}</span>
+                        <div className="p-2 bg-white/5 rounded-lg text-slate-400">{s.icon}</div>
                       </div>
                     </div>
                   ))}
-                </div>
-
-                {/* Requests over time */}
-                {requestsOverTime && requestsOverTime.labels.length > 0 && (
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                    <p className="text-sm font-bold text-purple-200/80 uppercase tracking-wide mb-4">Requests Over Time</p>
-                    <Line
-                      data={{
-                        labels: requestsOverTime.labels,
-                        datasets: [
-                          {
-                            label: "Total",
-                            data: requestsOverTime.totals,
-                            borderColor: "rgba(168,85,247,0.9)",
-                            backgroundColor: "rgba(168,85,247,0.1)",
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 3,
-                          },
-                          {
-                            label: "Petrol",
-                            data: requestsOverTime.petrolData,
-                            borderColor: "rgba(59,130,246,0.8)",
-                            backgroundColor: "transparent",
-                            borderWidth: 1.5,
-                            borderDash: [4, 3],
-                            tension: 0.4,
-                            pointRadius: 2,
-                          },
-                          {
-                            label: "Diesel",
-                            data: requestsOverTime.dieselData,
-                            borderColor: "rgba(251,191,36,0.8)",
-                            backgroundColor: "transparent",
-                            borderWidth: 1.5,
-                            borderDash: [4, 3],
-                            tension: 0.4,
-                            pointRadius: 2,
-                          },
-                        ],
-                      }}
-                      options={{
-                        responsive: true,
-                        plugins: {
-                          legend: { labels: { color: "#c4b5fd", font: { size: 11 } } },
-                          tooltip: { mode: "index", intersect: false },
-                        },
-                        scales: {
-                          x: { ticks: { color: "#a78bfa" }, grid: { color: "#ffffff08" } },
-                          y: { ticks: { color: "#a78bfa" }, grid: { color: "#ffffff08" }, beginAtZero: true },
-                        },
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Fuel type breakdown */}
-                  {analytics.fuelBreakdown && analytics.fuelBreakdown.length > 0 && (
-                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                      <p className="text-sm font-bold text-purple-200/80 uppercase tracking-wide mb-6">Fuel Type Breakdown</p>
-                      <div className="flex flex-col items-center gap-6">
-                        <div className="w-48 h-48">
-                          <Doughnut
-                            data={{
-                              labels: analytics.fuelBreakdown.map(f => f._id?.toUpperCase() ?? "—"),
-                              datasets: [{
-                                data: analytics.fuelBreakdown.map(f => f.count),
-                                backgroundColor: ["rgba(59,130,246,0.75)", "rgba(251,191,36,0.75)"],
-                                borderColor: ["#3b82f6", "#fbbf24"],
-                                borderWidth: 2,
-                                hoverOffset: 6,
-                              }],
-                            }}
-                            options={{
-                              cutout: "65%",
-                              plugins: { legend: { position: "bottom", labels: { color: "#c4b5fd", padding: 16, font: { size: 11 } } } },
-                            }}
-                          />
-                        </div>
-                        <div className="w-full space-y-2">
-                          {analytics.fuelBreakdown.map(f => (
-                            <div key={f._id} className="flex justify-between text-sm">
-                              <span className="capitalize text-purple-200">{f._id}</span>
-                              <span className="font-bold">{f.count} req · {f.litres.toLocaleString()} L · {f.revenue.toLocaleString()} ETB</span>
-                            </div>
-                          ))}
-                        </div>
+                  <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Node Saturation</p>
+                      <div className="space-y-3">
+                         <div className="flex justify-between text-xs font-medium"><span className="text-slate-400">Operational Distribution</span><span className="text-emerald-400">{platformSignals.activeStations} Nodes</span></div>
+                         <div className="flex justify-between text-xs font-medium"><span className="text-slate-400">Static Capacity</span><span className="text-slate-600">{platformSignals.idleStations} Nodes</span></div>
                       </div>
                     </div>
-                  )}
-
-                  {/* Top stations */}
-                  {analytics.topStations && analytics.topStations.length > 0 && (
-                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                      <p className="text-sm font-bold text-purple-200/80 uppercase tracking-wide mb-4">Top Stations by Requests</p>
-                      <Bar
-                        data={{
-                          labels: analytics.topStations.map(s => s.name),
-                          datasets: [
-                            {
-                              label: "Requests",
-                              data: analytics.topStations.map(s => s.count),
-                              backgroundColor: "rgba(168,85,247,0.6)",
-                              borderColor: "rgba(168,85,247,1)",
-                              borderWidth: 1,
-                              borderRadius: 6,
-                            },
-                            {
-                              label: "Revenue (ETB)",
-                              data: analytics.topStations.map(s => s.revenue),
-                              backgroundColor: "rgba(16,185,129,0.5)",
-                              borderColor: "rgba(16,185,129,1)",
-                              borderWidth: 1,
-                              borderRadius: 6,
-                            },
-                          ],
-                        }}
-                        options={{
-                          responsive: true,
-                          plugins: { legend: { labels: { color: "#c4b5fd", font: { size: 11 } } } },
-                          scales: {
-                            x: { ticks: { color: "#a78bfa", maxRotation: 30 }, grid: { color: "#ffffff08" } },
-                            y: { ticks: { color: "#a78bfa" }, grid: { color: "#ffffff08" }, beginAtZero: true },
-                          },
-                        }}
-                      />
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Protocol Efficiency</p>
+                      <div className="flex items-end justify-between"><p className="text-3xl font-bold text-white">{platformSignals.approvalRate}%</p><span className="text-[10px] font-bold text-indigo-400 uppercase">Authorization Rate</span></div>
+                      <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${platformSignals.approvalRate}%` }} /></div>
                     </div>
-                  )}
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Unauthorized Pending</p>
+                      <p className="text-3xl font-bold text-amber-500">{stats.pending}</p>
+                      <p className="mt-2 text-[10px] font-medium text-slate-500 uppercase tracking-wider">Awaiting mission approval</p>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="flex justify-between items-center pt-8 border-t border-white/5">
+                  <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><BarChart3 className="w-6 h-6 text-indigo-400" />Performance Intelligence</h2>
                 </div>
 
-                {analytics.totals.requests === 0 && (
-                  <div className="text-center py-16 text-purple-200/40">
-                    <p className="text-5xl mb-4">📊</p>
-                    <p className="text-lg">No request data yet for this period.</p>
-                  </div>
+                {loadingAnalytics || !analytics ? (
+                  <div className="flex flex-col items-center justify-center py-32 space-y-4"><div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /><p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Synchronizing Intelligence...</p></div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {[
+                        { label: "Volumetric Flux", value: analytics.totals.litres.toLocaleString(), unit: "Liters", icon: Fuel },
+                        { label: "Economic Value", value: analytics.totals.revenue.toLocaleString(), unit: "ETB", icon: DollarSign },
+                        { label: "System Resolution", value: `${Math.round((analytics.totals.completed / analytics.totals.requests) * 100 || 0)}%`, icon: CheckCircle },
+                        { label: "Active Transactions", value: analytics.totals.approved.toLocaleString(), icon: Zap },
+                      ].map((s, i) => (
+                        <div key={i} className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 shadow-sm">
+                          <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-white/5 rounded-lg text-slate-400"><s.icon className="w-4 h-4" /></div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{s.label}</p></div>
+                          <div className="flex items-baseline gap-2"><h3 className="text-2xl font-bold text-white">{s.value}</h3>{s.unit && <span className="text-[10px] font-bold text-slate-600 uppercase">{s.unit}</span>}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                       <div className="lg:col-span-2 bg-slate-900/50 border border-white/5 rounded-2xl p-8">
+                          <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-8">Demand Velocity</h3>
+                          <div className="h-[350px]">
+                            {requestsOverTime && requestsOverTime.labels.length > 0 && (
+                              <Line data={{ labels: requestsOverTime.labels, datasets: [{ label: "Flow", data: requestsOverTime.totals, borderColor: "#6366f1", backgroundColor: "transparent", borderWidth: 2, pointRadius: 0, tension: 0.15 }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: "#475569", font: { weight: 600, size: 10 } } }, y: { grid: { color: "rgba(255,255,255,0.03)" }, ticks: { color: "#475569", font: { weight: 600, size: 10 } }, beginAtZero: true } } }} />
+                            )}
+                          </div>
+                       </div>
+                       <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-8 flex flex-col items-center">
+                          <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-8 w-full">Fuel Matrix</h3>
+                          <div className="w-full h-56 mb-8">
+                            {analytics.fuelBreakdown && analytics.fuelBreakdown.length > 0 && (
+                               <Doughnut data={{ labels: analytics.fuelBreakdown.map(f => f._id.toUpperCase()), datasets: [{ data: analytics.fuelBreakdown.map(f => f.count), backgroundColor: ["#6366f1", "#f59e0b"], borderColor: "transparent", borderWidth: 0 }] }} options={{ responsive: true, maintainAspectRatio: false, cutout: '85%', plugins: { legend: { display: false } } }} />
+                            )}
+                          </div>
+                          <div className="w-full space-y-2">
+                             {analytics.fuelBreakdown.map((f, idx) => (
+                                <div key={idx} className="flex justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5"><div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-indigo-500" : "bg-amber-500"}`} /><span className="text-[10px] font-bold text-slate-400 uppercase">{f._id}</span></div><span className="text-xs font-bold text-white">{f.count} REQ</span></div>
+                             ))}
+                          </div>
+                       </div>
+                    </div>
+                  </>
                 )}
-              </>
+              </motion.div>
             )}
-          </section>
-        )}
+
+            {tab === "settings" && (
+              <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-4xl mx-auto">
+                 <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-8 space-y-8">
+                    <div className="flex items-center gap-6">
+                       <div className="w-16 h-16 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold">A</div>
+                       <div><h3 className="text-xl font-bold text-white">System Authority</h3><p className="text-slate-500 text-sm font-medium">Root Node Administrator</p></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Authorization Layer</p><p className="text-sm font-semibold text-white">Full Protocol Access Permission</p></div>
+                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Interface Authority</p><p className="text-sm font-semibold text-white">Command Center V2.5 Secure</p></div>
+                    </div>
+                 </div>
+              </motion.div>
+            )}
+           </AnimatePresence>
+        </div>
       </div>
 
-      {/* CREATE STATION MODAL */}
-      {showCreateStation && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !createLoading && setShowCreateStation(false)} />
-          <div className="relative bg-slate-900 border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-2xl font-bold">Create Station</h3>
-                <p className="text-sm text-purple-200/60 mt-0.5">Add a new fuel station to the platform</p>
+      {/* MODALS */}
+      <AnimatePresence>
+        {showCreateStation && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateStation(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-2">Deploy New Node</h3>
+              <p className="text-slate-500 text-sm mb-8">Register a distribution point into the global fuel matrix.</p>
+              <div className="space-y-6">
+                <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Node Title</label><input type="text" placeholder="e.g., Central Station Prime" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" value={createForm.name} onChange={e => setCreateForm({...createForm, name: e.target.value})} /></div>
+                <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Coordinates / Sector</label><input type="text" placeholder="e.g., Sector 7G, Addis" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" value={createForm.location} onChange={e => setCreateForm({...createForm, location: e.target.value})} /></div>
+                <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Officer Email (Optional)</label><input type="email" placeholder="assign.officer@fuel.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" value={createForm.ownerEmail} onChange={e => setCreateForm({...createForm, ownerEmail: e.target.value})} /></div>
+                {createError && <p className="text-xs font-bold text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20">{createError}</p>}
+                <button onClick={handleCreateStation} disabled={createLoading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20">{createLoading ? "DEPLOYING..." : "AUTHORIZE DEPLOYMENT"}</button>
               </div>
-              <button onClick={() => setShowCreateStation(false)} className="p-2 hover:bg-white/10 rounded-full transition text-white/60 hover:text-white">✕</button>
-            </div>
+            </motion.div>
+          </div>
+        )}
 
-            {createSuccess ? (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <div className="w-14 h-14 bg-emerald-500/20 rounded-full flex items-center justify-center text-3xl">✓</div>
-                <p className="text-emerald-300 font-bold">Station created successfully!</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  {[
-                    { id: "cs-name", label: "Station Name *", placeholder: "e.g. Total Bole", key: "name" as const },
-                    { id: "cs-loc", label: "Location *", placeholder: "e.g. Addis Ababa, Ethiopia", key: "location" as const },
-                    { id: "cs-email", label: "Assign to STATION user (email, optional)", placeholder: "station@example.com", key: "ownerEmail" as const },
-                  ].map(field => (
-                    <div key={field.id}>
-                      <label htmlFor={field.id} className="block text-xs font-bold uppercase tracking-wide text-purple-200/60 mb-1.5">{field.label}</label>
-                      <input
-                        id={field.id}
-                        type={field.key === "ownerEmail" ? "email" : "text"}
-                        value={createForm[field.key]}
-                        onChange={e => setCreateForm(prev => ({ ...prev, [field.key]: e.target.value }))}
-                        placeholder={field.placeholder}
-                        className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:ring-2 focus:ring-purple-500 transition"
-                      />
-                    </div>
+        {showCreateUser && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateUser(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
+              <h3 className="text-2xl font-bold text-white mb-2">Commission Account</h3>
+              <p className="text-slate-500 text-sm mb-8">Establish new personnel credentials for platform access.</p>
+              <div className="space-y-5">
+                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 px-1">Identity Name</label><input type="text" placeholder="Officer Name" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} /></div>
+                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 px-1">Comm Channel (Email)</label><input type="email" placeholder="protocol@system.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
+                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 px-1">Access Cipher (Password)</label><input type="password" placeholder="••••••••" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  {["DRIVER", "STATION", "ADMIN"].map(r => (
+                    <button key={r} onClick={() => setUserForm({...userForm, role: r})} className={`py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${userForm.role === r ? "bg-indigo-600 border-indigo-500 text-white" : "bg-white/5 border-white/5 text-slate-500 hover:text-white"}`}>{r}</button>
                   ))}
                 </div>
-
-                {createError && (
-                  <div className="px-4 py-3 bg-red-500/15 border border-red-400/30 rounded-xl text-red-300 text-sm">
-                    {createError}
-                  </div>
-                )}
-
-                <div className="flex gap-3 pt-1">
-                  <button onClick={() => setShowCreateStation(false)} className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-bold hover:bg-white/20 transition">Cancel</button>
-                  <button
-                    onClick={handleCreateStation}
-                    disabled={createLoading}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-sm font-bold shadow-lg transition disabled:opacity-50"
-                  >
-                    {createLoading ? "Creating…" : "Create Station"}
-                  </button>
-                </div>
-              </>
-            )}
+                {userError && <p className="text-xs font-bold text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20">{userError}</p>}
+                <button onClick={handleCreateUser} disabled={userLoading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/20 mt-4">{userLoading ? "COMMISSIONING..." : "FINALIZE COMMISSION"}</button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

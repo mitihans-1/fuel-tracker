@@ -1,6 +1,17 @@
+"use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  MapPin, Fuel, Wallet, TrendingUp, Clock, CheckCircle,
+  Star, Bell, CreditCard,
+  AlertCircle, Navigation, Zap, Shield, Award,
+  Gauge,
+  TrendingDown, LayoutDashboard, History, Car, Settings, LogOut, Menu, Activity
+} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Station } from "./OSMMap";
+
 const OSMMap = dynamic(() => import("@/components/OSMMap"), { ssr: false });
 
 import { formatDateTime } from "@/lib/utils";
@@ -33,45 +44,87 @@ const PAGE_SIZE = 6;
 
 type Toast = { id: number; message: string; type: "success" | "error" | "info" };
 
-function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+// Enhanced Toast Component
+const ToastContainer = ({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) => {
   return (
-    <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl backdrop-blur-xl border text-sm font-medium ${
-            t.type === "success"
+    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-3">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, x: 100, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 100, scale: 0.9 }}
+            className={`flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl backdrop-blur-xl border text-sm font-medium ${t.type === "success"
               ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-200"
               : t.type === "error"
-              ? "bg-red-500/20 border-red-400/30 text-red-200"
-              : "bg-sky-500/20 border-sky-400/30 text-sky-200"
-          }`}
-        >
-          <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
-          <span className="flex-1">{t.message}</span>
-          <button onClick={() => onDismiss(t.id)} className="ml-2 opacity-60 hover:opacity-100 transition">✕</button>
-        </div>
-      ))}
+                ? "bg-red-500/20 border-red-400/30 text-red-200"
+                : "bg-indigo-500/20 border-indigo-400/30 text-indigo-200"
+              }`}
+          >
+            <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
+            <span className="flex-1">
+              {typeof t.message === 'string' ? t.message : JSON.stringify(t.message)}
+            </span>
+            <button
+              onClick={() => onDismiss(t.id)}
+              className="ml-2 opacity-60 hover:opacity-100 transition"
+            >
+              ✕
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
-}
+};
 
-function ConfirmModal({ open, title, message, onConfirm, onCancel }: { open: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; }) {
+// Enhanced Confirm Modal
+const ConfirmModal = ({ open, title, message, onConfirm, onCancel }: {
+  open: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) => {
   if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-black/60" onClick={onCancel}></div>
-      <div className="relative bg-slate-900 rounded-xl border border-white/10 p-6 max-w-md w-full shadow-xl">
-        <h3 className="text-xl font-bold mb-2">{title}</h3>
-        <p className="text-sm text-blue-200 mb-4">{message}</p>
-        <div className="flex justify-end gap-3">
-          <button className="px-4 py-2 rounded bg-gray-700" onClick={onCancel}>Cancel</button>
-          <button className="px-4 py-2 rounded bg-red-600" onClick={onConfirm}>Confirm</button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[999] flex items-center justify-center p-6"
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border border-white/10 p-6 max-w-md w-full shadow-2xl"
+      >
+        <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mb-4 mx-auto">
+          <AlertCircle className="w-6 h-6 text-red-400" />
         </div>
-      </div>
-    </div>
+        <h3 className="text-xl font-bold text-center mb-2 text-white">{title}</h3>
+        <p className="text-sm text-slate-400 text-center mb-6">{message}</p>
+        <div className="flex justify-center gap-3">
+          <button
+            className="px-5 py-2.5 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 transition-all font-medium"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-medium transition-all shadow-lg"
+            onClick={onConfirm}
+          >
+            Confirm
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
-}
+};
 
 export interface FullStation extends Station {
   petrol: boolean;
@@ -92,7 +145,49 @@ interface FuelAlertSubscription {
   active: boolean;
 }
 
+// Enhanced Stat Card Component
+interface StatCardProps {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  color: string;
+  trend?: "up" | "down";
+  trendValue?: string;
+}
+
+const StatCard = ({ icon: Icon, label, value, color, trend, trendValue }: StatCardProps) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    className="relative overflow-hidden bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-xl"
+  >
+    <div className={`absolute top-0 right-0 w-32 h-32 bg-${color}-500/10 blur-[60px] rounded-full`} />
+    <div className="relative flex items-start justify-between">
+      <div>
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{label}</p>
+        <p className="text-3xl font-bold text-white">{value}</p>
+        {trend && (
+          <div className="flex items-center gap-1 mt-2">
+            {trend === "up" ? (
+              <TrendingUp className="w-3 h-3 text-emerald-400" />
+            ) : (
+              <TrendingDown className="w-3 h-3 text-red-400" />
+            )}
+            <span className={`text-xs ${trend === "up" ? "text-emerald-400" : "text-red-400"}`}>
+              {trendValue}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className={`p-3 rounded-xl bg-${color}-500/20`}>
+        <Icon className={`w-5 h-5 text-${color}-400`} />
+      </div>
+    </div>
+  </motion.div>
+);
+
 export default function DriverDashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [stations, setStations] = useState<FullStation[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,14 +226,61 @@ export default function DriverDashboard() {
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [mutatingId, setMutatingId] = useState<string | null>(null);
+
+  // Tactical parameter observation
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "register") {
+      setShowAddStation(true);
+      // Clear parameter to prevent re-opening
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
+
+  const [showAddStation, setShowAddStation] = useState(false);
+  const [stationForm, setStationForm] = useState({ name: '', location: '' });
+  const [stationRegisterLoading, setStationRegisterLoading] = useState(false);
+
+  const handleRegisterStation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStationRegisterLoading(true);
+    try {
+      const res = await fetch("/api/stations/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stationName: stationForm.name, stationLocation: stationForm.location })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      showToast("Station registered! Reloading dashboard...", "success");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      showToast("Failed to register station", "error");
+    } finally {
+      setStationRegisterLoading(false);
+    }
+  };
+
+  const [view, setView] = useState<"dashboard" | "logs" | "vehicles" | "settings">("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const sidebarItems: { id: "dashboard" | "logs" | "vehicles" | "settings"; label: string; icon: React.ReactNode }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: "logs", label: "Fuel Logs", icon: <History className="w-5 h-5" /> },
+    { id: "vehicles", label: "My Vehicles", icon: <Car className="w-5 h-5" /> },
+    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
+  ];
   const toastId = useRef(0);
-  const showToast = useCallback((message: string, type: Toast["type"] = "info") => {
+  const showToast = useCallback((msg: string | { error?: string; message?: string } | unknown, type: Toast["type"] = "info") => {
     const id = ++toastId.current;
+    const message = typeof msg === 'string' 
+      ? msg 
+      : ((msg as { error?: string })?.error || (msg as { message?: string })?.message || (typeof msg === 'object' ? JSON.stringify(msg) : String(msg)));
+    
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
+
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
@@ -156,7 +298,6 @@ export default function DriverDashboard() {
         setWalletBalance(typeof data.balance === "number" ? data.balance : 0);
         if (data.currency) setWalletCurrency(data.currency);
       } catch {
-        // keep card but show as unavailable
         setWalletBalance(null);
       } finally {
         setWalletLoading(false);
@@ -176,12 +317,8 @@ export default function DriverDashboard() {
 
         if (subsRes.ok) {
           const subs: FuelAlertSubscription[] = await subsRes.json();
-          const petrol = subs.some(
-            (s) => s.fuelType === "petrol" && s.active
-          );
-          const diesel = subs.some(
-            (s) => s.fuelType === "diesel" && s.active
-          );
+          const petrol = subs.some(s => s.fuelType === "petrol" && s.active);
+          const diesel = subs.some(s => s.fuelType === "diesel" && s.active);
           setFuelAlertEnabled({ petrol, diesel });
         }
 
@@ -196,7 +333,7 @@ export default function DriverDashboard() {
     loadAlerts();
   }, []);
 
-  // Fetch stations (with queue / wait info)
+  // Fetch stations
   useEffect(() => {
     const fetchStations = async () => {
       try {
@@ -204,14 +341,17 @@ export default function DriverDashboard() {
         const res = await fetch(`/api/stations/with-queue`);
         if (!res.ok) throw new Error("Failed to fetch stations");
         const data = await res.json();
-        setStations(data);
+        if (Array.isArray(data)) {
+          setStations(data);
+        } else {
+          setStations([]);
+        }
       } catch {
         setError("Could not load stations");
       } finally {
         setLoadingStations(false);
       }
     };
-    // small debounce
     const t = setTimeout(fetchStations, 200);
     return () => clearTimeout(t);
   }, [page, searchQuery]);
@@ -223,7 +363,11 @@ export default function DriverDashboard() {
       const res = await fetch("/api/request/driver");
       if (!res.ok) throw new Error("Failed to load requests");
       const data = await res.json();
-      setRequests(data);
+      if (Array.isArray(data)) {
+        setRequests(data);
+      } else {
+        setRequests([]);
+      }
     } catch {
       showToast("Failed to load your requests", "error");
     } finally {
@@ -235,7 +379,7 @@ export default function DriverDashboard() {
     loadRequests();
   }, [loadRequests]);
 
-  // Handle return from Chapa hosted payment page (fuel or wallet top-up)
+  // Handle return from Chapa
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
@@ -260,9 +404,9 @@ export default function DriverDashboard() {
               showToast("Wallet topped up successfully!", "success");
               fetch("/api/wallet/me").then(r => r.json()).then(w => {
                 if (typeof w.balance === "number") setWalletBalance(w.balance);
-              }).catch(() => {});
+              }).catch(() => { });
             }
-          }).catch(() => {});
+          }).catch(() => { });
       }
     }
   }, [showToast, loadRequests]);
@@ -286,13 +430,17 @@ export default function DriverDashboard() {
     }
   };
 
-  // Real-time updates using EventSource for stations (keeps map updated)
+  // Real-time updates
   useEffect(() => {
     const es = new EventSource("/api/request/station/stream");
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        setStations(data);
+        if (Array.isArray(data)) {
+          setStations(data);
+        } else {
+          setStations([]);
+        }
       } catch {
         // ignore
       }
@@ -307,61 +455,58 @@ export default function DriverDashboard() {
     setCheckoutAmount(1);
   };
 
-const handlePayment = async () => {
-  if (!checkoutStation || !checkoutFuelType) return;
-  setIsProcessingPayment(true);
-  try {
-    const pricePerLitre = checkoutFuelType === "petrol"
-      ? (checkoutStation.petrolPrice ?? 80)
-      : (checkoutStation.dieselPrice ?? 75);
-    const totalPrice = checkoutAmount * pricePerLitre;
+  const handlePayment = async () => {
+    if (!checkoutStation || !checkoutFuelType) return;
+    setIsProcessingPayment(true);
+    try {
+      const pricePerLitre = checkoutFuelType === "petrol"
+        ? (checkoutStation.petrolPrice ?? 80)
+        : (checkoutStation.dieselPrice ?? 75);
+      const totalPrice = checkoutAmount * pricePerLitre;
 
-    const res = await fetch("/api/payment/chapa/initialize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: totalPrice,
-        fuelType: checkoutFuelType,
-        stationId: checkoutStation._id,
+      const res = await fetch("/api/payment/chapa/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: totalPrice,
+          fuelType: checkoutFuelType,
+          stationId: checkoutStation._id,
+          stationName: checkoutStation.name,
+          litres: checkoutAmount,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Payment init failed", "error");
+        return;
+      }
+
+      const locationText = typeof checkoutStation.location === "string"
+        ? checkoutStation.location
+        : checkoutStation.location?.text ?? "";
+      const ticketInfo: PendingTicket = {
         stationName: checkoutStation.name,
+        stationLocation: locationText,
+        stationRating: checkoutStation.avgRating,
+        stationRatingCount: checkoutStation.ratingCount,
+        queueLength: checkoutStation.queueLength,
+        estimatedWait: checkoutStation.estimatedWaitMinutes,
+        fuelType: checkoutFuelType,
         litres: checkoutAmount,
-      }),
-    });
+        pricePerLitre,
+        total: totalPrice,
+      };
+      sessionStorage.setItem("pendingTicket", JSON.stringify(ticketInfo));
 
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || "Payment init failed", "error");
-      return;
+      window.location.href = data.checkout_url;
+    } catch {
+      showToast("Error initializing payment", "error");
+    } finally {
+      setIsProcessingPayment(false);
     }
+  };
 
-    // Save ticket details for the post-payment confirmation screen
-    const locationText = typeof checkoutStation.location === "string"
-      ? checkoutStation.location
-      : checkoutStation.location?.text ?? "";
-    const ticketInfo: PendingTicket = {
-      stationName: checkoutStation.name,
-      stationLocation: locationText,
-      stationRating: checkoutStation.avgRating,
-      stationRatingCount: checkoutStation.ratingCount,
-      queueLength: checkoutStation.queueLength,
-      estimatedWait: checkoutStation.estimatedWaitMinutes,
-      fuelType: checkoutFuelType,
-      litres: checkoutAmount,
-      pricePerLitre,
-      total: totalPrice,
-    };
-    sessionStorage.setItem("pendingTicket", JSON.stringify(ticketInfo));
-
-    // Redirect to Chapa hosted checkout
-    window.location.href = data.checkout_url;
-  } catch {
-    showToast("Error initializing payment", "error");
-  } finally {
-    setIsProcessingPayment(false);
-  }
-};
-
-  // Cancel request flow
   const openCancelConfirm = (id: string) => {
     setCancelId(id);
     setConfirmOpen(true);
@@ -371,28 +516,20 @@ const handlePayment = async () => {
     if (!id) return;
     setConfirmOpen(false);
     setMutatingId(id);
-
-    // optimistic update: mark locally as CANCELED
     const prev = requests;
     setRequests((r) => r.map((x) => (x._id === id ? { ...x, status: "CANCELED" } : x)));
-
     try {
       const res = await fetch(`/api/request/driver/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        throw new Error("Failed to cancel");
-      }
+      if (!res.ok) throw new Error("Failed to cancel");
       const data = await res.json();
       if (data && data.request) {
-        // ensure server result
         setRequests((r) => r.map((x) => (x._id === id ? data.request : x)));
         showToast("Request canceled", "success");
       } else {
-        // reload if unexpected
         await loadRequests();
         showToast("Request canceled", "success");
       }
     } catch {
-      // rollback
       setRequests(prev);
       showToast("Failed to cancel request", "error");
     } finally {
@@ -416,7 +553,6 @@ const handlePayment = async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestId: id }),
       });
-
       if (res.ok) {
         setRequests((prev) => prev.filter((r) => r._id !== id));
         showToast("Record removed from history", "success");
@@ -430,35 +566,30 @@ const handlePayment = async () => {
     }
   };
 
-  // Filter stations by search query
-  const filteredStations = stations.filter(
-    (s) => {
-      const nameMatch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const locationText = typeof s.location === 'string' ? s.location : s.location?.text || '';
-      const locationMatch = locationText.toLowerCase().includes(searchQuery.toLowerCase());
-      return nameMatch || locationMatch;
-    }
-  );
+  const safeRequests = Array.isArray(requests) ? requests : [];
+  const safeStations = Array.isArray(stations) ? stations : [];
 
-  // Stats
+  const filteredStations = safeStations.filter((s) => {
+    const nameMatch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const locationText = typeof s.location === 'string' ? s.location : s.location?.text || '';
+    const locationMatch = locationText.toLowerCase().includes(searchQuery.toLowerCase());
+    return nameMatch || locationMatch;
+  });
+
   const stats = {
-    totalRequests: requests.length,
-    pendingCount: requests.filter((r) => r.status === "PENDING").length,
-    approvedCount: requests.filter((r) => r.status === "APPROVED").length,
+    totalRequests: safeRequests.length,
+    pendingCount: safeRequests.filter((r) => r.status === "PENDING").length,
+    approvedCount: safeRequests.filter((r) => r.status === "APPROVED").length,
   };
 
   const spendingStats = {
-    totalTickets: requests.filter((r) => r.status === "APPROVED").length,
-    lastTicketFuel:
-      requests
-        .filter((r) => r.status === "APPROVED")
-        .slice(-1)[0]?.fuelType ?? null,
+    totalTickets: safeRequests.filter((r) => r.status === "APPROVED").length,
+    lastTicketFuel: safeRequests.filter((r) => r.status === "APPROVED").slice(-1)[0]?.fuelType ?? null,
   };
 
-  const recommendedStation =
-    filteredStations.find(
-      (s) => (s.petrol || s.diesel) && (s.petrolQty ?? 0) + (s.dieselQty ?? 0) > 0
-    ) ?? filteredStations[0];
+  const recommendedStation = filteredStations.find(
+    (s) => (s.petrol || s.diesel) && (s.petrolQty ?? 0) + (s.dieselQty ?? 0) > 0
+  ) ?? filteredStations[0];
 
   const totalPages = Math.max(1, Math.ceil(filteredStations.length / PAGE_SIZE));
   const paginatedStations = filteredStations.slice(
@@ -467,344 +598,579 @@ const handlePayment = async () => {
   );
 
   return (
-    <div className="dashboard-root min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white p-6">
-      <div className="max-w-7xl mx-auto space-y-12">
-
-        {/* HEADER + OVERVIEW */}
-        <header className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-5xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-                Driver Dashboard
-              </h1>
-              <p className="text-blue-200/70 mt-2 text-lg">
-                Request fuel, manage your tickets, and discover the best nearby stations.
-              </p>
-            </div>
-
-            {/* STATS */}
-            <div className="flex bg-white/10 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden shadow-xl">
-              <div className="px-6 py-3 text-center border-r border-white/10">
-                <p className="text-xs text-blue-200 uppercase">Total</p>
-                <p className="text-2xl font-bold">{stats.totalRequests}</p>
-              </div>
-              <div className="px-6 py-3 text-center border-r border-white/10">
-                <p className="text-xs text-blue-200 uppercase">Pending</p>
-                <p className="text-2xl font-bold text-orange-400">
-                  {stats.pendingCount}
-                </p>
-              </div>
-              <div className="px-6 py-3 text-center">
-                <p className="text-xs text-blue-200 uppercase">Approved</p>
-                <p className="text-2xl font-bold text-green-400">
-                  {stats.approvedCount}
-                </p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#020617] text-slate-200 flex flex-col md:flex-row overflow-hidden">
+      {/* Sidebar for Desktop */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/5 border-r border-white/10 backdrop-blur-3xl transition-transform duration-300 md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex flex-col h-full p-6">
+          <div className="flex items-center gap-3 mb-12 px-2">
+             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Fuel className="w-6 h-6 text-white" />
+             </div>
+             <div>
+                <h1 className="text-xl font-black text-white tracking-widest italic leading-none">FUELSYNC</h1>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Grid Command v2</p>
+             </div>
           </div>
 
-          {/* WALLET + RECOMMENDATION + INSIGHTS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 shadow-lg flex flex-col gap-3">
-              <p className="text-xs uppercase tracking-wide text-blue-200/70 font-semibold">Driver Wallet</p>
-              <p className="text-3xl font-extrabold">
-                {walletLoading ? "Loading…" : walletBalance === null ? "Unavailable" : `${walletBalance.toLocaleString()} ${walletCurrency}`}
-              </p>
-              <p className="text-xs text-blue-200/70">
-                {walletBalance === null ? "Your wallet balance will be available once payment is set up." : "Use this balance to pay for your fuel transactions."}
-              </p>
-              {walletBalance !== null && (
+          <nav className="flex-1 space-y-2">
+            {sidebarItems.map((item) => (
+              <button
+            key={item.id}
+            onClick={() => { setView(item.id); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-bold group ${
+                  view === item.id 
+                    ? "bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_20px_rgba(79,70,229,0.1)]" 
+                    : "text-slate-500 hover:text-white hover:bg-white/5 border border-transparent"
+                }`}
+              >
+                <div className={`${view === item.id ? "text-indigo-400" : "group-hover:text-white"}`}>
+                  {item.icon}
+                </div>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <button 
+            onClick={() => router.push('/auth/logout')}
+            className="flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all font-bold mt-auto"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative">
+        {/* Mobile Header */}
+        <div className="md:hidden flex items-center justify-between p-4 bg-[#020617]/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-[40]">
+           <Fuel className="w-6 h-6 text-indigo-500" />
+           <button title="Open Sidebar" onClick={() => setSidebarOpen(true)} className="p-2 text-slate-400 hover:text-white">
+              <Menu className="w-6 h-6" />
+           </button>
+        </div>
+
+        {/* Animated Background Grid */}
+        <div className="fixed inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+
+        <div className="relative z-10 p-4 sm:p-10 space-y-10">
+          <AnimatePresence mode="wait">
+            {view === "dashboard" && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-10"
+              >
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6"
+        >
+          <div>
+            <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-2 px-3 py-1 bg-primary/10 rounded-full w-fit border border-primary/20">
+              <Zap className="w-3.5 h-3.5" />
+              <span>Driver Operations Portal</span>
+            </div>
+            <h1 className="text-5xl sm:text-6xl font-black bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent tracking-tight">
+              FuelSync <span className="text-white/40 font-light italic">Driver</span>
+            </h1>
+            <p className="text-slate-400 mt-3 max-w-xl text-lg font-medium leading-relaxed">
+              Find nearby stations, request fuel, and manage your purchases with precision.
+            </p>
+          </div>
+
+          {/* Tactical controls transitioned to Global Navbar */}
+        </motion.div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <StatCard
+            icon={Fuel}
+            label="Total Requests"
+            value={stats.totalRequests}
+            color="indigo"
+            trend="up"
+            trendValue="+23%"
+          />
+          <StatCard
+            icon={Clock}
+            label="Pending"
+            value={stats.pendingCount}
+            color="orange"
+            trend="down"
+            trendValue="-5%"
+          />
+          <StatCard
+            icon={CheckCircle}
+            label="Approved"
+            value={stats.approvedCount}
+            color="emerald"
+            trend="up"
+            trendValue="+12%"
+          />
+        </div>
+
+        {/* Wallet & Insights Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Wallet Card */}
+          <motion.div
+            whileHover={{ scale: 1.02, translateY: -5 }}
+            className="relative overflow-hidden bg-gradient-to-br from-indigo-600/20 via-slate-900 to-slate-950 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group"
+          >
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-all duration-500" />
+            <div className="relative flex flex-col justify-between h-full">
+              <div className="flex items-start justify-between">
+                <div className="p-4 rounded-3xl bg-indigo-500/10 border border-indigo-500/20">
+                  <Wallet className="w-6 h-6 text-indigo-400" />
+                </div>
+                {walletBalance !== null && (
+                  <button
+                    onClick={() => setShowTopUp(true)}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+                    title="Add Funds"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              <div className="mt-8">
+                <p className="text-xs font-black text-indigo-300 uppercase tracking-[0.2em] mb-2 opacity-60">Available Balance</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-4xl font-black text-white tracking-tight">
+                    {walletLoading ? "..." : walletBalance === null ? "0.00" : walletBalance.toLocaleString()}
+                  </p>
+                  <p className="text-lg font-bold text-indigo-400/80">{walletCurrency}</p>
+                </div>
+              </div>
+
+              {walletBalance === null ? (
+                <button className="mt-6 w-full py-4 rounded-2xl bg-white/5 text-white/40 text-sm font-bold border border-dashed border-white/10">
+                  Connect Wallet
+                </button>
+              ) : (
                 <button
                   onClick={() => setShowTopUp(true)}
-                  className="mt-1 w-full py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-bold tracking-wide shadow-md transition"
+                  className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-900/40"
                 >
-                  + Top Up Wallet
+                  Quick Top Up
                 </button>
               )}
             </div>
+          </motion.div>
 
-            <div className="bg-gradient-to-br from-emerald-600/30 to-cyan-500/10 border border-emerald-400/40 rounded-2xl p-4 shadow-lg">
-              <p className="text-xs uppercase tracking-wide text-emerald-200 font-semibold">
-                Recommended Station
-              </p>
+          {/* Recommended Station */}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="relative overflow-hidden bg-gradient-to-br from-blue-500/20 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30 shadow-xl cursor-pointer"
+            onClick={() => {
+              if (recommendedStation) {
+                const loc = recommendedStation.location;
+                if (typeof loc === "object" && loc !== null && "lat" in loc) {
+                  setSelected(recommendedStation);
+                  mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }
+            }}
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[60px] rounded-full" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="w-4 h-4 text-blue-300" />
+                <p className="text-xs font-medium text-blue-300 uppercase tracking-wider">Recommended Station</p>
+              </div>
               {recommendedStation ? (
                 <>
-                  <p className="mt-1 text-lg font-bold">
-                    {recommendedStation.name}
-                  </p>
-                  <p className="text-xs text-emerald-100/80 mt-1">
-                    📍{" "}
-                    {typeof recommendedStation.location === "string"
-                      ? recommendedStation.location
-                      : recommendedStation.location?.text}
-                  </p>
-                  <p className="mt-2 text-xs text-emerald-100/80">
-                    {recommendedStation.petrol && "Petrol available"}{" "}
-                    {recommendedStation.diesel && recommendedStation.petrol
-                      ? "• "
-                      : ""}
-                    {recommendedStation.diesel && "Diesel available"}
-                  </p>
+                  <p className="text-lg font-bold text-white">{recommendedStation.name}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    <p className="text-xs text-slate-400">
+                      {typeof recommendedStation.location === "string"
+                        ? recommendedStation.location
+                        : recommendedStation.location?.text}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 mt-3">
+                    {recommendedStation.petrol && (
+                      <span className="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300">Petrol</span>
+                    )}
+                    {recommendedStation.diesel && (
+                      <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300">Diesel</span>
+                    )}
+                  </div>
                 </>
               ) : (
-                <p className="mt-2 text-xs text-emerald-100/80">
-                  No station matches your current filters.
-                </p>
+                <p className="text-sm text-slate-400">No stations available</p>
               )}
             </div>
+          </motion.div>
 
-            <div className="bg-white/10 border border-white/10 rounded-2xl p-4 shadow-lg space-y-3">
-              <p className="text-xs uppercase tracking-wide text-blue-200/70 font-semibold">
-                Driving Insights & Alerts
-              </p>
-              <p className="mt-2 text-sm">
-                Approved tickets:{" "}
-                <span className="font-semibold">
-                  {spendingStats.totalTickets}
-                </span>
-              </p>
-              <p className="mt-1 text-sm">
-                Last approved fuel:{" "}
-                <span className="font-semibold capitalize">
-                  {spendingStats.lastTicketFuel ?? "—"}
-                </span>
-              </p>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-blue-200/70">
-                  Fuel alerts
-                </span>
-                <div className="flex gap-1">
-                  {(["petrol", "diesel"] as const).map((ft) => (
-                    <button
-                      key={ft}
-                      onClick={async () => {
-                        const enabled = fuelAlertEnabled[ft];
-                        try {
-                          if (enabled) {
-                            const params = new URLSearchParams({
-                              fuelType: ft,
-                            });
-                            await fetch(
-                              `/api/alerts/subscriptions?${params.toString()}`,
-                              { method: "DELETE" }
-                            );
-                          } else {
-                            await fetch("/api/alerts/subscriptions", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ fuelType: ft }),
-                            });
-                          }
-                          setFuelAlertEnabled((prev) => ({
-                            ...prev,
-                            [ft]: !enabled,
-                          }));
-                          showToast(
-                            `Alerts for ${ft} ${
-                              enabled ? "disabled" : "enabled"
-                            }.`,
-                            "success"
-                          );
-                        } catch {
-                          showToast("Failed to update alerts", "error");
-                        }
-                      }}
-                      className={`px-2 py-1 rounded-full text-[11px] capitalize ${
-                        fuelAlertEnabled[ft]
-                          ? "bg-green-500/30 text-green-200"
-                          : "bg-white/10 text-blue-200/70"
-                      }`}
-                    >
-                      {ft}
-                    </button>
-                  ))}
+          {/* Alerts & Insights */}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="relative overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/10 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30 shadow-xl"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 blur-[60px] rounded-full" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-purple-300" />
+                  <p className="text-xs font-medium text-purple-300 uppercase tracking-wider">Fuel Alerts</p>
                 </div>
+                <button
+                  onClick={() => setShowNotifications(true)}
+                  className="text-xs text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                >
+                  {notifications.filter((n) => !n.read).length} new
+                </button>
               </div>
-              <button
-                onClick={() => setShowNotifications(true)}
-                className="mt-1 text-[11px] text-cyan-300 underline underline-offset-4"
-              >
-                View notifications ({notifications.filter((n) => !n.read).length} new)
-              </button>
+              <div className="flex gap-2">
+                {(["petrol", "diesel"] as const).map((ft) => (
+                  <button
+                    key={ft}
+                    onClick={async () => {
+                      const enabled = fuelAlertEnabled[ft];
+                      try {
+                        if (enabled) {
+                          const params = new URLSearchParams({ fuelType: ft });
+                          await fetch(`/api/alerts/subscriptions?${params.toString()}`, { method: "DELETE" });
+                        } else {
+                          await fetch("/api/alerts/subscriptions", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ fuelType: ft }),
+                          });
+                        }
+                        setFuelAlertEnabled((prev) => ({ ...prev, [ft]: !enabled }));
+                        showToast(`Alerts for ${ft} ${enabled ? "disabled" : "enabled"}.`, "success");
+                      } catch {
+                        showToast("Failed to update alerts", "error");
+                      }
+                    }}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${fuelAlertEnabled[ft]
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg"
+                      : "bg-white/10 text-slate-400 hover:bg-white/20"
+                      }`}
+                  >
+                    {ft} {fuelAlertEnabled[ft] && "✓"}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10">
+                <p className="text-xs text-slate-400">
+                  Approved tickets: <span className="text-white font-semibold">{spendingStats.totalTickets}</span>
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Last fuel: <span className="text-white font-semibold capitalize">{spendingStats.lastTicketFuel ?? "—"}</span>
+                </p>
+              </div>
             </div>
-          </div>
-        </header>
+          </motion.div>
+        </div>
 
-        {/* SEARCH & MAP */}
+        {/* Search & Map Section */}
         <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <h2 className="text-3xl font-bold flex items-center gap-3">
-              Available Stations
-              <span className="bg-blue-500/20 text-blue-300 px-3 py-1 text-sm rounded-full">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h2 className="text-2xl font-bold flex items-center gap-3">
+              <MapPin className="w-6 h-6 text-indigo-400" />
+              Nearby Stations
+              <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 text-sm rounded-full">
                 {filteredStations.length}
               </span>
             </h2>
-
-            <input
-              type="text"
-              placeholder="Search stations or locations..."
-              className="w-full sm:w-72 px-5 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-blue-200 focus:ring-2 focus:ring-blue-500 outline-none backdrop-blur-lg"
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-            />
+            <div className="relative w-full sm:w-80">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search stations or locations..."
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              />
+            </div>
           </div>
 
           {loadingStations ? (
-            <div className="text-center py-12">Loading stations...</div>
+            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full border-4 border-indigo-500/20" />
+                <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+              </div>
+              <p className="text-xl font-black text-indigo-300 uppercase tracking-widest animate-pulse opacity-60">Scanning Stations...</p>
+            </div>
           ) : error ? (
-            <div className="text-center py-12 text-red-400">{error}</div>
+            <div className="text-center py-20 bg-red-500/5 rounded-[2.5rem] border border-red-500/10">
+              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-10 h-10 text-red-400" />
+              </div>
+              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide">Signal Interrupted</h3>
+              <p className="text-red-300/60 font-medium">{error}</p>
+            </div>
           ) : (
             <>
-              {/* Map */}
-              <div ref={mapSectionRef} className="h-48 sm:h-64 md:h-80 rounded-xl overflow-hidden mb-6">
-                <OSMMap stations={filteredStations} centerTo={selected && typeof selected.location === 'object' ? { lat: selected.location.lat, lng: selected.location.lng } : undefined} />
-              </div>
-
-              {/* STATION GRID */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {paginatedStations.map((station) => (
-                  <div
-                    key={station._id}
-                    onClick={() => {
-                      const loc = station.location;
-                      if (typeof loc === "object" && loc !== null && "lat" in loc) {
-                        setSelected(station);
-                        mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }
-                    }}
-                    className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:bg-white/20 hover:scale-[1.03] transition-all duration-300 shadow-xl cursor-pointer"
-                  >
-                    <div className="flex justify-between items-start mb-4">
+              {/* Smart Insights Panel */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+              >
+                {[
+                  { 
+                    label: "Apex Recommendation", 
+                    sub: "Peak efficiency node nearby",
+                    icon: Award, 
+                    color: "indigo",
+                    station: filteredStations.sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0)).find(s => s.petrol || s.diesel)
+                  },
+                  { 
+                    label: "Velocity Node", 
+                    sub: "Minimal queue detected",
+                    icon: Zap, 
+                    color: "emerald",
+                    station: filteredStations.filter(s => s.petrol || s.diesel).sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0))[0]
+                  }
+                ].map((insight, idx) => (
+                  <div key={idx} className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-white/20 transition-all border-dashed">
+                    <div className={`absolute -right-10 -top-10 w-40 h-40 bg-${insight.color}-500/10 blur-[60px] rounded-full group-hover:bg-${insight.color}-500/20 transition-all`} />
+                    <div className="relative z-10 flex items-center gap-6">
+                      <div className={`w-16 h-16 rounded-2xl bg-${insight.color}-500/10 border border-${insight.color}-500/20 flex items-center justify-center shadow-lg shadow-${insight.color}-900/20`}>
+                        <insight.icon className={`w-8 h-8 text-${insight.color}-400`} />
+                      </div>
                       <div>
-                        <h3 className="font-bold text-xl text-white">
-                          {station.name}
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">{insight.label}</p>
+                        <h3 className="text-xl font-black text-white group-hover:text-white transition-colors uppercase tracking-tight">
+                          {insight.station?.name || "Locating Optimized Hub..."}
                         </h3>
-                        <p className="text-blue-200 text-sm mt-1 flex items-center gap-2">
-                          <span>
-                            📍 {typeof station.location === "string" ? station.location : station.location?.text}
-                          </span>
-                          {((typeof station.location === "object" && station.location !== null && "lat" in station.location) || (typeof station.latitude === 'number' && typeof station.longitude === 'number')) && (
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${typeof station.latitude === 'number' ? station.latitude : (station.location as { lat: number }).lat},${typeof station.longitude === 'number' ? station.longitude : (station.location as { lng: number }).lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-cyan-300 hover:text-cyan-200 underline underline-offset-4"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              View on Map
-                            </a>
-                          )}
-                        </p>
+                        <p className="text-xs font-bold text-slate-400/60 uppercase tracking-widest mt-1">{insight.sub}</p>
                       </div>
-                      <span
-                        className={`text-xs px-3 py-1 rounded-full font-bold ${
-                          station.petrol || station.diesel
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-red-500/20 text-red-300"
-                        }`}
-                      >
-                        {station.petrol || station.diesel ? "OPEN" : "CLOSED"}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3 mb-6">
-                      <div className="flex justify-between text-sm">
-                        <span>⛽ Petrol</span>
-                        <span className={station.petrol ? "text-green-400" : "text-red-400"}>
-                          {station.petrol ? "Available" : "Out of Stock"}
-                          <span className="ml-2 text-xs opacity-70">({station.petrolQty ?? 0} L)</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>🛢 Diesel</span>
-                        <span className={station.diesel ? "text-green-400" : "text-red-400"}>
-                          {station.diesel ? "Available" : "Out of Stock"}
-                          <span className="ml-2 text-xs opacity-70">({station.dieselQty ?? 0} L)</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-yellow-200 mt-1">
-                        <span>⭐ Rating</span>
-                        <span className="flex items-center gap-1">
-                          <span className="font-semibold">
-                            {typeof station.avgRating === "number"
-                              ? station.avgRating.toFixed(1)
-                              : "—"}
-                          </span>
-                          <span className="opacity-80">
-                            ({station.ratingCount ?? 0})
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs text-blue-200/80 mt-1">
-                        <span>🚗 Queue</span>
-                        <span className="text-blue-100 font-semibold">
-                          {typeof station.queueLength === "number" ? station.queueLength : 0}{" "}
-                          vehicles
-                          {typeof station.estimatedWaitMinutes === "number" && (
-                            <span className="ml-2 opacity-80">
-                              (~{station.estimatedWaitMinutes} min)
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        disabled={!station.petrol}
-                        onClick={() => startCheckout(station, "petrol")}
-                        className={`flex-1 rounded-xl py-3 font-semibold transition ${
-                          station.petrol
-                            ? "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
-                            : "bg-gray-700 text-gray-400 cursor-not-allowed"
-                        }`}
-                      >
-                        Request Petrol
-                      </button>
-                      <button
-                        disabled={!station.diesel}
-                        onClick={() => startCheckout(station, "diesel")}
-                        className={`flex-1 rounded-xl py-3 font-semibold transition ${
-                          station.diesel
-                            ? "bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-lg"
-                            : "bg-gray-700 text-gray-400 cursor-not-allowed"
-                        }`}
-                      >
-                        Request Diesel
-                      </button>
-                    </div>
-
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRatingStationId(station._id);
-                          setRatingValue(5);
-                        }}
-                        className="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-200 hover:bg-yellow-500/30 transition"
-                      >
-                        Rate this station
-                      </button>
                     </div>
                   </div>
                 ))}
+              </motion.div>
+
+              {/* Map */}
+              <div
+                ref={mapSectionRef}
+                className="h-64 md:h-96 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl transition-all hover:border-indigo-500/20 mb-12 bg-slate-900 group relative"
+              >
+                <div className="absolute top-6 right-6 z-[10] flex gap-2">
+                   <div className="px-5 py-2.5 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,1)]" />
+                      Tactical Grid Active
+                   </div>
+                </div>
+                <OSMMap
+                  stations={filteredStations}
+                  centerTo={selected && typeof selected.location === 'object' ? { lat: selected.location.lat, lng: selected.location.lng } : undefined}
+                />
+              </div>
+
+              {/* Station Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <AnimatePresence>
+                  {paginatedStations.map((station, idx) => (
+                    <motion.div
+                      key={station._id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05, duration: 0.5, ease: "easeOut" }}
+                      whileHover={{ scale: 1.02, translateY: -10 }}
+                      onClick={() => {
+                        const loc = station.location;
+                        if (typeof loc === "object" && loc !== null && "lat" in (loc as { lat: number })) {
+                          setSelected(station);
+                          mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
+                      }}
+                      className="group relative overflow-hidden bg-gradient-to-br from-white/10 via-slate-900/40 to-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 hover:border-indigo-500/40 transition-all duration-500 cursor-pointer shadow-[0_15px_35px_rgba(0,0,0,0.3)]"
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[60px] rounded-full group-hover:bg-indigo-500/20 transition-all" />
+                      
+                      <div className="p-8">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-3xl text-white group-hover:text-indigo-300 transition-colors truncate tracking-tighter">
+                              {station.name}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-2">
+                              <MapPin className="w-3.5 h-3.5 text-indigo-400/60" />
+                              <p className="text-sm text-slate-400 font-medium truncate uppercase tracking-tighter">
+                                {typeof station.location === "string" ? station.location : station.location?.text}
+                              </p>
+                            </div>
+                          </div>
+                          <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                            station.petrol || station.diesel
+                            ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                            : "bg-red-500/20 border-red-500/30 text-red-400"
+                            }`}>
+                            {station.petrol || station.diesel ? "ACTIVE" : "CLOSED"}
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                          <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/5 group-hover:bg-indigo-500/5 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
+                                <Fuel className="w-5 h-5 text-indigo-400" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-indigo-300/40 uppercase tracking-widest">Benzene</p>
+                                <span className={`text-lg font-black ${station.petrol ? "text-white" : "text-red-500/60"}`}>
+                                  {station.petrol ? `${station.petrolQty ?? 0}L` : "EMPTY"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Benzene Flow</p>
+                                <p className="text-3xl font-black text-indigo-300 tracking-tighter shadow-indigo-900/20">{station.petrolPrice ?? 80}<span className="text-xs ml-1 opacity-40">ETB</span></p>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/5 group-hover:bg-amber-500/5 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                                <Gauge className="w-5 h-5 text-amber-400" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-amber-300/40 uppercase tracking-widest">Nafta</p>
+                                <span className={`text-lg font-black ${station.diesel ? "text-white" : "text-red-500/60"}`}>
+                                  {station.diesel ? `${station.dieselQty ?? 0}L` : "EMPTY"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Nafta Unit</p>
+                                <p className="text-3xl font-black text-amber-300 tracking-tighter shadow-amber-900/20">{station.dieselPrice ?? 75}<span className="text-xs ml-1 opacity-40">ETB</span></p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-8">
+                           <div className={`flex flex-col gap-2 p-5 rounded-[2rem] bg-white/5 border border-white/5 relative overflow-hidden group/item transition-all hover:bg-white/10 ${
+                             !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "tactical-glow-emerald border-emerald-500/20" 
+                             : station.estimatedWaitMinutes < 25 ? "tactical-glow-amber border-amber-500/20" 
+                             : "tactical-glow-red border-red-500/20"
+                           }`}>
+                             <div className={`absolute top-0 left-0 w-1 h-full ${
+                               !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "bg-emerald-500" 
+                               : station.estimatedWaitMinutes < 25 ? "bg-amber-500" 
+                               : "bg-red-500"
+                             }`} />
+                             <div className="flex items-center gap-2 opacity-50">
+                               <Clock className="w-3.5 h-3.5" />
+                               <span className="text-[10px] font-black uppercase tracking-[0.2em]">Efficiency</span>
+                             </div>
+                             <div>
+                               <p className="text-xl font-black text-white leading-none">
+                                 {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m` : "No Queue"}
+                               </p>
+                               <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 block ${
+                                 !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "text-emerald-400" 
+                                 : station.estimatedWaitMinutes < 25 ? "text-amber-400" 
+                                 : "text-red-400"
+                               }`}>
+                                 {(!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10) ? "Optimal Flow" : station.estimatedWaitMinutes < 25 ? "Moderate Volume" : "High Pressure"}
+                               </span>
+                             </div>
+                           </div>
+                           <div className="flex flex-col gap-2 p-5 rounded-[2rem] bg-white/5 border border-white/5 relative overflow-hidden">
+                             <div className="flex items-center gap-2 opacity-40">
+                               <Star className="w-3.5 h-3.5" />
+                               <span className="text-[10px] font-black uppercase tracking-widest">Integrity</span>
+                             </div>
+                             <div>
+                               <p className="text-sm font-black text-white">{station.avgRating?.toFixed(1) ?? "New Node"}</p>
+                               <div className="flex gap-0.5 mt-1">
+                                 {[1, 2, 3, 4, 5].map(star => (
+                                   <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (station.avgRating ?? 0) ? "bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]" : "bg-white/10"}`} />
+                                 ))}
+                               </div>
+                             </div>
+                           </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                          <button
+                            disabled={!station.petrol}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCheckout(station, "petrol");
+                            }}
+                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${station.petrol
+                              ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-xl shadow-indigo-900/40 hover:scale-105 active:scale-95"
+                              : "bg-white/5 text-white/20 border border-white/10 cursor-not-allowed"
+                              }`}
+                          >
+                            Fill Petrol
+                          </button>
+                          <button
+                            disabled={!station.diesel}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCheckout(station, "diesel");
+                            }}
+                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${station.diesel
+                              ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-xl shadow-amber-900/40 hover:scale-105 active:scale-95"
+                              : "bg-white/5 text-white/20 border border-white/10 cursor-not-allowed"
+                              }`}
+                          >
+                            Fill Diesel
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center gap-4 mt-6">
+                <div className="flex justify-center gap-3 mt-8">
                   <button
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
-                    className="px-4 py-2 bg-blue-500 rounded disabled:bg-gray-500"
+                    className="px-5 py-2.5 rounded-xl bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
                   >
                     Previous
                   </button>
-                  <span className="px-2 py-2">{page} / {totalPages}</span>
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      if (pageNum > 0 && pageNum <= totalPages) {
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setPage(pageNum)}
+                            className={`w-10 h-10 rounded-xl font-semibold transition-all ${page === pageNum
+                              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                              : "bg-white/10 text-slate-400 hover:bg-white/20"
+                              }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
                   <button
                     disabled={page === totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="px-4 py-2 bg-blue-500 rounded disabled:bg-gray-500"
+                    className="px-5 py-2.5 rounded-xl bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
                   >
                     Next
                   </button>
@@ -813,558 +1179,495 @@ const handlePayment = async () => {
             </>
           )}
         </section>
+                </motion.div>
+            )}
 
-        {/* REQUEST HISTORY */}
-        <section className="space-y-6">
-          <h2 className="text-3xl font-bold">Request History</h2>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 overflow-x-auto shadow-xl">
-            <table className="min-w-[600px] w-full">
-              <thead className="bg-white/10 text-blue-200 text-sm">
-                <tr>
-                  <th className="px-6 py-4 text-left">Station</th>
-                  <th className="px-6 py-4 text-left">Fuel</th>
-                  <th className="px-6 py-4 text-left">Qty</th>
-                  <th className="px-6 py-4 text-left">Total</th>
-                  <th className="px-6 py-4 text-left">Status</th>
-                  <th className="px-6 py-4 text-left">Date</th>
-                  <th className="px-6 py-4 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((r) => (
-                  <tr key={r._id} className="border-t border-white/10 hover:bg-white/10 transition">
-                    <td className="px-6 py-4 font-semibold">{r.stationId?.name ?? "Unknown"}</td>
-                    <td className="px-6 py-4 capitalize">{r.fuelType}</td>
-                    <td className="px-6 py-4 text-blue-200/80">{r.amount ? `${r.amount} L` : "—"}</td>
-                    <td className="px-6 py-4 font-semibold">{r.totalPrice ? `${r.totalPrice.toLocaleString()} ETB` : "—"}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          r.status === "PENDING"
-                            ? "bg-orange-500/20 text-orange-300"
-                            : r.status === "APPROVED"
-                            ? "bg-green-500/20 text-green-300"
-                            : r.status === "CANCELED"
-                            ? "bg-gray-500/20 text-gray-300"
-                            : "bg-red-500/20 text-red-300"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-blue-200 text-sm">
-                      {formatDateTime(r.createdAt)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {r.status === "PENDING" ? (
-                          <button
-                            onClick={() => openCancelConfirm(r._id)}
-                            disabled={mutatingId === r._id}
-                            className="px-3 py-2 rounded bg-red-600 text-sm disabled:opacity-50"
+            {view === "logs" && (
+              <motion.div
+                key="logs"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-8"
+              >
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter">Mission <span className="text-indigo-400">Archive</span></h2>
+                    <p className="text-slate-500 font-bold mt-1 uppercase tracking-widest text-xs">Complete Fuel Request Synchronization Logs</p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                       <Activity className="w-5 h-5 text-indigo-400" />
+                       <span className="text-sm font-black text-white">{requests.length} Total Logs</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-white/5 border-b border-white/10">
+                        <tr className="text-left text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">
+                          <th className="px-8 py-6">Station Hub</th>
+                          <th className="px-8 py-6">Resource</th>
+                          <th className="px-8 py-6">Quantity</th>
+                          <th className="px-8 py-6">Fiscal Total</th>
+                          <th className="px-8 py-6 text-center">Status</th>
+                          <th className="px-8 py-6">Recorded At</th>
+                          <th className="px-8 py-6 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {requests.map((r, idx) => (
+                          <motion.tr
+                            key={r._id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="group hover:bg-white/5 transition-all duration-300"
                           >
-                            {mutatingId === r._id ? "Canceling..." : "Cancel"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openRemoveConfirm(r._id)}
-                            disabled={mutatingId === r._id}
-                            className="px-3 py-2 rounded bg-gray-700 text-sm hover:bg-gray-600 transition disabled:opacity-50"
-                          >
-                            {mutatingId === r._id ? "Removing..." : "Remove"}
-                          </button>
+                            <td className="px-8 py-6">
+                               <div className="flex flex-col">
+                                  <span className="font-black text-white group-hover:text-indigo-400 transition-colors uppercase tracking-tight italic">{r.stationId?.name ?? "Unknown Node"}</span>
+                                  <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1">{r.stationId?.location ?? "—"}</span>
+                               </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${r.fuelType === "petrol"
+                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                }`}>
+                                {r.fuelType}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-slate-300 font-bold">{r.amount ? `${r.amount} L` : "—"}</td>
+                            <td className="px-8 py-6 font-black text-white">{r.totalPrice ? `${r.totalPrice.toLocaleString()} ETB` : "—"}</td>
+                            <td className="px-8 py-6">
+                               <div className="flex justify-center">
+                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-lg ${r.status === "PENDING" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" :
+                                    r.status === "APPROVED" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                                      r.status === "CANCELED" ? "bg-slate-500/20 text-slate-500 border border-white/5" :
+                                        "bg-red-500/20 text-red-400 border border-red-500/30"
+                                    }`}>
+                                    {r.status}
+                                  </span>
+                               </div>
+                            </td>
+                            <td className="px-8 py-6 text-[10px] text-slate-500 font-bold uppercase tracking-widest">{formatDateTime(r.createdAt)}</td>
+                            <td className="px-8 py-6 text-right">
+                              {r.status === "PENDING" ? (
+                                <button
+                                  onClick={() => openCancelConfirm(r._id)}
+                                  disabled={mutatingId === r._id}
+                                  className="px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all border border-red-500/20"
+                                >
+                                  Terminate
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openRemoveConfirm(r._id)}
+                                  disabled={mutatingId === r._id}
+                                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5"
+                                >
+                                  Purge
+                                </button>
+                              )}
+                            </td>
+                          </motion.tr>
+                        ))}
+                        {requests.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="text-center py-20 text-slate-600 font-bold uppercase tracking-[0.4em] text-xs">
+                              {loadingRequests ? "Synchronizing Records..." : "No operational logs found."}
+                            </td>
+                          </tr>
                         )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {view === "vehicles" && (
+              <motion.div
+                key="vehicles"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex flex-col items-center justify-center py-40 space-y-8 text-center"
+              >
+                <div className="w-32 h-32 rounded-[3rem] bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl relative group">
+                  <div className="absolute inset-0 bg-blue-500/10 blur-[40px] rounded-full group-hover:scale-125 transition-transform" />
+                  <Car className="w-16 h-16 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Tactical Fleet Management</h2>
+                  <p className="text-slate-500 font-bold mt-2 uppercase tracking-widest text-xs">Vehicle Node Integration Portal Coming Soon</p>
+                </div>
+                <button className="px-8 py-4 bg-white/5 border border-white/5 rounded-2xl text-slate-400 font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all cursor-not-allowed">
+                   Initialize Module
+                </button>
+              </motion.div>
+            )}
+
+            {view === "settings" && (
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="max-w-3xl mx-auto space-y-12"
+              >
+                 <div className="p-10 rounded-[3rem] bg-white/5 border border-white/10 space-y-10 relative overflow-hidden group">
+                   <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full" />
+                   <div className="flex items-center gap-8 relative z-10">
+                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl">
+                         U
                       </div>
-                    </td>
-                  </tr>
-                ))}
-                {requests.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12 text-blue-200">
-                      {loadingRequests ? "Loading requests..." : "No fuel requests yet."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                      <div>
+                         <h3 className="text-3xl font-black text-white uppercase italic">Grid Profile</h3>
+                         <p className="text-slate-500 font-bold mt-1 uppercase tracking-widest text-xs">Authenticated Command Personnel</p>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 pt-6">
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Protocol notifications</p>
+                         <p className="text-sm font-bold text-white uppercase">High Priority Only</p>
+                      </div>
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Theme Mode</p>
+                         <p className="text-sm font-bold text-white uppercase">Cinematic Dark (Locked)</p>
+                      </div>
+                   </div>
+                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* CHECKOUT MODAL */}
-      {checkoutStation && checkoutFuelType && (() => {
-        const pricePerLitre = checkoutFuelType === "petrol"
-          ? (checkoutStation.petrolPrice ?? 80)
-          : (checkoutStation.dieselPrice ?? 75);
-        const maxAvailable = checkoutFuelType === "petrol"
-          ? (checkoutStation.petrolQty ?? 0)
-          : (checkoutStation.dieselQty ?? 0);
-        const total = checkoutAmount * pricePerLitre;
-        const fuelEmoji = checkoutFuelType === "petrol" ? "⛽" : "🛢";
-        const locationText = typeof checkoutStation.location === "string"
-          ? checkoutStation.location
-          : checkoutStation.location?.text ?? "";
+      {/* Checkout Modal */}
+      <AnimatePresence>
+        {checkoutStation && checkoutFuelType && (() => {
+          const pricePerLitre = checkoutFuelType === "petrol"
+            ? (checkoutStation.petrolPrice ?? 80)
+            : (checkoutStation.dieselPrice ?? 75);
+          const maxAvailable = checkoutFuelType === "petrol"
+            ? (checkoutStation.petrolQty ?? 0)
+            : (checkoutStation.dieselQty ?? 0);
+          const total = checkoutAmount * pricePerLitre;
+          const fuelEmoji = checkoutFuelType === "petrol" ? "⛽" : "🛢";
+          const locationText = typeof checkoutStation.location === "string"
+            ? checkoutStation.location
+            : checkoutStation.location?.text ?? "";
 
-        return (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isProcessingPayment && setCheckoutStation(null)} />
-            <div className="relative bg-slate-900 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[92vh] space-y-5">
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6"
+            >
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isProcessingPayment && setCheckoutStation(null)} />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[92vh] space-y-5"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-indigo-300/60 font-bold mb-1">Fuel Order</p>
+                    <h3 className="text-2xl font-bold text-white">{checkoutStation.name}</h3>
+                    {locationText && (
+                      <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> {locationText}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setCheckoutStation(null)}
+                    className="p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
 
-              {/* Header */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-blue-300/60 font-bold mb-1">Fuel Order</p>
-                  <h3 className="text-2xl font-bold">{checkoutStation.name}</h3>
-                  {locationText && (
-                    <p className="text-sm text-blue-200/60 mt-0.5 flex items-center gap-1">
-                      <span>📍</span> {locationText}
+                {/* Station Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white/5 rounded-xl p-3 text-center">
+                    <Star className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
+                    <p className="text-xs text-slate-400">Rating</p>
+                    <p className="font-bold text-white">
+                      {checkoutStation.avgRating?.toFixed(1) ?? "—"}
                     </p>
-                  )}
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-3 text-center">
+                    <Clock className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+                    <p className="text-xs text-slate-400">Queue</p>
+                    <p className="font-bold text-white">{checkoutStation.queueLength ?? 0}</p>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-3 text-center">
+                    <Gauge className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
+                    <p className="text-xs text-slate-400">Est. Wait</p>
+                    <p className="font-bold text-white">
+                      {checkoutStation.estimatedWaitMinutes ? `~${checkoutStation.estimatedWaitMinutes}m` : "—"}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setCheckoutStation(null)} className="p-2 hover:bg-white/10 rounded-full transition text-white/60 hover:text-white">✕</button>
-              </div>
 
-              {/* Station Snapshot */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white/5 rounded-xl p-3 border border-white/5 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-blue-200/50 mb-1">Rating</p>
-                  <p className="font-bold text-yellow-300 text-sm">
-                    {typeof checkoutStation.avgRating === "number" ? checkoutStation.avgRating.toFixed(1) : "—"}
-                    <span className="text-yellow-300/60 text-[10px] ml-1">★</span>
-                  </p>
-                  <p className="text-[10px] text-white/40">({checkoutStation.ratingCount ?? 0} reviews)</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-3 border border-white/5 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-blue-200/50 mb-1">Queue</p>
-                  <p className="font-bold text-blue-200 text-sm">
-                    {typeof checkoutStation.queueLength === "number" ? checkoutStation.queueLength : 0}
-                  </p>
-                  <p className="text-[10px] text-white/40">vehicles ahead</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-3 border border-white/5 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-blue-200/50 mb-1">Est. Wait</p>
-                  <p className="font-bold text-emerald-300 text-sm">
-                    {typeof checkoutStation.estimatedWaitMinutes === "number"
-                      ? `~${checkoutStation.estimatedWaitMinutes} min`
-                      : "—"}
-                  </p>
-                  <p className="text-[10px] text-white/40">approx.</p>
-                </div>
-              </div>
-
-              {/* Fuel Type Banner */}
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
-                checkoutFuelType === "petrol"
+                {/* Fuel Type Banner */}
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${checkoutFuelType === "petrol"
                   ? "bg-blue-500/10 border-blue-400/20"
                   : "bg-amber-500/10 border-amber-400/20"
-              }`}>
-                <span className="text-2xl">{fuelEmoji}</span>
-                <div className="flex-1">
-                  <p className="font-bold capitalize">{checkoutFuelType}</p>
-                  <p className="text-xs text-white/50">{maxAvailable} L available at this station</p>
+                  }`}>
+                  <span className="text-2xl">{fuelEmoji}</span>
+                  <div className="flex-1">
+                    <p className="font-bold capitalize text-white">{checkoutFuelType}</p>
+                    <p className="text-xs text-slate-400">{maxAvailable} L available</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400">Price/L</p>
+                    <p className="font-bold text-white">{pricePerLitre.toLocaleString()} ETB</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-white/50">Price per litre</p>
-                  <p className="font-bold text-white">{pricePerLitre.toLocaleString()} ETB</p>
-                </div>
-              </div>
 
-              {/* Amount Input */}
-              <div className="space-y-2">
-                <label htmlFor="fuelAmount" className="text-sm font-semibold text-blue-200">
-                  How many litres do you need?
-                </label>
-                <input
-                  id="fuelAmount"
-                  name="fuelAmount"
-                  type="number"
-                  min="1"
-                  max={maxAvailable}
-                  value={checkoutAmount}
-                  onChange={(e) => {
-                    const raw = parseInt(e.target.value) || 0;
-                    const clamped = Math.min(Math.max(1, raw), maxAvailable || 1);
-                    setCheckoutAmount(clamped);
-                  }}
-                  placeholder="e.g. 20"
-                  className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition text-white font-bold text-lg"
-                />
-                <p className="text-xs text-blue-200/50">
-                  Maximum available: <span className="font-semibold text-white">{maxAvailable} L</span>
+                {/* Amount Input */}
+                <div>
+                  <label htmlFor="checkout-amount" className="text-sm font-semibold text-slate-300 block mb-2">
+                    Quantity (Litres)
+                  </label>
+                  <input
+                    id="checkout-amount"
+                    title="Quantity in Litres"
+                    type="number"
+                    min="1"
+                    max={maxAvailable}
+                    value={checkoutAmount}
+                    onChange={(e) => {
+                      const raw = parseInt(e.target.value) || 0;
+                      const clamped = Math.min(Math.max(1, raw), maxAvailable || 1);
+                      setCheckoutAmount(clamped);
+                    }}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    Max available: <span className="text-white font-semibold">{maxAvailable} L</span>
+                  </p>
+                </div>
+
+                {/* Total */}
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Total Amount</span>
+                    <span className="text-2xl font-black text-white">{total.toLocaleString()} ETB</span>
+                  </div>
+                </div>
+
+                {/* Payment Info */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400">
+                  <Shield className="w-3 h-3" />
+                  <span>Secure payment via Chapa · TeleBirr, CBEBirr & more</span>
+                </div>
+
+                <button
+                  disabled={isProcessingPayment || checkoutAmount <= 0}
+                  onClick={handlePayment}
+                  className="w-full py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      Pay {total.toLocaleString()} ETB with Chapa
+                    </>
+                  )}
+                </button>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Rating Modal */}
+      <AnimatePresence>
+        {ratingStationId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !submittingRating && setRatingStationId(null)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4"
+            >
+              <div className="text-center">
+                <Star className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
+                <h3 className="text-xl font-bold text-white">Rate This Station</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Share your experience to help other drivers
                 </p>
               </div>
 
-              {/* Price Breakdown */}
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between text-sm text-blue-200/70">
-                  <span>{checkoutAmount} L × {pricePerLitre.toLocaleString()} ETB</span>
-                  <span>{total.toLocaleString()} ETB</span>
-                </div>
-                <div className="border-t border-white/10 pt-2 flex justify-between items-center">
-                  <span className="font-semibold text-blue-200">Total Amount</span>
-                  <span className="text-xl font-black text-white">{total.toLocaleString()} ETB</span>
-                </div>
-              </div>
-
-              {/* What happens next */}
-              <div className="bg-white/5 border border-white/5 rounded-xl p-4 space-y-3">
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-300/60">What happens next</p>
-                <ol className="space-y-2">
-                  {[
-                    { step: "1", icon: "💳", text: "Complete your payment securely via Chapa" },
-                    { step: "2", icon: "🏁", text: "Drive to the station — your ticket is auto-submitted" },
-                    { step: "3", icon: "📱", text: "Show your ticket reference to the attendant" },
-                    { step: "4", icon: "⛽", text: "Receive your fuel and drive on!" },
-                  ].map((s) => (
-                    <li key={s.step} className="flex items-center gap-3 text-sm text-blue-100/70">
-                      <span className="text-lg shrink-0">{s.icon}</span>
-                      <span>{s.text}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              {/* Payment methods */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-blue-200/50">
-                <span>🔒</span>
-                <span>Secure payment via Chapa · TeleBirr, CBEBirr, Bank Transfer &amp; more</span>
-              </div>
-
-              <button
-                disabled={isProcessingPayment || checkoutAmount <= 0}
-                onClick={handlePayment}
-                className="w-full bg-gradient-to-r from-[#4CAF50] to-[#2e7d32] hover:from-[#43a047] hover:to-[#1b5e20] py-4 rounded-2xl font-bold text-lg shadow-xl transition disabled:opacity-50 flex items-center justify-center gap-3"
-              >
-                {isProcessingPayment ? (
-                  "Redirecting to payment..."
-                ) : (
-                  <>
-                    <span>Pay {total.toLocaleString()} ETB with</span>
-                    <span className="font-black tracking-wider">Chapa</span>
-                    <span>→</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* RATING SHEET */}
-      {ratingStationId && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/70"
-            onClick={() => !submittingRating && setRatingStationId(null)}
-          />
-          <div className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
-            <h3 className="text-xl font-bold">Rate this station</h3>
-            <p className="text-xs text-blue-200/70">
-              Ratings are accepted from drivers who have completed a fuel transaction at this station.
-            </p>
-            <div className="flex items-center gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setRatingValue(n)}
-                  className={`text-2xl ${
-                    n <= ratingValue ? "text-yellow-300" : "text-slate-600"
-                  }`}
-                >
-                  ★
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                disabled={submittingRating}
-                onClick={() => setRatingStationId(null)}
-                className="px-4 py-2 rounded bg-gray-700 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={submittingRating}
-                onClick={async () => {
-                  if (!ratingStationId) return;
-                  setSubmittingRating(true);
-                  try {
-                    const res = await fetch(`/api/stations/${ratingStationId}/rate`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ score: ratingValue }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok || data.error) {
-                      showToast(data.error || "Failed to submit rating", "error");
-                    } else {
-                      showToast("Rating submitted. Thank you!", "success");
-                      setStations((prev) =>
-                        prev.map((s) =>
-                          s._id === ratingStationId
-                            ? {
-                                ...s,
-                                avgRating: data.avgRating,
-                                ratingCount: data.ratingCount,
-                              }
-                            : s
-                        )
-                      );
-                      setRatingStationId(null);
-                    }
-                  } catch {
-                    showToast("Failed to submit rating", "error");
-                  } finally {
-                    setSubmittingRating(false);
-                  }
-                }}
-                className="px-4 py-2 rounded bg-yellow-500 text-slate-900 font-semibold text-sm disabled:opacity-60"
-              >
-                {submittingRating ? "Submitting..." : "Submit rating"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NOTIFICATIONS PANEL */}
-      {showNotifications && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/70"
-            onClick={() => setShowNotifications(false)}
-          />
-          <div className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold">Fuel Alerts</h3>
-              <button
-                onClick={() => setShowNotifications(false)}
-                className="p-1 rounded-full hover:bg-white/10"
-              >
-                ✕
-              </button>
-            </div>
-            {notifications.length === 0 ? (
-              <p className="text-sm text-blue-200/70">
-                No alerts yet. Turn on alerts for petrol or diesel to be notified when fuel becomes
-                available.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {notifications.map((n) => (
-                  <li
-                    key={n._id}
-                    className={`p-3 rounded-xl border text-sm ${
-                      n.read
-                        ? "border-white/10 bg-white/5 text-blue-100/80"
-                        : "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
-                    }`}
+              <div className="flex justify-center gap-2 py-4">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setRatingValue(n)}
+                    className={`text-3xl transition-all ${n <= ratingValue ? "text-yellow-400 scale-110" : "text-slate-600"
+                      }`}
                   >
-                    <p className="font-semibold">{n.title}</p>
-                    <p className="text-xs mt-1">{n.message}</p>
-                  </li>
+                    ★
+                  </button>
                 ))}
-              </ul>
-            )}
-            {notifications.length > 0 && (
-              <button
-                onClick={async () => {
-                  try {
-                    await fetch("/api/alerts/notifications", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ markAllRead: true }),
-                    });
-                    setNotifications((prev) =>
-                      prev.map((n) => ({ ...n, read: true }))
-                    );
-                  } catch {
-                    showToast("Failed to mark alerts as read", "error");
-                  }
-                }}
-                className="w-full mt-2 py-2 rounded-xl bg-white/10 text-xs font-semibold hover:bg-white/20"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TICKET CONFIRMATION MODAL */}
-      {ticketData && (() => {
-        const fuelEmoji = ticketData.fuelType === "petrol" ? "⛽" : "🛢";
-        const mapUrl = ticketData.stationLocation
-          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticketData.stationLocation)}`
-          : null;
-        const now = new Date();
-        const ticketRef = `FS-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
-
-        return (
-          <div className="fixed inset-0 z-[1001] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/90 backdrop-blur-md" />
-            <div className="relative bg-slate-900 border border-white/10 rounded-3xl max-w-md w-full shadow-2xl overflow-y-auto max-h-[92vh]">
-
-              {/* Green success header */}
-              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-t-3xl p-6 text-center space-y-2">
-                <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-3xl mx-auto">✓</div>
-                <h3 className="text-2xl font-black">Payment Confirmed!</h3>
-                <p className="text-emerald-100/80 text-sm">Your fuel request has been successfully submitted.</p>
-                <div className="inline-block bg-black/20 rounded-xl px-4 py-2 mt-1">
-                  <p className="text-[11px] text-emerald-200/60 uppercase tracking-widest">Ticket Reference</p>
-                  <p className="font-black text-white tracking-wider text-lg">{ticketRef}</p>
-                </div>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="flex gap-3">
+                <button
+                  disabled={submittingRating}
+                  onClick={() => setRatingStationId(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-700 text-slate-300 font-medium hover:bg-slate-600 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={submittingRating}
+                  onClick={async () => {
+                    if (!ratingStationId) return;
+                    setSubmittingRating(true);
+                    try {
+                      const res = await fetch(`/api/stations/${ratingStationId}/rate`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ score: ratingValue }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok || data.error) {
+                        showToast(data.error || "Failed to submit rating", "error");
+                      } else {
+                        showToast("Rating submitted! Thank you.", "success");
+                        setStations((prev) =>
+                          prev.map((s) =>
+                            s._id === ratingStationId
+                              ? { ...s, avgRating: data.avgRating, ratingCount: data.ratingCount }
+                              : s
+                          )
+                        );
+                        setRatingStationId(null);
+                      }
+                    } catch {
+                      showToast("Failed to submit rating", "error");
+                    } finally {
+                      setSubmittingRating(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold hover:from-yellow-400 hover:to-orange-400 transition"
+                >
+                  {submittingRating ? "Submitting..." : "Submit"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                {/* Station info */}
-                <div className="flex items-start gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-2xl mt-0.5">🏪</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-white">{ticketData.stationName}</p>
-                    {ticketData.stationLocation && (
-                      <p className="text-xs text-blue-200/60 mt-0.5 truncate">📍 {ticketData.stationLocation}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2">
-                      {typeof ticketData.stationRating === "number" && (
-                        <span className="text-xs text-yellow-300">
-                          ★ {ticketData.stationRating.toFixed(1)}
-                          <span className="text-white/40 ml-1">({ticketData.stationRatingCount ?? 0} reviews)</span>
-                        </span>
+      {/* Ticket Confirmation Modal */}
+      <AnimatePresence>
+        {ticketData && (() => {
+          const fuelEmoji = ticketData.fuelType === "petrol" ? "⛽" : "🛢";
+          const mapUrl = ticketData.stationLocation
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticketData.stationLocation)}`
+            : null;
+          const ticketRef = `FS-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1001] flex items-center justify-center p-4"
+            >
+              <div className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden"
+              >
+                {/* Success Header */}
+                <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-6 text-center space-y-2">
+                  <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-3xl mx-auto animate-bounce">
+                    ✓
+                  </div>
+                  <h3 className="text-2xl font-black text-white">Payment Confirmed!</h3>
+                  <p className="text-emerald-100/80 text-sm">Your fuel request is confirmed</p>
+                  <div className="inline-block bg-black/20 rounded-xl px-4 py-2 mt-2">
+                    <p className="text-[10px] text-emerald-200/60 uppercase tracking-wider">Ticket Reference</p>
+                    <p className="font-black text-white tracking-wider text-lg">{ticketRef}</p>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Station Info */}
+                  <div className="flex gap-3 p-4 bg-white/5 rounded-xl">
+                    <MapPin className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-white">{ticketData.stationName}</p>
+                      {ticketData.stationLocation && (
+                        <p className="text-xs text-slate-400 mt-0.5">{ticketData.stationLocation}</p>
                       )}
                       {mapUrl && (
-                        <a href={mapUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-cyan-300 underline underline-offset-2 hover:text-cyan-200">
-                          Get Directions →
+                        <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-xs text-cyan-300 hover:text-cyan-200">
+                          <Navigation className="w-3 h-3" />
+                          Get Directions
                         </a>
                       )}
                     </div>
                   </div>
-                </div>
 
-                {/* Order summary */}
-                <div className="border border-dashed border-white/10 rounded-2xl p-4 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-blue-300/50">Order Summary</p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{fuelEmoji}</span>
-                    <div>
-                      <p className="font-bold capitalize">{ticketData.fuelType}</p>
-                      <p className="text-xs text-blue-200/60">{ticketData.litres} Litres @ {ticketData.pricePerLitre.toLocaleString()} ETB / L</p>
+                  {/* Order Summary */}
+                  <div className="border border-dashed border-white/10 rounded-xl p-4">
+                    <p className="text-xs font-bold uppercase text-slate-400 mb-3">Order Summary</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{fuelEmoji}</span>
+                      <div>
+                        <p className="font-bold capitalize text-white">{ticketData.fuelType}</p>
+                        <p className="text-xs text-slate-400">
+                          {ticketData.litres} L × {ticketData.pricePerLitre.toLocaleString()} ETB
+                        </p>
+                      </div>
+                      <div className="ml-auto text-right">
+                        <p className="text-xs text-slate-400">Total</p>
+                        <p className="font-black text-white text-lg">{ticketData.total.toLocaleString()} ETB</p>
+                      </div>
                     </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-xs text-white/40">Total Paid</p>
-                      <p className="font-black text-white text-lg">{ticketData.total.toLocaleString()} ETB</p>
-                    </div>
                   </div>
-                </div>
 
-                {/* Queue & wait info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-3 text-center">
-                    <p className="text-[10px] uppercase tracking-wide text-blue-200/50 mb-1">Vehicles in Queue</p>
-                    <p className="text-2xl font-black text-blue-200">
-                      {typeof ticketData.queueLength === "number" ? ticketData.queueLength : "—"}
-                    </p>
-                    <p className="text-[10px] text-white/30">at time of order</p>
-                  </div>
-                  <div className="bg-emerald-500/10 border border-emerald-400/20 rounded-xl p-3 text-center">
-                    <p className="text-[10px] uppercase tracking-wide text-emerald-200/50 mb-1">Est. Wait Time</p>
-                    <p className="text-2xl font-black text-emerald-200">
-                      {typeof ticketData.estimatedWait === "number" ? `~${ticketData.estimatedWait}` : "—"}
-                    </p>
-                    <p className="text-[10px] text-white/30">minutes</p>
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div className="flex items-center gap-3 px-4 py-3 bg-orange-500/10 border border-orange-400/20 rounded-xl">
-                  <span className="text-xl">⏳</span>
-                  <div>
-                    <p className="font-semibold text-orange-200 text-sm">Awaiting Station Approval</p>
-                    <p className="text-xs text-orange-200/60">The station will review and approve your request shortly.</p>
-                  </div>
-                </div>
-
-                {/* Steps */}
-                <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-widest text-blue-300/50">Your Next Steps</p>
-                  {[
-                    { icon: "🚗", text: "Drive to the station" },
-                    { icon: "📱", text: `Quote your reference: ${ticketRef}` },
-                    { icon: "✅", text: "Wait for the attendant to approve your slot" },
-                    { icon: "⛽", text: "Receive your fuel and sign off" },
-                  ].map((s, i) => (
-                    <div key={i} className="flex items-center gap-3 text-sm text-blue-100/70">
-                      <span className="text-base shrink-0">{s.icon}</span>
-                      <span>{s.text}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setTicketData(null)}
-                  className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition shadow-lg"
-                >
-                  View My Tickets
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* WALLET TOP-UP MODAL */}
-      {showTopUp && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !topUpLoading && setShowTopUp(false)} />
-          <div className="relative bg-slate-900 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs uppercase tracking-widest text-emerald-300/60 font-bold mb-1">Wallet</p>
-                <h3 className="text-2xl font-bold">Top Up Balance</h3>
-              </div>
-              <button onClick={() => setShowTopUp(false)} className="p-2 hover:bg-white/10 rounded-full transition text-white/60 hover:text-white">✕</button>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
-              <p className="text-xs text-blue-200/60">Current Balance</p>
-              <p className="font-bold text-lg">{walletBalance?.toLocaleString() ?? 0} {walletCurrency}</p>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="topUpAmt" className="text-xs font-bold uppercase tracking-wide text-blue-200/60">Amount (ETB)</label>
-              <input
-                id="topUpAmt"
-                type="number"
-                min={10}
-                value={topUpAmount}
-                onChange={e => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 0))}
-                className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-emerald-500 transition"
-              />
-              <div className="flex gap-2 flex-wrap">
-                {[100, 250, 500, 1000].map(preset => (
-                  <button key={preset} onClick={() => setTopUpAmount(preset)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition ${topUpAmount === preset ? "bg-emerald-600 text-white" : "bg-white/10 text-blue-200/70 hover:bg-white/20"}`}>
-                    {preset} ETB
+                  <button
+                    onClick={() => setTicketData(null)}
+                    className="w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition-all shadow-lg"
+                  >
+                    View My Tickets
                   </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-blue-200/50">
-              <span>🔒</span>
-              <span>Secure payment via Chapa · TeleBirr, CBEBirr &amp; more</span>
-            </div>
-            <button
-              disabled={topUpLoading || topUpAmount <= 0}
-              onClick={handleTopUp}
-              className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-xl transition disabled:opacity-50"
-            >
-              {topUpLoading ? "Redirecting to Chapa…" : `Add ${topUpAmount.toLocaleString()} ETB`}
-            </button>
-          </div>
-        </div>
-      )}
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
+      {/* Other Modals */}
       <ConfirmModal
         open={confirmOpen}
         title="Cancel Fuel Request"
@@ -1380,6 +1683,231 @@ const handlePayment = async () => {
         onConfirm={() => removeRequest(removeId as string)}
         onCancel={() => { setRemoveConfirmOpen(false); setRemoveId(null); }}
       />
+
+      {/* Add Station Modal */}
+      <AnimatePresence>
+        {showAddStation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !stationRegisterLoading && setShowAddStation(false)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-indigo-300/60 font-bold mb-1">Station Owner</p>
+                  <h3 className="text-2xl font-bold text-white">Register Station</h3>
+                </div>
+                <button
+                  disabled={stationRegisterLoading}
+                  onClick={() => setShowAddStation(false)}
+                  className="p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleRegisterStation} className="space-y-4">
+                <div>
+                  <label htmlFor="station-name" className="text-xs font-bold uppercase tracking-wide text-blue-200/60 block mb-2">
+                    Station Name
+                  </label>
+                  <input
+                    id="station-name"
+                    title="Station Name"
+                    type="text"
+                    required
+                    placeholder="e.g. Central Fuel Depot"
+                    value={stationForm.name}
+                    onChange={(e) => setStationForm(p => ({ ...p, name: e.target.value }))}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="station-location" className="text-xs font-bold uppercase tracking-wide text-blue-200/60 block mb-2">
+                    Station Location
+                  </label>
+                  <input
+                    id="station-location"
+                    title="Station Location"
+                    type="text"
+                    required
+                    placeholder="Address or coordinates"
+                    value={stationForm.location}
+                    onChange={(e) => setStationForm(p => ({ ...p, location: e.target.value }))}
+                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={stationRegisterLoading}
+                  className="w-full py-4 mt-2 rounded-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-xl transition disabled:opacity-50 text-white"
+                >
+                  {stationRegisterLoading ? "Registering..." : "Add Station"}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Top Up Modal */}
+      <AnimatePresence>
+        {showTopUp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !topUpLoading && setShowTopUp(false)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-emerald-300/60 font-bold mb-1">Wallet</p>
+                  <h3 className="text-2xl font-bold text-white">Top Up Balance</h3>
+                </div>
+                <button onClick={() => setShowTopUp(false)} className="p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white">✕</button>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
+                <p className="text-xs text-slate-400">Current Balance</p>
+                <p className="font-bold text-lg text-white">{walletBalance?.toLocaleString() ?? 0} {walletCurrency}</p>
+              </div>
+
+              <div>
+                <label htmlFor="top-up-amount" className="text-xs font-bold uppercase tracking-wide text-blue-200/60 block mb-2">
+                  Amount (ETB)
+                </label>
+                <input
+                  id="top-up-amount"
+                  title="Top Up Amount"
+                  type="number"
+                  min={10}
+                  value={topUpAmount}
+                  onChange={e => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 0))}
+                  className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                />
+                <div className="flex gap-2 mt-3">
+                  {[100, 250, 500, 1000].map(preset => (
+                    <button
+                      key={preset}
+                      onClick={() => setTopUpAmount(preset)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${topUpAmount === preset
+                        ? "bg-emerald-600 text-white"
+                        : "bg-white/10 text-slate-400 hover:bg-white/20"
+                        }`}
+                    >
+                      {preset} ETB
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400">
+                <Shield className="w-3 h-3" />
+                <span>Secure payment via Chapa · TeleBirr, CBEBirr & more</span>
+              </div>
+
+              <button
+                disabled={topUpLoading || topUpAmount <= 0}
+                onClick={handleTopUp}
+                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-xl transition disabled:opacity-50 text-white"
+              >
+                {topUpLoading ? "Redirecting..." : `Add ${topUpAmount.toLocaleString()} ETB`}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Notifications Panel */}
+      <AnimatePresence>
+        {showNotifications && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowNotifications(false)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto space-y-4"
+            >
+              <div className="flex justify-between items-center sticky top-0 bg-slate-900/95 backdrop-blur-sm py-2">
+                <h3 className="text-xl font-bold text-white">Notifications</h3>
+                <button onClick={() => setShowNotifications(false)} className="p-1 rounded-full hover:bg-white/10">✕</button>
+              </div>
+
+              {notifications.length === 0 ? (
+                <div className="text-center py-12">
+                  <Bell className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                  <p className="text-sm text-slate-400">No alerts yet</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Turn on alerts to get notified when fuel becomes available
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {notifications.map((n) => (
+                    <li
+                      key={n._id}
+                      className={`p-4 rounded-xl border transition-all ${n.read
+                        ? "border-white/10 bg-white/5"
+                        : "border-indigo-400/30 bg-indigo-500/10"
+                        }`}
+                    >
+                      <p className="font-semibold text-white text-sm">{n.title}</p>
+                      <p className="text-xs text-slate-400 mt-1">{n.message}</p>
+                      {n.createdAt && (
+                        <p className="text-[10px] text-slate-500 mt-2">{formatDateTime(n.createdAt)}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {notifications.length > 0 && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await fetch("/api/alerts/notifications", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ markAllRead: true }),
+                      });
+                      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                      showToast("All notifications marked as read", "success");
+                    } catch {
+                      showToast("Failed to mark as read", "error");
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-white/10 text-xs font-semibold hover:bg-white/20 transition"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>

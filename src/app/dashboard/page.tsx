@@ -1,26 +1,58 @@
 "use client";
 
+import { useSearchParams, useRouter } from "next/navigation";
 import DriverDashboard from "@/components/DriverDashboard";
 import StationDashboard from "@/components/StationDashboard";
 import AdminDashboard from "../../components/AdminDashboard";
 import { useUser } from "@/contexts/UserContext";
+import { Suspense } from "react";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user, loading } = useUser();
+  const searchParams = useSearchParams();
   const role = user?.role ?? "";
+  const viewOverride = searchParams.get("view");
 
-  if (loading) return <p className="text-center text-white mt-16">Loading...</p>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Loading Dashboard...</div>;
   if (!role) return (
-    <p className="text-center text-red-400 mt-8">
-      Session expired. Please sign in again.
-    </p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <p className="px-6 py-4 rounded-xl bg-red-500/10 text-red-300 border border-red-500/20 font-bold">
+        Session expired. Please sign in again.
+      </p>
+    </div>
   );
 
+  // If role is STATION or ADMIN, and view=driver is requested, show DriverDashboard
+  const showDriverView = (role === "STATION" || role === "ADMIN") && viewOverride === "driver";
+
   return (
-    <div>
+    <div className="bg-slate-950 min-h-screen">
       {role === "DRIVER" && <DriverDashboard />}
-      {role === "STATION" && <StationDashboard />}
-      {role === "ADMIN" && <AdminDashboard />}
+      {role === "STATION" && !showDriverView && <StationDashboard />}
+      {role === "STATION" && showDriverView && (
+        <div className="relative">
+          {/* Back to Station Owner view floating button */}
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[1001]">
+            <a 
+              href="/dashboard"
+              className="px-6 py-3 rounded-full bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-500/50 border border-indigo-400/30 hover:bg-indigo-500 transition-all hover:scale-105"
+            >
+              ← Back to Station Management
+            </a>
+          </div>
+          <DriverDashboard />
+        </div>
+      )}
+      {role === "ADMIN" && !showDriverView && <AdminDashboard />}
+      {role === "ADMIN" && showDriverView && <DriverDashboard />}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Initializing...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

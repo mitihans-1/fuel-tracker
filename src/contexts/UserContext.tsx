@@ -12,6 +12,8 @@ import {
 interface UserData {
   id: string;
   role: string;
+  name?: string;
+  email?: string;
 }
 
 interface UserContextType {
@@ -37,7 +39,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
-        setUser({ id: data._id ?? data.id, role: data.role });
+        setUser({ 
+          id: data._id ?? data.id, 
+          role: data.role,
+          name: data.name,
+          email: data.email
+        });
       } else {
         setUser(null);
       }

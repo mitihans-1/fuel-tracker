@@ -19,12 +19,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const station = await Station.findOne({ ownerUserId: user.id });
+  const stations = await Station.find({ ownerUserId: user.id });
 
-  if (!station) {
+  if (!stations || stations.length === 0) {
     return NextResponse.json({ error: "Station not found" }, { status: 404 });
   }
 
-  return NextResponse.json(station);
+  return NextResponse.json(stations);
 }
 
