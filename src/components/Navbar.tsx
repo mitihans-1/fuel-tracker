@@ -3,7 +3,16 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { Bell } from "lucide-react";
+import { 
+  Bell, 
+  User as UserIcon, 
+  LogOut, 
+  Settings, 
+  ChevronDown, 
+  Shield, 
+  Activity 
+} from "lucide-react";
+import ThemeSwitcher from "./ThemeSwitcher";
 
 interface Notification {
   _id: string;
@@ -11,6 +20,12 @@ interface Notification {
   message: string;
   read: boolean;
   createdAt?: string;
+}
+
+interface NavigationLink {
+  name: string;
+  path: string;
+  icon?: React.ReactNode;
 }
 
 export default function Navbar() {
@@ -24,7 +39,9 @@ export default function Navbar() {
   // Notification bell state
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const fetchNotifications = useCallback(async () => {
@@ -35,17 +52,28 @@ export default function Navbar() {
     } catch { /* silent */ }
   }, [user]);
 
-  useEffect(() => {
+ useEffect(() => {
+  const load = async () => {
+    await fetchNotifications(); // ✅ safe now
+  };
+
+  load();
+
+  const interval = setInterval(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, 30000);
+
+  return () => clearInterval(interval);
+}, [fetchNotifications]);
 
   // Close bell dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
         setBellOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -70,21 +98,77 @@ export default function Navbar() {
     setMenuOpen(false);
   };
 
-  const coreLinks: { name: string; path: string }[] = [
+  const coreLinks: NavigationLink[] = [
     { name: "Home", path: "/" },
     { name: "Dashboard", path: "/dashboard" },
   ];
 
   if (isDashboard && userRole === "STATION") {
-    coreLinks.push({ name: "Inventory Management", path: "/dashboard/inventory" });
+    coreLinks.push({ name: "Products", path: "/dashboard/products" });
+    coreLinks.push({ name: "Register New Station", path: "/dashboard?action=register" });
   }
+  if (isDashboard && userRole === "ADMIN") {
+    coreLinks.push({ name: "Register New Station", path: "/dashboard?action=register" });
+  }
+  
   if (isDashboard) {
-    coreLinks.push({ name: "Settings", path: "/dashboard/settings" });
+    coreLinks.push({ 
+      name: "Notifications", 
+      path: "#", 
+      icon: (
+        <div className="relative" ref={bellRef}>
+          <button
+            onClick={(e) => { e.preventDefault(); setBellOpen(prev => !prev); }}
+            className="relative p-1.5 rounded-xl hover:bg-white/10 transition text-white/70 hover:text-white"
+            aria-label="Notifications"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+          
+          {bellOpen && (
+            <div className="absolute right-0 top-full mt-3 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                <p className="text-sm font-black text-white italic">Protocol Alerts</p>
+                {unreadCount > 0 && (
+                  <button onClick={markAllRead} className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300">
+                    Mark Read
+                  </button>
+                )}
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="text-[10px] font-black text-slate-500 text-center py-10 px-6 uppercase tracking-[0.2em]">Zero System Signals</p>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {notifications.slice(0, 5).map(n => (
+                      <li key={n._id} className={`px-4 py-4 text-sm hover:bg-white/5 transition-colors ${n.read ? "opacity-50" : "bg-blue-500/5"}`}>
+                        <div className="flex items-start gap-3">
+                          {!n.read && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 shadow-[0_0_8px_rgba(96,165,250,1)]" />}
+                          <div className={!n.read ? "" : "ml-4.5"}>
+                            <p className="font-black text-white text-[10px] uppercase tracking-wider">{n.title}</p>
+                            <p className="text-slate-400 text-xs mt-1 leading-relaxed">{n.message}</p>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    });
   }
 
-  const marketingLinks = [{ name: "How It Works", path: "/#features" }];
-  const authLinks = [{ name: "Register", path: "/auth/register" }];
-  const visibleLinks = isDashboard ? coreLinks : [...coreLinks, ...marketingLinks];
+  const marketingLinks: NavigationLink[] = [{ name: "How It Works", path: "/#features" }];
+  const authLinks: NavigationLink[] = [{ name: "Register", path: "/auth/register" }];
+  const visibleLinks: NavigationLink[] = isDashboard ? coreLinks : [...coreLinks, ...marketingLinks];
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 w-full bg-slate-900/80 backdrop-blur-xl border-b border-white/10">
@@ -104,78 +188,93 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-6">
           <div className="flex items-center gap-6 text-sm font-bold">
             {visibleLinks.map(link => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`transition-colors ${pathname === link.path ? "text-blue-400" : "text-white/60 hover:text-white"}`}
-              >
-                {link.name}
-              </Link>
+              link.icon ? (
+                <div key={link.name}>{link.icon}</div>
+              ) : (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  className={`transition-colors ${pathname === link.path ? "text-blue-400" : "text-white/60 hover:text-white"}`}
+                >
+                  {link.name}
+                </Link>
+              )
             ))}
           </div>
+
+          {/* <ThemeSwitcher /> */}
 
           <div className="h-5 w-px bg-white/10" />
 
           <div className="flex items-center gap-3">
-            {/* Notification Bell — DRIVER only */}
-            {isDashboard && userRole === "DRIVER" && (
-              <div className="relative" ref={bellRef}>
-                <button
-                  onClick={() => setBellOpen(prev => !prev)}
-                  className="relative p-2 rounded-xl hover:bg-white/10 transition text-white/70 hover:text-white"
-                  aria-label="Notifications"
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {bellOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                      <p className="text-sm font-bold text-white">Fuel Alerts</p>
-                      {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="text-xs text-blue-400 hover:text-blue-300 transition">
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <p className="text-xs text-blue-200/50 text-center py-8 px-4">
-                          No alerts yet. Enable petrol or diesel alerts in your dashboard.
-                        </p>
-                      ) : (
-                        <ul className="divide-y divide-white/5">
-                          {notifications.slice(0, 10).map(n => (
-                            <li key={n._id} className={`px-4 py-3 text-sm ${n.read ? "opacity-60" : "bg-cyan-500/5"}`}>
-                              <div className="flex items-start gap-2">
-                                {!n.read && <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full mt-1.5 shrink-0" />}
-                                <div className={!n.read ? "" : "ml-3.5"}>
-                                  <p className="font-semibold text-white text-xs">{n.title}</p>
-                                  <p className="text-blue-200/70 text-xs mt-0.5">{n.message}</p>
-                                </div>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Notification Bell — Pulled into core links */}
 
             {isDashboard ? (
-              <button
-                onClick={handleLogout}
-                className="px-5 py-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded-xl border border-white/10 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30 transition-all cursor-pointer"
-              >
-                Logout
-              </button>
+              (userRole === "DRIVER" || userRole === "STATION") ? (
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setProfileOpen(prev => !prev)}
+                    className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                      <UserIcon size={20} />
+                    </div>
+                    <div className="text-left hidden lg:block">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Authenticated</p>
+                      <p className="text-xs font-black text-white truncate max-w-[120px]">{user?.name || "Driver Portal"}</p>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${profileOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {profileOpen && (
+                    <div className="absolute right-0 top-full mt-3 w-64 bg-slate-900 border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="px-6 py-5 border-b border-white/10 bg-white/5">
+                        <p className="text-xs font-black text-white italic truncate">{user?.email}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">{user?.role} node active</span>
+                        </div>
+                      </div>
+                      
+                      <div className="p-2">
+                         <Link 
+                          href="/dashboard/settings" 
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
+                         >
+                           <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
+                           <span className="text-xs font-bold uppercase tracking-widest">Protocol Settings</span>
+                         </Link>
+                         <Link 
+                          href="/dashboard" 
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
+                         >
+                           <Activity className="w-4 h-4" />
+                           <span className="text-xs font-bold uppercase tracking-widest">System Logs</span>
+                         </Link>
+                         
+                         <div className="h-px bg-white/5 my-2 mx-4" />
+                         
+                         <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all group"
+                         >
+                           <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                           <span className="text-xs font-black uppercase tracking-widest">Terminate Session</span>
+                         </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={handleLogout}
+                  className="px-5 py-2 bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl border border-white/10 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30 transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Terminate <span className="opacity-40">Session</span>
+                </button>
+              )
             ) : (
               authLinks.map(link => (
                 <Link
@@ -196,7 +295,7 @@ export default function Navbar() {
 
         {/* Mobile: bell + hamburger */}
         <div className="md:hidden flex items-center gap-2">
-          {isDashboard && userRole === "DRIVER" && (
+          {isDashboard && (
             <div className="relative" ref={bellRef}>
               <button
                 onClick={() => setBellOpen(prev => !prev)}
@@ -257,7 +356,7 @@ export default function Navbar() {
 
       {/* Mobile dropdown */}
       {menuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-slate-900/95 backdrop-blur-xl px-4 py-4 space-y-2">
+        <div className="md:hidden border-t border-border bg-bg/95 backdrop-blur-xl px-4 py-4 space-y-2">
           {visibleLinks.map(link => (
             <Link
               key={link.path}
@@ -265,18 +364,24 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
               className={`block px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                 pathname === link.path
-                  ? "bg-blue-600/20 text-blue-300 border border-blue-500/20"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
+                  ? "bg-primary/20 text-primary border border-primary/20"
+                  : "text-text/70 hover:text-text hover:bg-white/5"
               }`}
             >
               {link.name}
             </Link>
           ))}
-          <div className="border-t border-white/10 pt-3 mt-3 space-y-2">
+          
+          <div className="px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text/40 mb-3">Switch Theme</p>
+            <ThemeSwitcher />
+          </div>
+
+          <div className="border-t border-border pt-3 mt-3 space-y-2">
             {isDashboard ? (
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-red-300 hover:bg-red-500/10 transition-all"
+                className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 transition-all"
               >
                 Logout
               </button>
@@ -288,8 +393,8 @@ export default function Navbar() {
                   onClick={() => setMenuOpen(false)}
                   className={`block px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                     pathname === link.path
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                      ? "bg-gradient-to-r from-primary to-secondary text-white"
+                      : "text-text/70 hover:text-text hover:bg-white/5"
                   }`}
                 >
                   {link.name}

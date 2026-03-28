@@ -5,7 +5,7 @@ import { connectDB } from "@/lib/db";
 import Station from "@/models/Station";
 import PriceHistory from "@/models/PriceHistory";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
@@ -17,7 +17,13 @@ export async function GET() {
     }
 
     await connectDB();
-    const station = await Station.findOne({ ownerUserId: decoded.id });
+    const { searchParams } = new URL(req.url);
+    const stationIdQuery = searchParams.get("stationId");
+
+    const query: any = { ownerUserId: decoded.id };
+    if (stationIdQuery) query._id = stationIdQuery;
+
+    const station = await Station.findOne(query);
     if (!station) return NextResponse.json({ error: "Station not found" }, { status: 404 });
 
     const history = await PriceHistory.find({ stationId: station._id })

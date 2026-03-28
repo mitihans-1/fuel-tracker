@@ -1,268 +1,357 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChevronRight, Fuel, MapPin, CreditCard, Zap, Shield,
+  Award, Clock, Activity, Linkedin, Facebook, Instagram, Github
+} from "lucide-react";
+
+const slides = [
+  {
+    title: ["Find", "Fuel.", "Skip", "the", "Line."],
+    // subtitle: "⚡ Real-time fuel availability across all stations in Ethiopia",
+    description: "Join thousands of drivers using digital queuing to save hours at the pump. Real-time tracking for Benzene, Nafta, and Premium fuels.",
+    primaryCTA: "Register Now",
+    secondaryCTA: "See Features",
+    image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    color: "from-blue-600 to-indigo-600"
+  },
+  {
+    title: ["Smart", "Station", "Explorer"],
+    // subtitle: "🗺️ Interactive maps with live stock updates",
+    description: "Navigate to the nearest open station with guaranteed stock. View queue lengths and estimated wait times before you leave home.",
+    primaryCTA: "View Map",
+    secondaryCTA: "Station List",
+    image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    color: "from-emerald-600 to-teal-600"
+  },
+  {
+    title: ["Secure", "Digital", "Payments"],
+    // subtitle: "📱 Contactless transactions & wallet management",
+    description: "Pay seamlessly with Chapa, TeleBirr, or your FuelSync wallet. Secure, transparent pricing with digital receipts for every fill-up.",
+    primaryCTA: "Join Today",
+    secondaryCTA: "Pricing Info",
+    image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    color: "from-purple-600 to-indigo-600"
+  }
+];
+
+
+
+const DiscoveryTimeline = () => {
+  const [notes, setNotes] = useState(() => {
+    if (typeof window === "undefined") return ["", "", ""];
+    return [
+      localStorage.getItem("fs-note-0") || "",
+      localStorage.getItem("fs-note-1") || "",
+      localStorage.getItem("fs-note-2") || "",
+    ];
+  });
+
+  const saveNote = (idx, val) => {
+    const newNotes = [...notes];
+    newNotes[idx] = val;
+    setNotes(newNotes);
+    localStorage.setItem(`fs-note-${idx}`, val);
+  };
+
+  const steps = [
+    {
+      title: "Monitor Intelligence",
+      desc: "Analyze real-time fuel grid telemetry. Monitor stock intensities, queue densities, and site productivity.",
+      icon: <Activity className="w-6 h-6" />,
+      color: "blue"
+    },
+    {
+      title: "Strategic Deployment",
+      desc: "Initialize digital queue synchronization. Secure your tactical position and receive automated tickets.",
+      icon: <Zap className="w-6 h-6" />,
+      color: "indigo"
+    },
+    {
+      title: "Resource Acquisition",
+      desc: "Execute high-speed terminal transactions. Secure decentralized receipts and manage fuel assets.",
+      icon: <Shield className="w-6 h-6" />,
+      color: "emerald"
+    }
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {steps.map((step, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.1, duration: 0.8 }}
+          viewport={{ once: true }}
+          className="group relative flex flex-col p-8 rounded-[2.5rem] bg-gradient-to-br from-white/10 to-transparent border border-white/10 backdrop-blur-3xl shadow-2xl overflow-hidden hover:border-white/20 transition-all"
+        >
+          <div className={`absolute -right-16 -top-16 w-48 h-48 bg-${step.color}-500/10 blur-[60px] rounded-full group-hover:bg-${step.color}-500/20 transition-all`} />
+
+          <div className="relative z-10 space-y-6">
+            <div className="flex justify-between items-start">
+              <div className={`p-4 rounded-2xl bg-${step.color}-500/20 border border-${step.color}-500/30 flex items-center justify-center shadow-lg`}>
+                {step.icon}
+              </div>
+              <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.5em]">0{i + 1}</span>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-black text-white uppercase tracking-tight mb-3 group-hover:text-indigo-400 transition-colors">
+                {step.title}
+              </h3>
+              <p className="text-slate-400 text-sm font-medium leading-relaxed">
+                {step.desc}
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-white/5">
+              <div className="flex justify-between items-center">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Tactical Notes</p>
+                <div className={`w-1.5 h-1.5 rounded-full bg-${step.color}-500 animate-pulse`} />
+              </div>
+              <textarea
+                value={notes[i]}
+                onChange={(e) => saveNote(i, e.target.value)}
+                placeholder="Secure observations..."
+                className="w-full h-24 bg-white/5 border border-white/5 rounded-xl p-3 text-xs text-slate-300 placeholder:text-slate-800 focus:ring-1 focus:ring-white/20 outline-none resize-none font-medium custom-scrollbar transition-all"
+              />
+            </div>
+
+            <div className="flex gap-1.5 opacity-20">
+              <div className="w-1 h-1 rounded-full bg-white" />
+              <div className="w-4 h-1 rounded-full bg-white" />
+              <div className="w-1 h-1 rounded-full bg-white" />
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+};
 
 export default function Home() {
-  return (
-    <div className="flex flex-col w-full">
-      {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 pt-12 pb-16 md:pt-20 md:pb-32 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950">
-        {/* Subtle dot pattern overlay */}
-        <div className="absolute inset-0 -z-10 h-full w-full bg-transparent bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:16px_16px] opacity-60 [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
+  const [activeSlide, setActiveSlide] = useState(0);
 
-        {/* Decorative Background Elements - clipped in own wrapper */}
-        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-2000" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-purple-500 rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-blob animation-delay-4000" />
+  const nextSlide = useCallback(() => {
+    setActiveSlide((prev) => (prev + 1) % slides.length);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(nextSlide, 7000);
+    return () => clearInterval(timer);
+  }, [nextSlide]);
+
+  return (
+    <div className="flex flex-col w-full bg-[#0a0f25] text-white">
+      {/* Hero Section */}
+      <section className="relative h-screen min-h-[700px] overflow-hidden flex items-center justify-center">
+
+        {/* Background Images with AnimatePresence */}
+        <div className="absolute inset-0 z-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSlide}
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url('${slides[activeSlide].image}')` }}
+            >
+              {/* Cinematic Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#070b1e]/90 via-[#070b1e]/70 to-[#070b1e]/95" />
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        <div className="max-w-6xl mx-auto text-center space-y-6 relative">
-          {/* Live Badge */}
-          {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-blue-100 text-[10px] sm:text-xs font-bold uppercase tracking-widest shadow-sm hover:shadow-md transition-all hover:scale-105 cursor-default">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            Now Live in Addis Ababa • 25+ Stations Connected
-          </div> */}
+        {/* Global UI Elements */}
+        <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-blue-500/10 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full" />
+          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]" />
+        </div>
 
-          {/* Main Heading */}
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-sm">
-            Find Fuel.{" "}
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent drop-shadow-sm">
-              Skip the Line.
-            </span>
-          </h1>
-
-          {/* Subheading */}
-          <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-blue-100/80 leading-relaxed font-medium px-2">
-            FuelSync connects Ethiopian drivers with real-time fuel availability
-            and allows stations to manage queues efficiently. No more wasted time
-            or uncertain waits.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-4 w-full px-4 sm:px-0">
-            <Link
-              href="/auth/register"
-              className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl hover:from-blue-500 hover:to-indigo-500 transition-all duration-300 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)] hover:shadow-[0_0_60px_-15px_rgba(59,130,246,0.7)] hover:-translate-y-1"
+        {/* Content Container */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-20 w-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSlide}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col items-center text-center space-y-8"
             >
-              Get Started for Free
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
-            <Link
-              href="#features"
-              className="w-full sm:w-auto text-center px-8 py-4 bg-white/10 backdrop-blur-md text-white font-bold rounded-2xl border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-sm hover:shadow hover:-translate-y-1"
-            >
-              See How It Works
-            </Link>
-          </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
+              >
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-300">
+                  {slides[activeSlide].subtitle}
+                </span>
+              </motion.div>
 
-          {/* Trust Indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-6 text-xs sm:text-sm font-semibold text-blue-200/60">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>No credit card required</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              <span>Secure &amp; private</span>
-            </div>
-          </div>
+              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
+                {slides[activeSlide].title.map((word, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * i + 0.2, duration: 0.6 }}
+                    className={`inline-block mr-4 ${i >= 2 ? 'bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent' : ''}`}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+              </h1>
+
+              <p className="max-w-2xl text-lg sm:text-xl text-slate-300 font-medium leading-relaxed">
+                {slides[activeSlide].description}
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
+                <Link
+                  href="/auth/register"
+                  className={`group relative px-10 py-4 bg-gradient-to-r ${slides[activeSlide].color} text-white font-bold rounded-2xl shadow-2xl shadow-indigo-500/20 hover:scale-105 transition-all`}
+                >
+                  <span className="flex items-center gap-2">
+                    {slides[activeSlide].primaryCTA}
+                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </Link>
+                <Link
+                  href="#features"
+                  className="px-10 py-4 bg-white/5 backdrop-blur-xl text-white font-bold rounded-2xl border border-white/10 hover:bg-white/10 transition-all"
+                >
+                  {slides[activeSlide].secondaryCTA}
+                </Link>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* The "Three Points" Pagination dots at the bottom */}
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveSlide(i)}
+              className="group relative p-3"
+            >
+              <div
+                className={`h-1.5 transition-all duration-500 rounded-full ${activeSlide === i
+                  ? "w-10 bg-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.8)]"
+                  : "w-1.5 bg-white/30 group-hover:bg-white/50"
+                  }`}
+              />
+            </button>
+          ))}
+        </div>
+
+        {/* Slide Indicator Text (Small) */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
+          Slide 0{activeSlide + 1} / 0{slides.length}
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 sm:py-16 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 border-y border-white/10 relative">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+      <section className="relative py-20 bg-[#070b1e]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05)_0%,transparent_70%)]" />
+        <div className="max-w-7xl mx-auto px-6 relative">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { label: "Active Drivers", value: "10,000+", icon: "🚗" },
-              { label: "Fuel Stations", value: "450+", icon: "⛽" },
-              { label: "Queue Reduction", value: "65%", icon: "📉" },
-              { label: "Daily Requests", value: "25K+", icon: "📱" },
+              { label: "Active Drivers", value: "10,000+", icon: <Zap className="text-blue-400" /> },
+              { label: "Fuel Stations", value: "450+", icon: <Fuel className="text-indigo-400" /> },
+              { label: "Queue Reduction", value: "65%", icon: <Clock className="text-emerald-400" /> },
+              { label: "Total Transactions", value: "250K+", icon: <Award className="text-amber-400" /> },
             ].map((stat, i) => (
-              <div key={i} className="text-center group py-2">
-                <div className="text-2xl sm:text-3xl mb-2 transform group-hover:scale-110 group-hover:-translate-y-1 transition-transform">
+              <motion.div
+                key={i}
+                whileHover={{ y: -5 }}
+                className="p-8 rounded-3xl bg-white/[0.03] border border-white/5 flex flex-col items-center text-center space-y-3"
+              >
+                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-xl">
                   {stat.icon}
                 </div>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white">
-                  {stat.value}
-                </div>
-                <div className="text-[10px] sm:text-sm text-blue-200/60 font-medium mt-1 uppercase tracking-widest">
-                  {stat.label}
-                </div>
-              </div>
+                <div className="text-3xl font-black text-white">{stat.value}</div>
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">{stat.label}</div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Fuel Types Section */}
-      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6 w-full relative bg-gradient-to-br from-slate-900 via-blue-950 to-slate-950">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
+      {/* Discovery Timeline Narrative */}
+      <section id="features" className="py-32 bg-[#0a0f25] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-500/5 blur-[120px] rounded-full" />
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-10 sm:mb-16 space-y-3 sm:space-y-4">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-              Fuel Types We Track
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="text-center mb-20 space-y-4">
+            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase italic leading-none">
+              Strategic <span className="text-indigo-500">Protocol</span>
             </h2>
-            <p className="text-base sm:text-xl text-blue-100/70 max-w-2xl mx-auto font-medium px-2">
-              Real-time availability for the most common fuels in Ethiopia
+            <p className="text-slate-500 max-w-2xl mx-auto font-black uppercase tracking-[0.4em] text-[10px]">
+              Platform workflow synchronization & milestones
             </p>
           </div>
 
-          {/* Fuel Cards Grid - Dark Glass Effect */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8 mb-16 sm:mb-24 cursor-default">
-
-            {/* Benzene Card */}
-            <div className="group relative bg-white/5 backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-8 border border-white/10 shadow-2xl hover:bg-white/10 hover:border-white/20 hover:-translate-y-2 transition-all duration-500 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-bl-full -z-10 group-hover:bg-blue-500/30 group-hover:scale-110 transition-all duration-500 blur-xl" />
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-500/20 shadow-sm border border-blue-400/30 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl mb-5 sm:mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                ⛽
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Benzene (Petrol)</h3>
-              <p className="text-sm sm:text-base text-blue-100/70 leading-relaxed font-medium">
-                Locate stations with regular unleaded benzene in stock. Real-time updates on availability and estimated wait times.
-              </p>
-              <div className="mt-6 sm:mt-8 flex items-center text-sm text-blue-300 font-bold bg-blue-900/30 border border-blue-500/20 inline-flex px-4 py-2 rounded-xl">
-                <span>45 stations nearby</span>
-                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Nafta Card */}
-            <div className="group relative bg-white/5 backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-8 border border-white/10 shadow-2xl hover:bg-white/10 hover:border-white/20 hover:-translate-y-2 transition-all duration-500 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-bl-full -z-10 group-hover:bg-amber-500/30 group-hover:scale-110 transition-all duration-500 blur-xl" />
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-amber-500/20 shadow-sm border border-amber-400/30 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl mb-5 sm:mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                🚛
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Nafta (Diesel)</h3>
-              <p className="text-sm sm:text-base text-blue-100/70 leading-relaxed font-medium">
-                Heavy-duty transport needs reliable fuel. Find stations with active Nafta pumps and dedicated commercial vehicle lanes.
-              </p>
-              <div className="mt-6 sm:mt-8 flex items-center text-sm text-amber-300 font-bold bg-amber-900/30 border border-amber-500/20 inline-flex px-4 py-2 rounded-xl">
-                <span>32 stations nearby</span>
-                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Premium Fuel Card */}
-            <div className="group relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-8 border border-white/10 shadow-2xl hover:bg-white/10 hover:border-white/20 hover:-translate-y-2 transition-all duration-500 overflow-hidden sm:col-span-2 lg:col-span-1">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-bl-full -z-10 group-hover:bg-purple-500/30 group-hover:scale-110 transition-all duration-500 blur-xl" />
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-purple-500/20 shadow-sm border border-purple-400/30 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl mb-5 sm:mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                ⚡
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Premium Fuels</h3>
-              <p className="text-sm sm:text-base text-blue-100/70 leading-relaxed font-medium">
-                Track availability of premium benzene, additives, and specialized fuels for high-performance vehicles.
-              </p>
-              <div className="mt-6 sm:mt-8 flex items-center text-sm text-purple-300 font-bold bg-purple-900/30 border border-purple-500/20 inline-flex px-4 py-2 rounded-xl">
-                <span>18 stations nearby</span>
-                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 px-0 sm:px-4">
-            {[
-              {
-                icon: "🕒",
-                title: "Real-time Updates",
-                description: "Live fuel availability and queue lengths at stations across Addis Ababa."
-              },
-              {
-                icon: "📱",
-                title: "Digital Queue",
-                description: "Reserve your spot in line and get notified when it's your turn."
-              },
-              {
-                icon: "🗺️",
-                title: "Smart Navigation",
-                description: "Integrated maps showing the fastest route to stations with your fuel type."
-              }
-            ].map((feature, i) => (
-              <div key={i} className="flex sm:flex-col items-center sm:items-center text-left sm:text-center gap-4 sm:gap-0 p-4 sm:p-6 group hover:-translate-y-1 transition-transform duration-300 bg-white/5 rounded-2xl sm:bg-transparent sm:rounded-none border border-white/5 sm:border-0">
-                <div className="text-3xl sm:text-4xl sm:mb-4 group-hover:scale-110 transition-transform shrink-0">{feature.icon}</div>
-                <div>
-                  <h3 className="text-base sm:text-xl font-extrabold text-white mb-1 sm:mb-2">{feature.title}</h3>
-                  <p className="text-sm text-blue-100/60 font-medium leading-relaxed">{feature.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <DiscoveryTimeline />
         </div>
       </section>
-
-
-
-
 
       {/* Footer */}
-      <footer className="py-10 sm:py-12 px-4 sm:px-6 bg-slate-950 border-t border-white/10 relative">
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-blue-600/20 blur-[100px] pointer-events-none"></div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8 mb-8">
-            {/* Brand Column */}
-            <div className="col-span-2 sm:col-span-3 md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/20">
-                  FS
-                </div>
-                <span className="font-bold text-xl text-white">FuelSync</span>
-              </div>
-              <p className="text-slate-400 text-sm max-w-md font-medium leading-relaxed">
-                Making fuel accessible for everyone in Ethiopia. Real-time tracking,
-                digital queues, and smart navigation for drivers and station owners.
+      <footer className="py-20 bg-[#070b1e] border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            <div className="col-span-1 md:col-span-2 space-y-6">
+              <Link href="/" className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg">⛽</div>
+                <span className="font-black text-2xl tracking-tighter">FuelSync</span>
+              </Link>
+              <p className="text-slate-500 max-w-sm font-medium">
+                Modernizing Ethiopia's energy distribution network. For drivers who value their time and stations who value their customers.
               </p>
             </div>
-
-            {/* Product Links */}
             <div>
-              <h4 className="font-bold text-white mb-4">Product</h4>
-              <ul className="space-y-3 text-sm font-medium text-slate-400">
-                <li><Link href="#" className="hover:text-white transition-colors">Features</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">For Stations</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">API</Link></li>
+              <h4 className="font-bold text-white mb-6 uppercase tracking-widest text-xs">Resources</h4>
+              <ul className="space-y-4 text-slate-500 text-sm font-medium">
+                <li><Link href="documentation" className="hover:text-indigo-400 transition-colors">Documentation</Link></li>
+                <li><Link href="stations" className="hover:text-indigo-400 transition-colors">Station Portal</Link></li>
+                <li><Link href="api-keys" className="hover:text-indigo-400 transition-colors">API Keys</Link></li>
               </ul>
             </div>
-
-            {/* Company Links */}
             <div>
-              <h4 className="font-bold text-white mb-4">Company</h4>
-              <ul className="space-y-3 text-sm font-medium text-slate-400">
-                <li><Link href="#" className="hover:text-white transition-colors">About</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Blog</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Careers</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Press</Link></li>
+              <h4 className="font-bold text-white mb-6 uppercase tracking-widest text-xs">Legal</h4>
+              <ul className="space-y-4 text-slate-500 text-sm font-medium">
+                <li><Link href="privacy" className="hover:text-indigo-400 transition-colors">Privacy Policy</Link></li>
+                <li><Link href="terms" className="hover:text-indigo-400 transition-colors">Terms of Service</Link></li>
+                <li><Link href="support" className="hover:text-indigo-400 transition-colors">Contact Support</Link></li>
               </ul>
             </div>
           </div>
-
-          {/* Bottom Bar */}
-          <div className="pt-6 sm:pt-8 mt-6 sm:mt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-            <p className="text-xs sm:text-sm font-medium text-slate-500">
-              © 2026 FuelSync. All rights reserved.
-            </p>
-            <div className="flex gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-slate-500">
-              <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
-              <Link href="#" className="hover:text-white transition-colors">Terms</Link>
-              <Link href="#" className="hover:text-white transition-colors">Contact</Link>
+          <div className="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-white/5 gap-6">
+            <p className="text-slate-600 text-xs">© 2026 FuelSync Ethiopia. All rights reserved.</p>
+            <div className="flex gap-4 text-slate-500">
+              {[
+                { icon: <Linkedin className="w-5 h-5" />, color: "hover:text-blue-400 hover:border-blue-400/50 hover:bg-blue-400/10", href: "#" },
+                { icon: <Facebook className="w-5 h-5" />, color: "hover:text-indigo-400 hover:border-indigo-400/50 hover:bg-indigo-400/10", href: "#" },
+                { icon: <Instagram className="w-5 h-5" />, color: "hover:text-pink-500 hover:border-pink-500/50 hover:bg-pink-500/10", href: "#" },
+                { icon: <Github className="w-5 h-5" />, color: "hover:text-white hover:border-white/50 hover:bg-white/10", href: "#" }
+              ].map((social, idx) => (
+                <Link
+                  key={idx}
+                  href={social.href}
+                  className={`w-11 h-11 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center transition-all duration-300 ${social.color} hover:scale-110 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95`}
+                >
+                  {social.icon}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
