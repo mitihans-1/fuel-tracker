@@ -259,103 +259,214 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="relative py-20 bg-[#070b1e]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05)_0%,transparent_70%)]" />
-        <div className="max-w-7xl mx-auto px-6 relative">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { label: "Active Drivers", value: "10,000+", icon: <Zap className="text-blue-400" /> },
-              { label: "Fuel Stations", value: "450+", icon: <Fuel className="text-indigo-400" /> },
-              { label: "Queue Reduction", value: "65%", icon: <Clock className="text-emerald-400" /> },
-              { label: "Total Transactions", value: "250K+", icon: <Award className="text-amber-400" /> },
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ y: -5 }}
-                className="p-8 rounded-3xl bg-white/[0.03] border border-white/5 flex flex-col items-center text-center space-y-3"
-              >
-                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-xl">
-                  {stat.icon}
-                </div>
-                <div className="text-3xl font-black text-white">{stat.value}</div>
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">{stat.label}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+     {/* Stats Section */}
+<section className="relative py-20 bg-gradient-to-br from-slate-50 via-white to-indigo-50">
 
-      {/* Discovery Timeline Narrative */}
-      <section id="features" className="py-32 bg-[#0a0f25] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-500/5 blur-[120px] rounded-full" />
+  {/* Soft radial glow (lighter version) */}
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.08)_0%,transparent_70%)]" />
 
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase italic leading-none">
-              Strategic <span className="text-indigo-500">Protocol</span>
-            </h2>
-            <p className="text-slate-500 max-w-2xl mx-auto font-black uppercase tracking-[0.4em] text-[10px]">
-              Platform workflow synchronization & milestones
-            </p>
+  <div className="max-w-7xl mx-auto px-6 relative">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+
+      {[
+        { label: "Active Drivers", value: "10,000+", icon: <Zap className="text-blue-500" /> },
+        { label: "Fuel Stations", value: "450+", icon: <Fuel className="text-indigo-500" /> },
+        { label: "Queue Reduction", value: "65%", icon: <Clock className="text-emerald-500" /> },
+        { label: "Total Transactions", value: "250K+", icon: <Award className="text-amber-500" /> },
+      ].map((stat, i) => (
+        <motion.div
+          key={i}
+          whileHover={{ y: -5 }}
+          className="p-8 rounded-3xl bg-white border border-slate-200 shadow-md hover:shadow-lg transition flex flex-col items-center text-center space-y-3"
+        >
+          {/* Icon */}
+          <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-xl">
+            {stat.icon}
           </div>
 
-          <DiscoveryTimeline />
+          {/* Value */}
+          <div className="text-3xl font-black text-slate-900">
+            {stat.value}
+          </div>
+
+          {/* Label */}
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+            {stat.label}
+          </div>
+        </motion.div>
+      ))}
+
+    </div>
+  </div>
+</section>
+
+     {/* Discovery Timeline Narrative */}
+<section
+  id="features"
+  className="py-32 bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden"
+>
+  {/* Background Glow */}
+  <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-400/10 blur-[120px] rounded-full" />
+  <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-400/10 blur-[120px] rounded-full" />
+
+  {/* Grid Pattern */}
+  <div className="absolute inset-0 bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:32px_32px]" />
+
+  <div className="max-w-7xl mx-auto px-6 relative z-10">
+
+    {/* Header */}
+    <div className="text-center mb-24 space-y-6">
+      <h2 className="text-4xl md:text-6xl font-black tracking-tight text-slate-900 leading-tight">
+        Strategic{" "}
+        <span className="bg-gradient-to-r from-indigo-500 to-blue-500 bg-clip-text text-transparent">
+          Protocol
+        </span>
+      </h2>
+
+      <p className="text-slate-500 max-w-xl mx-auto text-sm font-semibold tracking-widest uppercase">
+        Platform workflow synchronization & milestones
+      </p>
+    </div>
+
+    {/* GRID LAYOUT */}
+    <div className="grid md:grid-cols-3 gap-10">
+
+      {[
+        {
+          title: "Monitor Intelligence",
+          desc: "Analyze real-time fuel grid telemetry with advanced tracking.",
+          color: "blue",
+        },
+        {
+          title: "Strategic Deployment",
+          desc: "Secure your queue position with smart automation.",
+          color: "indigo",
+        },
+        {
+          title: "Resource Acquisition",
+          desc: "Execute fast, secure and seamless transactions.",
+          color: "emerald",
+        },
+      ].map((item, i) => (
+        <div
+          key={i}
+          className="group relative p-8 rounded-3xl bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+        >
+          {/* Glow */}
+          <div className={`absolute -top-10 -right-10 w-40 h-40 bg-${item.color}-400/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition`} />
+
+          {/* Step Number */}
+          <div className="flex justify-between items-center mb-6">
+            <span className="text-xs font-black text-slate-400 tracking-widest">
+              0{i + 1}
+            </span>
+            <div className={`w-2 h-2 rounded-full bg-${item.color}-500 animate-pulse`} />
+          </div>
+
+          {/* Title */}
+          <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-indigo-600 transition">
+            {item.title}
+          </h3>
+
+          {/* Description */}
+          <p className="text-slate-600 text-sm leading-relaxed">
+            {item.desc}
+          </p>
+
+          {/* Bottom Accent Line */}
+          <div className="mt-8 h-[2px] w-10 bg-slate-200 group-hover:w-20 group-hover:bg-indigo-500 transition-all duration-300" />
         </div>
-      </section>
+      ))}
+    </div>
+
+    {/* OPTIONAL: CONNECTING LINE (visual flow) */}
+    <div className="hidden md:block absolute top-[55%] left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+
+  </div>
+</section>
 
       {/* Footer */}
-      <footer className="py-20 bg-[#070b1e] border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-            <div className="col-span-1 md:col-span-2 space-y-6">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg">⛽</div>
-                <span className="font-black text-2xl tracking-tighter">FuelSync</span>
-              </Link>
-              <p className="text-slate-500 max-w-sm font-medium">
-                Modernizing Ethiopia's energy distribution network. For drivers who value their time and stations who value their customers.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-6 uppercase tracking-widest text-xs">Resources</h4>
-              <ul className="space-y-4 text-slate-500 text-sm font-medium">
-                <li><Link href="documentation" className="hover:text-indigo-400 transition-colors">Documentation</Link></li>
-                <li><Link href="stations" className="hover:text-indigo-400 transition-colors">Station Portal</Link></li>
-                <li><Link href="api-keys" className="hover:text-indigo-400 transition-colors">API Keys</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-6 uppercase tracking-widest text-xs">Legal</h4>
-              <ul className="space-y-4 text-slate-500 text-sm font-medium">
-                <li><Link href="privacy" className="hover:text-indigo-400 transition-colors">Privacy Policy</Link></li>
-                <li><Link href="terms" className="hover:text-indigo-400 transition-colors">Terms of Service</Link></li>
-                <li><Link href="support" className="hover:text-indigo-400 transition-colors">Contact Support</Link></li>
-              </ul>
-            </div>
+      <footer className="py-20 bg-gradient-to-br from-slate-50 via-white to-indigo-50 border-t border-slate-200">
+
+  <div className="max-w-7xl mx-auto px-6">
+
+    {/* TOP GRID */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+
+      {/* BRAND */}
+      <div className="col-span-1 md:col-span-2 space-y-6">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-md">
+            ⛽
           </div>
-          <div className="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-white/5 gap-6">
-            <p className="text-slate-600 text-xs">© 2026 FuelSync Ethiopia. All rights reserved.</p>
-            <div className="flex gap-4 text-slate-500">
-              {[
-                { icon: <Linkedin className="w-5 h-5" />, color: "hover:text-blue-400 hover:border-blue-400/50 hover:bg-blue-400/10", href: "#" },
-                { icon: <Facebook className="w-5 h-5" />, color: "hover:text-indigo-400 hover:border-indigo-400/50 hover:bg-indigo-400/10", href: "#" },
-                { icon: <Instagram className="w-5 h-5" />, color: "hover:text-pink-500 hover:border-pink-500/50 hover:bg-pink-500/10", href: "#" },
-                { icon: <Github className="w-5 h-5" />, color: "hover:text-white hover:border-white/50 hover:bg-white/10", href: "#" }
-              ].map((social, idx) => (
-                <Link
-                  key={idx}
-                  href={social.href}
-                  className={`w-11 h-11 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center transition-all duration-300 ${social.color} hover:scale-110 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95`}
-                >
-                  {social.icon}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+          <span className="font-black text-2xl tracking-tight text-slate-900">
+            FuelSync
+          </span>
+        </Link>
+
+        <p className="text-slate-600 max-w-sm font-medium leading-relaxed">
+          Modernizing Ethiopia’s energy distribution network. For drivers who
+          value their time and stations who value their customers.
+        </p>
+      </div>
+
+      {/* RESOURCES */}
+      <div>
+        <h4 className="font-bold text-slate-900 mb-6 uppercase tracking-widest text-xs">
+          Resources
+        </h4>
+
+        <ul className="space-y-4 text-sm font-medium text-slate-600">
+          <li><Link href="documentation" className="hover:text-indigo-600 transition">Documentation</Link></li>
+          <li><Link href="stations" className="hover:text-indigo-600 transition">Station Portal</Link></li>
+          <li><Link href="api-keys" className="hover:text-indigo-600 transition">API Keys</Link></li>
+        </ul>
+      </div>
+
+      {/* LEGAL */}
+      <div>
+        <h4 className="font-bold text-slate-900 mb-6 uppercase tracking-widest text-xs">
+          Legal
+        </h4>
+
+        <ul className="space-y-4 text-sm font-medium text-slate-600">
+          <li><Link href="privacy" className="hover:text-indigo-600 transition">Privacy Policy</Link></li>
+          <li><Link href="terms" className="hover:text-indigo-600 transition">Terms of Service</Link></li>
+          <li><Link href="support" className="hover:text-indigo-600 transition">Contact Support</Link></li>
+        </ul>
+      </div>
+    </div>
+
+    {/* BOTTOM BAR */}
+    <div className="flex flex-col md:flex-row justify-between items-center pt-10 border-t border-slate-200 gap-6">
+
+      <p className="text-slate-500 text-xs">
+        © 2026 FuelSync Ethiopia. All rights reserved.
+      </p>
+
+      {/* SOCIAL ICONS */}
+      <div className="flex gap-4">
+
+        {[
+          { Icon: Linkedin, color: "hover:text-blue-600 hover:bg-blue-50" },
+          { Icon: Facebook, color: "hover:text-indigo-600 hover:bg-indigo-50" },
+          { Icon: Instagram, color: "hover:text-pink-600 hover:bg-pink-50" },
+          { Icon: Github, color: "hover:text-slate-900 hover:bg-slate-100" },
+        ].map(({ Icon, color }, idx) => (
+          <Link
+            key={idx}
+            href="#"
+            className={`w-11 h-11 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 transition-all duration-300 hover:scale-110 hover:shadow-md ${color}`}
+          >
+            <Icon className="w-5 h-5" />
+          </Link>
+        ))}
+
+      </div>
+    </div>
+
+  </div>
+</footer>
     </div>
   );
 }

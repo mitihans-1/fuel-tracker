@@ -158,28 +158,28 @@ interface StatCardProps {
 const StatCard = ({ icon: Icon, label, value, color, trend, trendValue }: StatCardProps) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
-    className="relative overflow-hidden bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-xl"
+    className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white backdrop-blur-xl rounded-2xl p-6 border border-slate-200/50 shadow-lg hover:shadow-xl transition-all"
   >
-    <div className={`absolute top-0 right-0 w-32 h-32 bg-${color}-500/10 blur-[60px] rounded-full`} />
+    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100/50 blur-[60px] rounded-full" />
     <div className="relative flex items-start justify-between">
       <div>
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{label}</p>
-        <p className="text-3xl font-bold text-white">{value}</p>
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">{label}</p>
+        <p className="text-3xl font-bold text-slate-900">{value}</p>
         {trend && (
           <div className="flex items-center gap-1 mt-2">
             {trend === "up" ? (
-              <TrendingUp className="w-3 h-3 text-emerald-400" />
+              <TrendingUp className="w-3 h-3 text-emerald-500" />
             ) : (
-              <TrendingDown className="w-3 h-3 text-red-400" />
+              <TrendingDown className="w-3 h-3 text-red-500" />
             )}
-            <span className={`text-xs ${trend === "up" ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`text-xs ${trend === "up" ? "text-emerald-600" : "text-red-600"}`}>
               {trendValue}
             </span>
           </div>
         )}
       </div>
-      <div className={`p-3 rounded-xl bg-${color}-500/20`}>
-        <Icon className={`w-5 h-5 text-${color}-400`} />
+      <div className="p-3 rounded-xl bg-slate-100 border border-slate-200">
+        <Icon className="w-5 h-5 text-slate-600" />
       </div>
     </div>
   </motion.div>
@@ -261,8 +261,15 @@ export default function DriverDashboard() {
     }
   };
 
-  const [view, setView] = useState<"dashboard" | "logs" | "vehicles" | "settings">("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const view = (searchParams.get("tab") as "dashboard" | "logs" | "vehicles" | "settings") || "dashboard";
+
+  const setView = (v: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", v);
+    router.push(`${window.location.pathname}?${params.toString()}`);
+  };
+
+  const sidebarOpen = false; // Sidebar removed, but keeping state-like variable if needed for logic
 
   const sidebarItems: { id: "dashboard" | "logs" | "vehicles" | "settings"; label: string; icon: React.ReactNode }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -598,61 +605,15 @@ export default function DriverDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#020617] text-slate-200 flex flex-col md:flex-row overflow-hidden">
-      {/* Sidebar for Desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/5 border-r border-white/10 backdrop-blur-3xl transition-transform duration-300 md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex flex-col h-full p-6">
-          <div className="flex items-center gap-3 mb-12 px-2">
-             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <Fuel className="w-6 h-6 text-white" />
-             </div>
-             <div>
-                <h1 className="text-xl font-black text-white tracking-widest italic leading-none">FUELSYNC</h1>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Grid Command v2</p>
-             </div>
-          </div>
-
-          <nav className="flex-1 space-y-2">
-            {sidebarItems.map((item) => (
-              <button
-            key={item.id}
-            onClick={() => { setView(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-bold group ${
-                  view === item.id 
-                    ? "bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_20px_rgba(79,70,229,0.1)]" 
-                    : "text-slate-500 hover:text-white hover:bg-white/5 border border-transparent"
-                }`}
-              >
-                <div className={`${view === item.id ? "text-indigo-400" : "group-hover:text-white"}`}>
-                  {item.icon}
-                </div>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          <button 
-            onClick={() => router.push('/auth/logout')}
-            className="flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all font-bold mt-auto"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900 flex flex-col overflow-hidden">
+      {/* Sidebar removed */}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-y-auto relative">
-        {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-[#020617]/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-[40]">
-           <Fuel className="w-6 h-6 text-indigo-500" />
-           <button title="Open Sidebar" onClick={() => setSidebarOpen(true)} className="p-2 text-slate-400 hover:text-white">
-              <Menu className="w-6 h-6" />
-           </button>
-        </div>
+        {/* Mobile Header Removed */}
 
-        {/* Animated Background Grid */}
-        <div className="fixed inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+        {/* Soft gradient background */}
+        <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/50 to-indigo-50/30 pointer-events-none" />
 
         <div className="relative z-10 p-4 sm:p-10 space-y-10">
           <AnimatePresence mode="wait">
@@ -664,98 +625,144 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-10"
               >
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6"
-        >
-          <div>
-            <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest mb-2 px-3 py-1 bg-primary/10 rounded-full w-fit border border-primary/20">
-              <Zap className="w-3.5 h-3.5" />
-              <span>Driver Operations Portal</span>
+         <section className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-gradient-to-br from-sky-100 via-white to-cyan-100/80 p-1 shadow-[0_30px_90px_-45px_rgba(14,116,144,0.55)]">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-sky-200/60 bg-gradient-to-br from-white/85 via-sky-50/95 to-cyan-50/90 px-6 py-8 sm:px-8 sm:py-10 backdrop-blur-xl">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-sky-300/25 blur-3xl" />
+              <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-cyan-300/30 blur-3xl" />
+              <div className="absolute bottom-0 left-1/3 h-36 w-36 rounded-full bg-indigo-200/30 blur-3xl" />
             </div>
-            <h1 className="text-5xl sm:text-6xl font-black bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent tracking-tight">
-              FuelSync <span className="text-white/40 font-light italic">Driver</span>
-            </h1>
-            <p className="text-slate-400 mt-3 max-w-xl text-lg font-medium leading-relaxed">
-              Find nearby stations, request fuel, and manage your purchases with precision.
-            </p>
+
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative flex flex-col gap-8"
+            >
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
+
+  {/* LEFT CONTENT */}
+  <div className="max-w-2xl">
+    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[0.95] text-slate-900">
+      FuelSync{" "}
+      <span className="text-indigo-600 italic font-semibold">
+        Driver
+      </span>
+    </h1>
+
+    <p className="mt-5 max-w-xl text-base sm:text-lg leading-7 text-slate-600 font-medium">
+      Discover nearby stations, request fuel faster, and track every trip from one clean and powerful dashboard.
+    </p>
+  </div>
+
+  {/* RIGHT STATS */}
+  <div className="grid w-full max-w-sm grid-cols-2 gap-4">
+
+    {/* CARD 1 */}
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
+      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">
+        Network
+      </p>
+
+      <p className="mt-3 text-3xl font-extrabold text-slate-900 tracking-tight">
+        {safeStations.length}
+      </p>
+
+      <p className="text-sm font-medium text-slate-500">
+        stations nearby
+      </p>
+    </div>
+
+    {/* CARD 2 (ACCENT) */}
+    <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm hover:shadow-md transition-all">
+      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-indigo-400">
+        Ready Now
+      </p>
+
+      <p className="mt-3 text-3xl font-extrabold text-indigo-700 tracking-tight">
+        {filteredStations.filter((s) => s.petrol || s.diesel).length}
+      </p>
+
+      <p className="text-sm font-medium text-indigo-600">
+        stations live
+      </p>
+    </div>
+
+  </div>
+</div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard
+                  icon={Fuel}
+                  label="Total Requests"
+                  value={stats.totalRequests}
+                  color="indigo"
+                  trend="up"
+                  trendValue="+23%"
+                />
+                <StatCard
+                  icon={Clock}
+                  label="Pending"
+                  value={stats.pendingCount}
+                  color="amber"
+                  trend="down"
+                  trendValue="-5%"
+                />
+                <StatCard
+                  icon={CheckCircle}
+                  label="Approved"
+                  value={stats.approvedCount}
+                  color="emerald"
+                  trend="up"
+                  trendValue="+12%"
+                />
+              </div>
+            </motion.div>
           </div>
+        </section>
 
-          {/* Tactical controls transitioned to Global Navbar */}
-        </motion.div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <StatCard
-            icon={Fuel}
-            label="Total Requests"
-            value={stats.totalRequests}
-            color="indigo"
-            trend="up"
-            trendValue="+23%"
-          />
-          <StatCard
-            icon={Clock}
-            label="Pending"
-            value={stats.pendingCount}
-            color="orange"
-            trend="down"
-            trendValue="-5%"
-          />
-          <StatCard
-            icon={CheckCircle}
-            label="Approved"
-            value={stats.approvedCount}
-            color="emerald"
-            trend="up"
-            trendValue="+12%"
-          />
-        </div>
 
         {/* Wallet & Insights Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Wallet Card */}
           <motion.div
             whileHover={{ scale: 1.02, translateY: -5 }}
-            className="relative overflow-hidden bg-gradient-to-br from-indigo-600/20 via-slate-900 to-slate-950 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group"
+          className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-[2rem] p-8 border border-slate-200/70 shadow-md hover:shadow-2xl transition-all duration-300"
           >
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-all duration-500" />
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-400/10 blur-[100px] rounded-full opacity-70 group-hover:opacity-100 transition" />
             <div className="relative flex flex-col justify-between h-full">
               <div className="flex items-start justify-between">
-                <div className="p-4 rounded-3xl bg-indigo-500/10 border border-indigo-500/20">
-                  <Wallet className="w-6 h-6 text-indigo-400" />
+                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 shadow-sm">
+                  <Wallet className="w-6 h-6 text-blue-600" />
                 </div>
                 {walletBalance !== null && (
                   <button
                     onClick={() => setShowTopUp(true)}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all"
                     title="Add Funds"
                   >
                     <TrendingUp className="w-4 h-4" />
                   </button>
                 )}
               </div>
-              
+
               <div className="mt-8">
-                <p className="text-xs font-black text-indigo-300 uppercase tracking-[0.2em] mb-2 opacity-60">Available Balance</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em] mb-2">Available Balance</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-4xl font-black text-white tracking-tight">
+                  <p className="text-4xl font-black text-slate-900 tracking-tight">
                     {walletLoading ? "..." : walletBalance === null ? "0.00" : walletBalance.toLocaleString()}
                   </p>
-                  <p className="text-lg font-bold text-indigo-400/80">{walletCurrency}</p>
+                  <p className="text-lg font-bold text-blue-600">{walletCurrency}</p>
                 </div>
               </div>
 
               {walletBalance === null ? (
-                <button className="mt-6 w-full py-4 rounded-2xl bg-white/5 text-white/40 text-sm font-bold border border-dashed border-white/10">
+                <button className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
                   Connect Wallet
                 </button>
               ) : (
                 <button
                   onClick={() => setShowTopUp(true)}
-                  className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-900/40"
+                 className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
                 >
                   Quick Top Up
                 </button>
@@ -766,7 +773,7 @@ export default function DriverDashboard() {
           {/* Recommended Station */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="relative overflow-hidden bg-gradient-to-br from-blue-500/20 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30 shadow-xl cursor-pointer"
+            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-2xl p-6 border border-slate-200/70 shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer"
             onClick={() => {
               if (recommendedStation) {
                 const loc = recommendedStation.location;
@@ -777,18 +784,18 @@ export default function DriverDashboard() {
               }
             }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[60px] rounded-full" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
             <div className="relative">
               <div className="flex items-center gap-2 mb-3">
-                <Award className="w-4 h-4 text-blue-300" />
-                <p className="text-xs font-medium text-blue-300 uppercase tracking-wider">Recommended Station</p>
+                <Award className="w-4 h-4 text-blue-500" />
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Recommended Station</p>
               </div>
               {recommendedStation ? (
                 <>
-                  <p className="text-lg font-bold text-white">{recommendedStation.name}</p>
+                  <p className="text-lg font-bold text-slate-900">{recommendedStation.name}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <MapPin className="w-3 h-3 text-slate-400" />
-                    <p className="text-xs text-slate-400">
+                    <MapPin className="w-3 h-3 text-slate-500" />
+                    <p className="text-xs text-slate-600">
                       {typeof recommendedStation.location === "string"
                         ? recommendedStation.location
                         : recommendedStation.location?.text}
@@ -796,15 +803,15 @@ export default function DriverDashboard() {
                   </div>
                   <div className="flex items-center gap-3 mt-3">
                     {recommendedStation.petrol && (
-                      <span className="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300">Petrol</span>
+                      <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200">Petrol</span>
                     )}
                     {recommendedStation.diesel && (
-                      <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300">Diesel</span>
+                      <span className="text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Diesel</span>
                     )}
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-slate-400">No stations available</p>
+                <p className="text-sm text-slate-500">No stations available</p>
               )}
             </div>
           </motion.div>
@@ -812,18 +819,18 @@ export default function DriverDashboard() {
           {/* Alerts & Insights */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="relative overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/10 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30 shadow-xl"
+            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-2xl p-6 border border-slate-200/70 shadow-md hover:shadow-2xl transition-all duration-300"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 blur-[60px] rounded-full" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-purple-300" />
-                  <p className="text-xs font-medium text-purple-300 uppercase tracking-wider">Fuel Alerts</p>
+                  <Bell className="w-4 h-4 text-purple-500" />
+                  <p className="text-xs font-medium text-purple-600 uppercase tracking-wider">Fuel Alerts</p>
                 </div>
                 <button
                   onClick={() => setShowNotifications(true)}
-                  className="text-xs text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                  className="text-xs text-blue-600 hover:text-blue-700 underline underline-offset-2"
                 >
                   {notifications.filter((n) => !n.read).length} new
                 </button>
@@ -851,21 +858,22 @@ export default function DriverDashboard() {
                         showToast("Failed to update alerts", "error");
                       }
                     }}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${fuelAlertEnabled[ft]
-                      ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg"
-                      : "bg-white/10 text-slate-400 hover:bg-white/20"
-                      }`}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${
+  fuelAlertEnabled[ft]
+    ? "bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-md"
+    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+}`}
                   >
                     {ft} {fuelAlertEnabled[ft] && "✓"}
                   </button>
                 ))}
               </div>
-              <div className="mt-4 pt-3 border-t border-white/10">
-                <p className="text-xs text-slate-400">
-                  Approved tickets: <span className="text-white font-semibold">{spendingStats.totalTickets}</span>
+              <div className="mt-4 pt-3 border-t border-slate-200">
+                <p className="text-xs text-slate-600">
+                  Approved tickets: <span className="text-slate-900 font-semibold">{spendingStats.totalTickets}</span>
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Last fuel: <span className="text-white font-semibold capitalize">{spendingStats.lastTicketFuel ?? "—"}</span>
+                <p className="text-xs text-slate-600 mt-1">
+                  Last fuel: <span className="text-slate-900 font-semibold capitalize">{spendingStats.lastTicketFuel ?? "—"}</span>
                 </p>
               </div>
             </div>
@@ -873,12 +881,14 @@ export default function DriverDashboard() {
         </div>
 
         {/* Search & Map Section */}
-        <section className="space-y-6">
+        <section className="space-y-8 relative">
+          <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-200/30 blur-[120px] rounded-full" />
+          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-indigo-200/30 blur-[120px] rounded-full" />
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h2 className="text-2xl font-bold flex items-center gap-3">
-              <MapPin className="w-6 h-6 text-indigo-400" />
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight flex items-center gap-3 text-slate-900">
+              <MapPin className="w-6 h-6 text-blue-500" />
               Nearby Stations
-              <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 text-sm rounded-full">
+             <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-4 py-1.5 text-xs font-bold rounded-full border border-blue-200 shadow-sm">
                 {filteredStations.length}
               </span>
             </h2>
@@ -887,7 +897,7 @@ export default function DriverDashboard() {
               <input
                 type="text"
                 placeholder="Search stations or locations..."
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-md focus:shadow-lg"
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
@@ -895,20 +905,20 @@ export default function DriverDashboard() {
           </div>
 
           {loadingStations ? (
-            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            <div className="relative bg-white/70 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-indigo-500/20" />
-                <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+                <div className="w-16 h-16 rounded-full border-4 border-blue-200" />
+                <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
               </div>
-              <p className="text-xl font-black text-indigo-300 uppercase tracking-widest animate-pulse opacity-60">Scanning Stations...</p>
+              <p className="text-xl font-bold text-blue-600 uppercase tracking-widest animate-pulse">Scanning Stations...</p>
             </div>
           ) : error ? (
-            <div className="text-center py-20 bg-red-500/5 rounded-[2.5rem] border border-red-500/10">
-              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
-                <AlertCircle className="w-10 h-10 text-red-400" />
+            <div className="text-center py-20 bg-red-50 rounded-[2.5rem] border border-red-200">
+              <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-10 h-10 text-red-500" />
               </div>
-              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide">Signal Interrupted</h3>
-              <p className="text-red-300/60 font-medium">{error}</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2 uppercase tracking-wide">Signal Interrupted</h3>
+              <p className="text-red-600 font-medium">{error}</p>
             </div>
           ) : (
             <>
@@ -934,18 +944,27 @@ export default function DriverDashboard() {
                     station: filteredStations.filter(s => s.petrol || s.diesel).sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0))[0]
                   }
                 ].map((insight, idx) => (
-                  <div key={idx} className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-white/20 transition-all border-dashed">
-                    <div className={`absolute -right-10 -top-10 w-40 h-40 bg-${insight.color}-500/10 blur-[60px] rounded-full group-hover:bg-${insight.color}-500/20 transition-all`} />
-                    <div className="relative z-10 flex items-center gap-6">
-                      <div className={`w-16 h-16 rounded-2xl bg-${insight.color}-500/10 border border-${insight.color}-500/20 flex items-center justify-center shadow-lg shadow-${insight.color}-900/20`}>
-                        <insight.icon className={`w-8 h-8 text-${insight.color}-400`} />
-                      </div>
+                 <div
+                          key={idx}
+                          className="relative bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+                        >
+                        <div
+                            className={`absolute -top-10 -right-10 w-40 h-40 bg-${insight.color}-300/30 blur-[80px] rounded-full opacity-70 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500`}
+                          />
+             <div className="relative z-10 flex items-center gap-6">
+                       <div
+                      className={`w-16 h-16 rounded-3xl bg-gradient-to-br from-${insight.color}-100 to-${insight.color}-50 border border-${insight.color}-200 flex items-center justify-center shadow-inner`}
+                    >
+                      <insight.icon className={`w-8 h-8 text-${insight.color}-600`} />
+                    </div>
                       <div>
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">{insight.label}</p>
-                        <h3 className="text-xl font-black text-white group-hover:text-white transition-colors uppercase tracking-tight">
+                       <h3 className={`text-xl font-black text-slate-900 group-hover:text-${insight.color}-600 transition-colors tracking-tight`}>
                           {insight.station?.name || "Locating Optimized Hub..."}
                         </h3>
-                        <p className="text-xs font-bold text-slate-400/60 uppercase tracking-widest mt-1">{insight.sub}</p>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
+                            {insight.sub}
+                          </p>
                       </div>
                     </div>
                   </div>
@@ -955,12 +974,12 @@ export default function DriverDashboard() {
               {/* Map */}
               <div
                 ref={mapSectionRef}
-                className="h-64 md:h-96 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl transition-all hover:border-indigo-500/20 mb-12 bg-slate-900 group relative"
+                className="h-64 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-12 bg-white group relative"
               >
                 <div className="absolute top-6 right-6 z-[10] flex gap-2">
-                   <div className="px-5 py-2.5 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,1)]" />
-                      Tactical Grid Active
+                   <div className="px-5 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-[10px] font-bold text-slate-700 uppercase tracking-widest shadow-lg flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                      Map Active
                    </div>
                 </div>
                 <OSMMap
@@ -986,108 +1005,108 @@ export default function DriverDashboard() {
                           mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                         }
                       }}
-                      className="group relative overflow-hidden bg-gradient-to-br from-white/10 via-slate-900/40 to-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 hover:border-indigo-500/40 transition-all duration-500 cursor-pointer shadow-[0_15px_35px_rgba(0,0,0,0.3)]"
+                      className="group relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50 backdrop-blur-xl rounded-[2.5rem] border border-slate-200 hover:border-blue-300 transition-all duration-500 cursor-pointer shadow-lg hover:shadow-xl"
                     >
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[60px] rounded-full group-hover:bg-indigo-500/20 transition-all" />
-                      
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 blur-[60px] rounded-full group-hover:bg-blue-200/30 transition-all" />
+
                       <div className="p-8">
                         <div className="flex justify-between items-start mb-6">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-black text-3xl text-white group-hover:text-indigo-300 transition-colors truncate tracking-tighter">
+                            <h3 className="font-bold text-3xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
                               {station.name}
                             </h3>
                             <div className="flex items-center gap-2 mt-2">
-                              <MapPin className="w-3.5 h-3.5 text-indigo-400/60" />
-                              <p className="text-sm text-slate-400 font-medium truncate uppercase tracking-tighter">
+                              <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                              <p className="text-sm text-slate-600 font-medium truncate uppercase tracking-tight">
                                 {typeof station.location === "string" ? station.location : station.location?.text}
                               </p>
                             </div>
                           </div>
-                          <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                          <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
                             station.petrol || station.diesel
-                            ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                            : "bg-red-500/20 border-red-500/30 text-red-400"
+                            ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                            : "bg-red-100 border-red-300 text-red-700"
                             }`}>
                             {station.petrol || station.diesel ? "ACTIVE" : "CLOSED"}
                           </div>
                         </div>
 
                         <div className="space-y-4 mb-8">
-                          <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/5 group-hover:bg-indigo-500/5 transition-colors">
+                          <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-blue-50 transition-colors">
                             <div className="flex items-center gap-3">
-                              <div className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-                                <Fuel className="w-5 h-5 text-indigo-400" />
+                              <div className="p-2.5 rounded-2xl bg-blue-100 border border-blue-200">
+                                <Fuel className="w-5 h-5 text-blue-600" />
                               </div>
                               <div>
-                                <p className="text-[10px] font-bold text-indigo-300/40 uppercase tracking-widest">Benzene</p>
-                                <span className={`text-lg font-black ${station.petrol ? "text-white" : "text-red-500/60"}`}>
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Petrol</p>
+                                <span className={`text-lg font-bold ${station.petrol ? "text-slate-900" : "text-red-500"}`}>
                                   {station.petrol ? `${station.petrolQty ?? 0}L` : "EMPTY"}
                                 </span>
                               </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Benzene Flow</p>
-                                <p className="text-3xl font-black text-indigo-300 tracking-tighter shadow-indigo-900/20">{station.petrolPrice ?? 80}<span className="text-xs ml-1 opacity-40">ETB</span></p>
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.2em] mb-1">Price/L</p>
+                                <p className="text-3xl font-bold text-blue-600 tracking-tight">{station.petrolPrice ?? 80}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
                             </div>
                           </div>
 
-                          <div className="flex justify-between items-center bg-white/5 p-4 rounded-3xl border border-white/5 group-hover:bg-amber-500/5 transition-colors">
+                          <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-amber-50 transition-colors">
                             <div className="flex items-center gap-3">
-                              <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                                <Gauge className="w-5 h-5 text-amber-400" />
+                              <div className="p-2.5 rounded-2xl bg-amber-100 border border-amber-200">
+                                <Gauge className="w-5 h-5 text-amber-600" />
                               </div>
                               <div>
-                                <p className="text-[10px] font-bold text-amber-300/40 uppercase tracking-widest">Nafta</p>
-                                <span className={`text-lg font-black ${station.diesel ? "text-white" : "text-red-500/60"}`}>
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Diesel</p>
+                                <span className={`text-lg font-bold ${station.diesel ? "text-slate-900" : "text-red-500"}`}>
                                   {station.diesel ? `${station.dieselQty ?? 0}L` : "EMPTY"}
                                 </span>
                               </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Nafta Unit</p>
-                                <p className="text-3xl font-black text-amber-300 tracking-tighter shadow-amber-900/20">{station.dieselPrice ?? 75}<span className="text-xs ml-1 opacity-40">ETB</span></p>
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Price/L</p>
+                                <p className="text-3xl font-bold text-amber-600 tracking-tight">{station.dieselPrice ?? 75}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
                             </div>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-8">
-                           <div className={`flex flex-col gap-2 p-5 rounded-[2rem] bg-white/5 border border-white/5 relative overflow-hidden group/item transition-all hover:bg-white/10 ${
-                             !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "tactical-glow-emerald border-emerald-500/20" 
-                             : station.estimatedWaitMinutes < 25 ? "tactical-glow-amber border-amber-500/20" 
-                             : "tactical-glow-red border-red-500/20"
+                           <div className={`flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden group/item transition-all hover:bg-slate-100 ${
+                             !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "border-emerald-300"
+                             : station.estimatedWaitMinutes < 25 ? "border-amber-300"
+                             : "border-red-300"
                            }`}>
                              <div className={`absolute top-0 left-0 w-1 h-full ${
-                               !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "bg-emerald-500" 
-                               : station.estimatedWaitMinutes < 25 ? "bg-amber-500" 
+                               !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "bg-emerald-500"
+                               : station.estimatedWaitMinutes < 25 ? "bg-amber-500"
                                : "bg-red-500"
                              }`} />
-                             <div className="flex items-center gap-2 opacity-50">
+                             <div className="flex items-center gap-2 text-slate-600">
                                <Clock className="w-3.5 h-3.5" />
-                               <span className="text-[10px] font-black uppercase tracking-[0.2em]">Efficiency</span>
+                               <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Queue</span>
                              </div>
                              <div>
-                               <p className="text-xl font-black text-white leading-none">
+                               <p className="text-xl font-bold text-slate-900 leading-none">
                                  {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m` : "No Queue"}
                                </p>
-                               <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 block ${
-                                 !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "text-emerald-400" 
-                                 : station.estimatedWaitMinutes < 25 ? "text-amber-400" 
-                                 : "text-red-400"
+                               <span className={`text-[9px] font-semibold uppercase tracking-widest mt-1 block ${
+                                 !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "text-emerald-600"
+                                 : station.estimatedWaitMinutes < 25 ? "text-amber-600"
+                                 : "text-red-600"
                                }`}>
-                                 {(!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10) ? "Optimal Flow" : station.estimatedWaitMinutes < 25 ? "Moderate Volume" : "High Pressure"}
+                                 {(!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10) ? "Fast" : station.estimatedWaitMinutes < 25 ? "Moderate" : "Slow"}
                                </span>
                              </div>
                            </div>
-                           <div className="flex flex-col gap-2 p-5 rounded-[2rem] bg-white/5 border border-white/5 relative overflow-hidden">
-                             <div className="flex items-center gap-2 opacity-40">
+                           <div className="flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden">
+                             <div className="flex items-center gap-2 text-slate-600">
                                <Star className="w-3.5 h-3.5" />
-                               <span className="text-[10px] font-black uppercase tracking-widest">Integrity</span>
+                               <span className="text-[10px] font-semibold uppercase tracking-widest">Rating</span>
                              </div>
                              <div>
-                               <p className="text-sm font-black text-white">{station.avgRating?.toFixed(1) ?? "New Node"}</p>
+                               <p className="text-sm font-bold text-slate-900">{station.avgRating?.toFixed(1) ?? "New"}</p>
                                <div className="flex gap-0.5 mt-1">
                                  {[1, 2, 3, 4, 5].map(star => (
-                                   <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (station.avgRating ?? 0) ? "bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]" : "bg-white/10"}`} />
+                                   <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (station.avgRating ?? 0) ? "bg-yellow-500" : "bg-slate-200"}`} />
                                  ))}
                                </div>
                              </div>
@@ -1101,9 +1120,9 @@ export default function DriverDashboard() {
                               e.stopPropagation();
                               startCheckout(station, "petrol");
                             }}
-                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${station.petrol
-                              ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-xl shadow-indigo-900/40 hover:scale-105 active:scale-95"
-                              : "bg-white/5 text-white/20 border border-white/10 cursor-not-allowed"
+                            className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.petrol
+                              ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                               }`}
                           >
                             Fill Petrol
@@ -1114,9 +1133,9 @@ export default function DriverDashboard() {
                               e.stopPropagation();
                               startCheckout(station, "diesel");
                             }}
-                            className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${station.diesel
-                              ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-xl shadow-amber-900/40 hover:scale-105 active:scale-95"
-                              : "bg-white/5 text-white/20 border border-white/10 cursor-not-allowed"
+                            className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.diesel
+                              ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                               }`}
                           >
                             Fill Diesel
@@ -1134,7 +1153,7 @@ export default function DriverDashboard() {
                   <button
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
-                    className="px-5 py-2.5 rounded-xl bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
                   >
                     Previous
                   </button>
@@ -1156,8 +1175,8 @@ export default function DriverDashboard() {
                             key={pageNum}
                             onClick={() => setPage(pageNum)}
                             className={`w-10 h-10 rounded-xl font-semibold transition-all ${page === pageNum
-                              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
-                              : "bg-white/10 text-slate-400 hover:bg-white/20"
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
                               }`}
                           >
                             {pageNum}
@@ -1170,7 +1189,7 @@ export default function DriverDashboard() {
                   <button
                     disabled={page === totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="px-5 py-2.5 rounded-xl bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
                   >
                     Next
                   </button>
@@ -1192,84 +1211,84 @@ export default function DriverDashboard() {
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
-                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter">Mission <span className="text-indigo-400">Archive</span></h2>
-                    <p className="text-slate-500 font-bold mt-1 uppercase tracking-widest text-xs">Complete Fuel Request Synchronization Logs</p>
+                    <h2 className="text-4xl font-bold text-slate-900 uppercase tracking-tight">Fuel <span className="text-blue-600">Logs</span></h2>
+                    <p className="text-slate-600 font-medium mt-1 uppercase tracking-widest text-xs">Complete Fuel Request History</p>
                   </div>
                   <div className="flex gap-4">
-                    <div className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-                       <Activity className="w-5 h-5 text-indigo-400" />
-                       <span className="text-sm font-black text-white">{requests.length} Total Logs</span>
+                    <div className="px-5 py-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-3">
+                       <Activity className="w-5 h-5 text-blue-600" />
+                       <span className="text-sm font-bold text-slate-900">{requests.length} Total Logs</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+                <div className="bg-gradient-to-br from-white to-slate-50 backdrop-blur-xl rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-lg">
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead className="bg-white/5 border-b border-white/10">
-                        <tr className="text-left text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] italic">
-                          <th className="px-8 py-6">Station Hub</th>
-                          <th className="px-8 py-6">Resource</th>
+                      <thead className="bg-slate-100 border-b border-slate-200">
+                        <tr className="text-left text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em]">
+                          <th className="px-8 py-6">Station</th>
+                          <th className="px-8 py-6">Fuel Type</th>
                           <th className="px-8 py-6">Quantity</th>
-                          <th className="px-8 py-6">Fiscal Total</th>
+                          <th className="px-8 py-6">Total</th>
                           <th className="px-8 py-6 text-center">Status</th>
-                          <th className="px-8 py-6">Recorded At</th>
+                          <th className="px-8 py-6">Date</th>
                           <th className="px-8 py-6 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-slate-200">
                         {requests.map((r, idx) => (
                           <motion.tr
                             key={r._id}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            className="group hover:bg-white/5 transition-all duration-300"
+                            className="group hover:bg-slate-50 transition-all duration-300"
                           >
                             <td className="px-8 py-6">
                                <div className="flex flex-col">
-                                  <span className="font-black text-white group-hover:text-indigo-400 transition-colors uppercase tracking-tight italic">{r.stationId?.name ?? "Unknown Node"}</span>
-                                  <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1">{r.stationId?.location ?? "—"}</span>
+                                  <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{r.stationId?.name ?? "Unknown Station"}</span>
+                                  <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mt-1">{r.stationId?.location ?? "—"}</span>
                                </div>
                             </td>
                             <td className="px-8 py-6">
-                              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${r.fuelType === "petrol"
-                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${r.fuelType === "petrol"
+                                ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                : "bg-amber-100 text-amber-700 border border-amber-200"
                                 }`}>
                                 {r.fuelType}
                               </span>
                             </td>
-                            <td className="px-8 py-6 text-slate-300 font-bold">{r.amount ? `${r.amount} L` : "—"}</td>
-                            <td className="px-8 py-6 font-black text-white">{r.totalPrice ? `${r.totalPrice.toLocaleString()} ETB` : "—"}</td>
+                            <td className="px-8 py-6 text-slate-700 font-semibold">{r.amount ? `${r.amount} L` : "—"}</td>
+                            <td className="px-8 py-6 font-bold text-slate-900">{r.totalPrice ? `${r.totalPrice.toLocaleString()} ETB` : "—"}</td>
                             <td className="px-8 py-6">
                                <div className="flex justify-center">
-                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-lg ${r.status === "PENDING" ? "bg-orange-500/20 text-orange-400 border border-orange-500/30" :
-                                    r.status === "APPROVED" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
-                                      r.status === "CANCELED" ? "bg-slate-500/20 text-slate-500 border border-white/5" :
-                                        "bg-red-500/20 text-red-400 border border-red-500/30"
+                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] ${r.status === "PENDING" ? "bg-orange-100 text-orange-700 border border-orange-200" :
+                                    r.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" :
+                                      r.status === "CANCELED" ? "bg-slate-100 text-slate-600 border border-slate-200" :
+                                        "bg-red-100 text-red-700 border border-red-200"
                                     }`}>
                                     {r.status}
                                   </span>
                                </div>
                             </td>
-                            <td className="px-8 py-6 text-[10px] text-slate-500 font-bold uppercase tracking-widest">{formatDateTime(r.createdAt)}</td>
+                            <td className="px-8 py-6 text-[10px] text-slate-500 font-medium uppercase tracking-widest">{formatDateTime(r.createdAt)}</td>
                             <td className="px-8 py-6 text-right">
                               {r.status === "PENDING" ? (
                                 <button
                                   onClick={() => openCancelConfirm(r._id)}
                                   disabled={mutatingId === r._id}
-                                  className="px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all border border-red-500/20"
+                                  className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-200 transition-all border border-red-200"
                                 >
-                                  Terminate
+                                  Cancel
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => openRemoveConfirm(r._id)}
                                   disabled={mutatingId === r._id}
-                                  className="px-4 py-2 rounded-xl bg-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5"
+                                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200"
                                 >
-                                  Purge
+                                  Remove
                                 </button>
                               )}
                             </td>
@@ -1277,8 +1296,8 @@ export default function DriverDashboard() {
                         ))}
                         {requests.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="text-center py-20 text-slate-600 font-bold uppercase tracking-[0.4em] text-xs">
-                              {loadingRequests ? "Synchronizing Records..." : "No operational logs found."}
+                            <td colSpan={7} className="text-center py-20 text-slate-500 font-medium uppercase tracking-[0.4em] text-xs">
+                              No fuel requests found.
                             </td>
                           </tr>
                         )}
@@ -1297,16 +1316,16 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="flex flex-col items-center justify-center py-40 space-y-8 text-center"
               >
-                <div className="w-32 h-32 rounded-[3rem] bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl relative group">
-                  <div className="absolute inset-0 bg-blue-500/10 blur-[40px] rounded-full group-hover:scale-125 transition-transform" />
-                  <Car className="w-16 h-16 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                <div className="w-32 h-32 rounded-[3rem] bg-slate-100 border border-slate-200 flex items-center justify-center shadow-lg relative group">
+                  <div className="absolute inset-0 bg-blue-100 blur-[40px] rounded-full group-hover:scale-125 transition-transform" />
+                  <Car className="w-16 h-16 text-slate-400 group-hover:text-blue-500 transition-colors" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Tactical Fleet Management</h2>
-                  <p className="text-slate-500 font-bold mt-2 uppercase tracking-widest text-xs">Vehicle Node Integration Portal Coming Soon</p>
+                  <h2 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">Vehicle Management</h2>
+                  <p className="text-slate-600 font-medium mt-2 uppercase tracking-widest text-xs">Vehicle Integration Coming Soon</p>
                 </div>
-                <button className="px-8 py-4 bg-white/5 border border-white/5 rounded-2xl text-slate-400 font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all cursor-not-allowed">
-                   Initialize Module
+                <button className="px-8 py-4 bg-slate-100 border border-slate-200 rounded-2xl text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all cursor-not-allowed">
+                   Coming Soon
                 </button>
               </motion.div>
             )}
@@ -1319,26 +1338,26 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="max-w-3xl mx-auto space-y-12"
               >
-                 <div className="p-10 rounded-[3rem] bg-white/5 border border-white/10 space-y-10 relative overflow-hidden group">
-                   <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full" />
+                 <div className="p-10 rounded-[3rem] bg-white border border-slate-200 space-y-10 relative overflow-hidden group shadow-lg">
+                   <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-100 blur-[80px] rounded-full" />
                    <div className="flex items-center gap-8 relative z-10">
-                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl">
+                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
                          U
                       </div>
                       <div>
-                         <h3 className="text-3xl font-black text-white uppercase italic">Grid Profile</h3>
-                         <p className="text-slate-500 font-bold mt-1 uppercase tracking-widest text-xs">Authenticated Command Personnel</p>
+                         <h3 className="text-3xl font-bold text-slate-900 uppercase">User Profile</h3>
+                         <p className="text-slate-600 font-medium mt-1 uppercase tracking-widest text-xs">Account Settings</p>
                       </div>
                    </div>
 
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 pt-6">
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-2">
-                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Protocol notifications</p>
-                         <p className="text-sm font-bold text-white uppercase">High Priority Only</p>
+                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Notifications</p>
+                         <p className="text-sm font-medium text-slate-900 uppercase">High Priority Only</p>
                       </div>
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-2">
-                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Theme Mode</p>
-                         <p className="text-sm font-bold text-white uppercase">Cinematic Dark (Locked)</p>
+                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Theme</p>
+                         <p className="text-sm font-medium text-slate-900 uppercase">Clean Light</p>
                       </div>
                    </div>
                  </div>
@@ -1375,22 +1394,22 @@ export default function DriverDashboard() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[92vh] space-y-5"
+                className="relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[92vh] space-y-5"
               >
                 {/* Header */}
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-indigo-300/60 font-bold mb-1">Fuel Order</p>
-                    <h3 className="text-2xl font-bold text-white">{checkoutStation.name}</h3>
+                    <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-1">Fuel Order</p>
+                    <h3 className="text-2xl font-bold text-slate-900">{checkoutStation.name}</h3>
                     {locationText && (
-                      <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1">
+                      <p className="text-sm text-slate-600 mt-0.5 flex items-center gap-1">
                         <MapPin className="w-3 h-3" /> {locationText}
                       </p>
                     )}
                   </div>
                   <button
                     onClick={() => setCheckoutStation(null)}
-                    className="p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white"
+                    className="p-2 hover:bg-slate-100 rounded-full transition text-slate-400 hover:text-slate-600"
                   >
                     ✕
                   </button>
@@ -1398,22 +1417,22 @@ export default function DriverDashboard() {
 
                 {/* Station Stats */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-white/5 rounded-xl p-3 text-center">
-                    <Star className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
-                    <p className="text-xs text-slate-400">Rating</p>
-                    <p className="font-bold text-white">
+                  <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
+                    <Star className="w-4 h-4 text-yellow-500 mx-auto mb-1" />
+                    <p className="text-xs text-slate-500">Rating</p>
+                    <p className="font-semibold text-slate-900">
                       {checkoutStation.avgRating?.toFixed(1) ?? "—"}
                     </p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-3 text-center">
-                    <Clock className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-                    <p className="text-xs text-slate-400">Queue</p>
-                    <p className="font-bold text-white">{checkoutStation.queueLength ?? 0}</p>
+                  <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
+                    <Clock className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                    <p className="text-xs text-slate-500">Queue</p>
+                    <p className="font-semibold text-slate-900">{checkoutStation.queueLength ?? 0}</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-3 text-center">
-                    <Gauge className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-                    <p className="text-xs text-slate-400">Est. Wait</p>
-                    <p className="font-bold text-white">
+                  <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-200">
+                    <Gauge className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                    <p className="text-xs text-slate-500">Est. Wait</p>
+                    <p className="font-semibold text-slate-900">
                       {checkoutStation.estimatedWaitMinutes ? `~${checkoutStation.estimatedWaitMinutes}m` : "—"}
                     </p>
                   </div>
@@ -1421,23 +1440,23 @@ export default function DriverDashboard() {
 
                 {/* Fuel Type Banner */}
                 <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${checkoutFuelType === "petrol"
-                  ? "bg-blue-500/10 border-blue-400/20"
-                  : "bg-amber-500/10 border-amber-400/20"
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-amber-50 border-amber-200"
                   }`}>
                   <span className="text-2xl">{fuelEmoji}</span>
                   <div className="flex-1">
-                    <p className="font-bold capitalize text-white">{checkoutFuelType}</p>
-                    <p className="text-xs text-slate-400">{maxAvailable} L available</p>
+                    <p className="font-bold capitalize text-slate-900">{checkoutFuelType}</p>
+                    <p className="text-xs text-slate-600">{maxAvailable} L available</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-400">Price/L</p>
-                    <p className="font-bold text-white">{pricePerLitre.toLocaleString()} ETB</p>
+                    <p className="text-xs text-slate-500">Price/L</p>
+                    <p className="font-bold text-slate-900">{pricePerLitre.toLocaleString()} ETB</p>
                   </div>
                 </div>
 
                 {/* Amount Input */}
                 <div>
-                  <label htmlFor="checkout-amount" className="text-sm font-semibold text-slate-300 block mb-2">
+                  <label htmlFor="checkout-amount" className="text-sm font-semibold text-slate-700 block mb-2">
                     Quantity (Litres)
                   </label>
                   <input
@@ -1452,23 +1471,23 @@ export default function DriverDashboard() {
                       const clamped = Math.min(Math.max(1, raw), maxAvailable || 1);
                       setCheckoutAmount(clamped);
                     }}
-                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-semibold text-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
                   />
-                  <p className="text-xs text-slate-400 mt-1">
-                    Max available: <span className="text-white font-semibold">{maxAvailable} L</span>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Max available: <span className="text-slate-900 font-semibold">{maxAvailable} L</span>
                   </p>
                 </div>
 
                 {/* Total */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Total Amount</span>
-                    <span className="text-2xl font-black text-white">{total.toLocaleString()} ETB</span>
+                    <span className="text-slate-600">Total Amount</span>
+                    <span className="text-2xl font-bold text-slate-900">{total.toLocaleString()} ETB</span>
                   </div>
                 </div>
 
                 {/* Payment Info */}
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
                   <Shield className="w-3 h-3" />
                   <span>Secure payment via Chapa · TeleBirr, CBEBirr & more</span>
                 </div>
@@ -1476,7 +1495,7 @@ export default function DriverDashboard() {
                 <button
                   disabled={isProcessingPayment || checkoutAmount <= 0}
                   onClick={handlePayment}
-                  className="w-full py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-xl transition-all disabled:opacity-50 disabled:from-slate-400 disabled:to-slate-500 flex items-center justify-center gap-2"
                 >
                   {isProcessingPayment ? (
                     <>
@@ -1510,12 +1529,12 @@ export default function DriverDashboard() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4"
+              className="relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl"
             >
               <div className="text-center">
                 <Star className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
-                <h3 className="text-xl font-bold text-white">Rate This Station</h3>
-                <p className="text-xs text-slate-400 mt-1">
+                <h3 className="text-xl font-bold text-slate-900">Rate This Station</h3>
+                <p className="text-xs text-slate-600 mt-1">
                   Share your experience to help other drivers
                 </p>
               </div>
@@ -1537,7 +1556,7 @@ export default function DriverDashboard() {
                 <button
                   disabled={submittingRating}
                   onClick={() => setRatingStationId(null)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-700 text-slate-300 font-medium hover:bg-slate-600 transition"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-200 text-slate-700 font-medium hover:bg-slate-300 transition"
                 >
                   Cancel
                 </button>
@@ -1603,32 +1622,32 @@ export default function DriverDashboard() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden"
+                className="relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden"
               >
                 {/* Success Header */}
-                <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-6 text-center space-y-2">
+                <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 text-center space-y-2">
                   <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-3xl mx-auto animate-bounce">
                     ✓
                   </div>
                   <h3 className="text-2xl font-black text-white">Payment Confirmed!</h3>
-                  <p className="text-emerald-100/80 text-sm">Your fuel request is confirmed</p>
+                  <p className="text-blue-100/80 text-sm">Your fuel request is confirmed</p>
                   <div className="inline-block bg-black/20 rounded-xl px-4 py-2 mt-2">
-                    <p className="text-[10px] text-emerald-200/60 uppercase tracking-wider">Ticket Reference</p>
+                    <p className="text-[10px] text-blue-200/60 uppercase tracking-wider">Ticket Reference</p>
                     <p className="font-black text-white tracking-wider text-lg">{ticketRef}</p>
                   </div>
                 </div>
 
                 <div className="p-6 space-y-4">
                   {/* Station Info */}
-                  <div className="flex gap-3 p-4 bg-white/5 rounded-xl">
-                    <MapPin className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <div className="flex gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <MapPin className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-white">{ticketData.stationName}</p>
+                      <p className="font-bold text-slate-900">{ticketData.stationName}</p>
                       {ticketData.stationLocation && (
-                        <p className="text-xs text-slate-400 mt-0.5">{ticketData.stationLocation}</p>
+                        <p className="text-xs text-slate-600 mt-0.5">{ticketData.stationLocation}</p>
                       )}
                       {mapUrl && (
-                        <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-xs text-cyan-300 hover:text-cyan-200">
+                        <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:text-blue-700">
                           <Navigation className="w-3 h-3" />
                           Get Directions
                         </a>
@@ -1637,26 +1656,26 @@ export default function DriverDashboard() {
                   </div>
 
                   {/* Order Summary */}
-                  <div className="border border-dashed border-white/10 rounded-xl p-4">
-                    <p className="text-xs font-bold uppercase text-slate-400 mb-3">Order Summary</p>
+                  <div className="border border-dashed border-slate-300 rounded-xl p-4">
+                    <p className="text-xs font-bold uppercase text-slate-600 mb-3">Order Summary</p>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{fuelEmoji}</span>
                       <div>
-                        <p className="font-bold capitalize text-white">{ticketData.fuelType}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="font-bold capitalize text-slate-900">{ticketData.fuelType}</p>
+                        <p className="text-xs text-slate-600">
                           {ticketData.litres} L × {ticketData.pricePerLitre.toLocaleString()} ETB
                         </p>
                       </div>
                       <div className="ml-auto text-right">
-                        <p className="text-xs text-slate-400">Total</p>
-                        <p className="font-black text-white text-lg">{ticketData.total.toLocaleString()} ETB</p>
+                        <p className="text-xs text-slate-600">Total</p>
+                        <p className="font-black text-slate-900 text-lg">{ticketData.total.toLocaleString()} ETB</p>
                       </div>
                     </div>
                   </div>
 
                   <button
                     onClick={() => setTicketData(null)}
-                    className="w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition-all shadow-lg"
+                    className="w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all shadow-lg"
                   >
                     View My Tickets
                   </button>
@@ -1698,17 +1717,17 @@ export default function DriverDashboard() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5"
+              className="relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-indigo-300/60 font-bold mb-1">Station Owner</p>
-                  <h3 className="text-2xl font-bold text-white">Register Station</h3>
+                  <p className="text-xs uppercase tracking-widest text-blue-600/60 font-bold mb-1">Station Owner</p>
+                  <h3 className="text-2xl font-bold text-slate-900">Register Station</h3>
                 </div>
                 <button
                   disabled={stationRegisterLoading}
                   onClick={() => setShowAddStation(false)}
-                  className="p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white"
+                  className="p-2 hover:bg-slate-200 rounded-full transition text-slate-500 hover:text-slate-700"
                 >
                   ✕
                 </button>
@@ -1716,7 +1735,7 @@ export default function DriverDashboard() {
 
               <form onSubmit={handleRegisterStation} className="space-y-4">
                 <div>
-                  <label htmlFor="station-name" className="text-xs font-bold uppercase tracking-wide text-blue-200/60 block mb-2">
+                  <label htmlFor="station-name" className="text-xs font-bold uppercase tracking-wide text-blue-600/60 block mb-2">
                     Station Name
                   </label>
                   <input
@@ -1727,12 +1746,12 @@ export default function DriverDashboard() {
                     placeholder="e.g. Central Fuel Depot"
                     value={stationForm.name}
                     onChange={(e) => setStationForm(p => ({ ...p, name: e.target.value }))}
-                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="station-location" className="text-xs font-bold uppercase tracking-wide text-blue-200/60 block mb-2">
+                  <label htmlFor="station-location" className="text-xs font-bold uppercase tracking-wide text-blue-600/60 block mb-2">
                     Station Location
                   </label>
                   <input
@@ -1743,14 +1762,14 @@ export default function DriverDashboard() {
                     placeholder="Address or coordinates"
                     value={stationForm.location}
                     onChange={(e) => setStationForm(p => ({ ...p, location: e.target.value }))}
-                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={stationRegisterLoading}
-                  className="w-full py-4 mt-2 rounded-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-xl transition disabled:opacity-50 text-white"
+                  className="w-full py-4 mt-2 rounded-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-xl transition disabled:opacity-50 text-white"
                 >
                   {stationRegisterLoading ? "Registering..." : "Add Station"}
                 </button>
@@ -1774,23 +1793,23 @@ export default function DriverDashboard() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5"
+              className="relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-emerald-300/60 font-bold mb-1">Wallet</p>
-                  <h3 className="text-2xl font-bold text-white">Top Up Balance</h3>
+                  <p className="text-xs uppercase tracking-widest text-blue-600/60 font-bold mb-1">Wallet</p>
+                  <h3 className="text-2xl font-bold text-slate-900">Top Up Balance</h3>
                 </div>
-                <button onClick={() => setShowTopUp(false)} className="p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white">✕</button>
+                <button onClick={() => setShowTopUp(false)} className="p-2 hover:bg-slate-200 rounded-full transition text-slate-500 hover:text-slate-700">✕</button>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
-                <p className="text-xs text-slate-400">Current Balance</p>
-                <p className="font-bold text-lg text-white">{walletBalance?.toLocaleString() ?? 0} {walletCurrency}</p>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center">
+                <p className="text-xs text-slate-600">Current Balance</p>
+                <p className="font-bold text-lg text-slate-900">{walletBalance?.toLocaleString() ?? 0} {walletCurrency}</p>
               </div>
 
               <div>
-                <label htmlFor="top-up-amount" className="text-xs font-bold uppercase tracking-wide text-blue-200/60 block mb-2">
+                <label htmlFor="top-up-amount" className="text-xs font-bold uppercase tracking-wide text-blue-600/60 block mb-2">
                   Amount (ETB)
                 </label>
                 <input
@@ -1800,7 +1819,7 @@ export default function DriverDashboard() {
                   min={10}
                   value={topUpAmount}
                   onChange={e => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 0))}
-                  className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />
                 <div className="flex gap-2 mt-3">
                   {[100, 250, 500, 1000].map(preset => (
@@ -1808,8 +1827,8 @@ export default function DriverDashboard() {
                       key={preset}
                       onClick={() => setTopUpAmount(preset)}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${topUpAmount === preset
-                        ? "bg-emerald-600 text-white"
-                        : "bg-white/10 text-slate-400 hover:bg-white/20"
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-200 text-slate-600 hover:bg-slate-300"
                         }`}
                     >
                       {preset} ETB
@@ -1818,7 +1837,7 @@ export default function DriverDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
                 <Shield className="w-3 h-3" />
                 <span>Secure payment via Chapa · TeleBirr, CBEBirr & more</span>
               </div>
@@ -1826,7 +1845,7 @@ export default function DriverDashboard() {
               <button
                 disabled={topUpLoading || topUpAmount <= 0}
                 onClick={handleTopUp}
-                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-xl transition disabled:opacity-50 text-white"
+                className="w-full py-4 rounded-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-xl transition disabled:opacity-50 text-white"
               >
                 {topUpLoading ? "Redirecting..." : `Add ${topUpAmount.toLocaleString()} ETB`}
               </button>
@@ -1849,17 +1868,17 @@ export default function DriverDashboard() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto space-y-4"
+              className="relative bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto space-y-4"
             >
-              <div className="flex justify-between items-center sticky top-0 bg-slate-900/95 backdrop-blur-sm py-2">
-                <h3 className="text-xl font-bold text-white">Notifications</h3>
-                <button onClick={() => setShowNotifications(false)} className="p-1 rounded-full hover:bg-white/10">✕</button>
+              <div className="flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-sm py-2">
+                <h3 className="text-xl font-bold text-slate-900">Notifications</h3>
+                <button onClick={() => setShowNotifications(false)} className="p-1 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-700">✕</button>
               </div>
 
               {notifications.length === 0 ? (
                 <div className="text-center py-12">
-                  <Bell className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <p className="text-sm text-slate-400">No alerts yet</p>
+                  <Bell className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                  <p className="text-sm text-slate-600">No alerts yet</p>
                   <p className="text-xs text-slate-500 mt-1">
                     Turn on alerts to get notified when fuel becomes available
                   </p>
@@ -1870,12 +1889,12 @@ export default function DriverDashboard() {
                     <li
                       key={n._id}
                       className={`p-4 rounded-xl border transition-all ${n.read
-                        ? "border-white/10 bg-white/5"
-                        : "border-indigo-400/30 bg-indigo-500/10"
+                        ? "border-slate-200 bg-slate-50"
+                        : "border-blue-400/30 bg-blue-50"
                         }`}
                     >
-                      <p className="font-semibold text-white text-sm">{n.title}</p>
-                      <p className="text-xs text-slate-400 mt-1">{n.message}</p>
+                      <p className="font-semibold text-slate-900 text-sm">{n.title}</p>
+                      <p className="text-xs text-slate-600 mt-1">{n.message}</p>
                       {n.createdAt && (
                         <p className="text-[10px] text-slate-500 mt-2">{formatDateTime(n.createdAt)}</p>
                       )}
@@ -1899,7 +1918,7 @@ export default function DriverDashboard() {
                       showToast("Failed to mark as read", "error");
                     }
                   }}
-                  className="w-full py-2.5 rounded-xl bg-white/10 text-xs font-semibold hover:bg-white/20 transition"
+                  className="w-full py-2.5 rounded-xl bg-slate-200 text-xs font-semibold hover:bg-slate-300 text-slate-700 transition"
                 >
                   Mark all as read
                 </button>

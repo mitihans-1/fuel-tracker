@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { 
@@ -8,9 +8,11 @@ import {
   User as UserIcon, 
   LogOut, 
   Settings, 
-  ChevronDown, 
-  Shield, 
-  Activity 
+  ChevronDown,  
+  Activity,
+  LayoutDashboard,
+  History,
+  Car
 } from "lucide-react";
 import ThemeSwitcher from "./ThemeSwitcher";
 
@@ -31,6 +33,7 @@ interface NavigationLink {
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, clear } = useUser();
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -111,60 +114,7 @@ export default function Navbar() {
     coreLinks.push({ name: "Register New Station", path: "/dashboard?action=register" });
   }
   
-  if (isDashboard) {
-    coreLinks.push({ 
-      name: "Notifications", 
-      path: "#", 
-      icon: (
-        <div className="relative" ref={bellRef}>
-          <button
-            onClick={(e) => { e.preventDefault(); setBellOpen(prev => !prev); }}
-            className="relative p-1.5 rounded-xl hover:bg-white/10 transition text-white/70 hover:text-white"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </button>
-          
-          {bellOpen && (
-            <div className="absolute right-0 top-full mt-3 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <p className="text-sm font-black text-white italic">Protocol Alerts</p>
-                {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300">
-                    Mark Read
-                  </button>
-                )}
-              </div>
-              <div className="max-h-72 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <p className="text-[10px] font-black text-slate-500 text-center py-10 px-6 uppercase tracking-[0.2em]">Zero System Signals</p>
-                ) : (
-                  <ul className="divide-y divide-white/5">
-                    {notifications.slice(0, 5).map(n => (
-                      <li key={n._id} className={`px-4 py-4 text-sm hover:bg-white/5 transition-colors ${n.read ? "opacity-50" : "bg-blue-500/5"}`}>
-                        <div className="flex items-start gap-3">
-                          {!n.read && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 shadow-[0_0_8px_rgba(96,165,250,1)]" />}
-                          <div className={!n.read ? "" : "ml-4.5"}>
-                            <p className="font-black text-white text-[10px] uppercase tracking-wider">{n.title}</p>
-                            <p className="text-slate-400 text-xs mt-1 leading-relaxed">{n.message}</p>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )
-    });
-  }
+
 
   const marketingLinks: NavigationLink[] = [{ name: "How It Works", path: "/#features" }];
   const authLinks: NavigationLink[] = [{ name: "Register", path: "/auth/register" }];
@@ -207,7 +157,92 @@ export default function Navbar() {
           <div className="h-5 w-px bg-white/10" />
 
           <div className="flex items-center gap-3">
-            {/* Notification Bell — Pulled into core links */}
+          {/* Driver Dashboard Top Navigation (Text Style) */}
+{isDashboard && userRole === "DRIVER" && (
+  <div className="flex items-center gap-2 mr-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-sm">
+
+    {[
+      // { name: "Dashboard", path: "/dashboard?tab=dashboard" },
+      { name: "Fuel Logs", path: "/dashboard?tab=logs" },
+      { name: "Vehicles", path: "/dashboard?tab=vehicles" },
+      { name: "Settings", path: "/dashboard?tab=settings" },
+    ].map((link) => {
+      const isActive =
+        pathname === "/dashboard" &&
+        (searchParams.get("tab") === link.path.split("=")[1] ||
+          (!searchParams.get("tab") && link.name === "Dashboard"));
+
+      return (
+        <Link
+          key={link.path}
+          href={link.path}
+          className={`relative px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+            isActive
+              ? "text-white bg-indigo-600 shadow-md"
+              : "text-white/50 hover:text-white hover:bg-white/10"
+          }`}
+        >
+          {link.name}
+
+          {/* Active underline glow */}
+          {isActive && (
+            <span className="absolute left-1/2 -bottom-1 w-6 h-[2px] bg-white rounded-full -translate-x-1/2 shadow-[0_0_10px_rgba(255,255,255,0.6)]" />
+          )}
+        </Link>
+      );
+    })}
+  </div>
+)}
+
+            {/* Notification Bell */}
+            {isDashboard && (
+              <div className="relative" ref={bellRef}>
+                <button
+                  onClick={(e) => { e.preventDefault(); setBellOpen(prev => !prev); }}
+                  className="relative p-1.5 rounded-xl hover:bg-white/10 transition text-white/70 hover:text-white"
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+                
+                {bellOpen && (
+                  <div className="absolute right-0 top-full mt-3 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                      <p className="text-sm font-black text-white italic">Protocol Alerts</p>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300">
+                          Mark Read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="text-[10px] font-black text-slate-500 text-center py-10 px-6 uppercase tracking-[0.2em]">Zero System Signals</p>
+                      ) : (
+                        <ul className="divide-y divide-white/5">
+                          {notifications.slice(0, 5).map(n => (
+                            <li key={n._id} className={`px-4 py-4 text-sm hover:bg-white/5 transition-colors ${n.read ? "opacity-50" : "bg-blue-500/5"}`}>
+                              <div className="flex items-start gap-3">
+                                {!n.read && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 shadow-[0_0_8px_rgba(96,165,250,1)]" />}
+                                <div className={!n.read ? "" : "ml-4.5"}>
+                                  <p className="font-black text-white text-[10px] uppercase tracking-wider">{n.title}</p>
+                                  <p className="text-slate-400 text-xs mt-1 leading-relaxed">{n.message}</p>
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {isDashboard ? (
               (userRole === "DRIVER" || userRole === "STATION") ? (

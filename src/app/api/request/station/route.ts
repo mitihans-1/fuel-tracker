@@ -22,9 +22,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const stationIdQuery = searchParams.get("stationId");
   
-  const query: any = { ownerUserId: decoded.id };
-  if (stationIdQuery) query._id = stationIdQuery;
-
+ const query: Record<string, string> = {
+  ownerUserId: decoded.id as string,
+};
+  if (stationIdQuery) {
+  query._id = stationIdQuery;
+}
   const station = await Station.findOne(query);
   if (!station) {
     return NextResponse.json({ error: "Station not found" }, { status: 404 });

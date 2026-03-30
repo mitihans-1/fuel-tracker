@@ -56,13 +56,13 @@ interface CreateStationForm {
 type Tab = "users" | "stations" | "requests" | "analytics" | "settings";
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchUser, setSearchUser] = useState("");
-  const [tab, setTab] = useState<Tab>("analytics");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const router = useRouter();
+  const tab = (searchParams.get("tab") as Tab) || "analytics";
 
   const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -83,7 +83,14 @@ export default function AdminDashboard() {
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "DRIVER" });
   const [userLoading, setUserLoading] = useState(false);
   const [userError, setUserError] = useState("");
-  const searchParams = useSearchParams();
+
+  const setTab = (t: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", t);
+    router.push(`${window.location.pathname}?${params.toString()}`);
+  };
+
+  const sidebarOpen = false;
 
   useEffect(() => {
     const action = searchParams.get("action");
@@ -220,46 +227,11 @@ export default function AdminDashboard() {
   const requestsOverTime = buildRequestsOverTime();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/50 border-r border-white/5 backdrop-blur-3xl transition-transform duration-300 md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex flex-col h-full p-4">
-          <div className="flex items-center gap-3 mb-10 px-2 py-4">
-             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                <Shield className="w-5 h-5 text-white" />
-             </div>
-             <div>
-                <h1 className="text-sm font-bold text-white tracking-tight leading-none">SYSTEM CONTROL</h1>
-                <p className="text-[10px] text-slate-500 font-medium tracking-wide mt-1 uppercase">Admin Terminal v2.5</p>
-             </div>
-          </div>
-          <nav className="flex-1 space-y-1">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => { setTab(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium group ${
-                  tab === item.id 
-                    ? "bg-indigo-600/10 text-indigo-400 border border-indigo-500/10" 
-                    : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-                }`}
-              >
-                <div className={`${tab === item.id ? "text-indigo-400" : "group-hover:text-white"} transition-colors`}>{item.icon}</div>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          <button onClick={() => router.push('/auth/logout')} className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all text-sm font-medium mt-auto">
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col overflow-hidden selection:bg-indigo-500/30">
+      {/* Sidebar removed */}
 
       <div className="flex-1 flex flex-col h-screen overflow-y-auto relative">
-        <div className="md:hidden flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-[40]">
-           <Shield className="w-5 h-5 text-indigo-500" />
-           <button title="sidebar" onClick={() => setSidebarOpen(true)} className="p-2 text-slate-400 hover:text-white"><Menu className="w-5 h-5" /></button>
-        </div>
+        {/* Mobile Header Removed */}
 
         <div className="relative z-10 p-6 sm:p-10 space-y-10">
            <AnimatePresence mode="wait">
