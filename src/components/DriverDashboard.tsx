@@ -15,6 +15,7 @@ import { Station } from "./OSMMap";
 const OSMMap = dynamic(() => import("@/components/OSMMap"), { ssr: false });
 
 import { formatDateTime } from "@/lib/utils";
+import SettingsPage from "@/app/dashboard/settings/page";
 
 interface FuelRequest {
   _id: string;
@@ -1338,29 +1339,7 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="max-w-3xl mx-auto space-y-12"
               >
-                 <div className="p-10 rounded-[3rem] bg-white border border-slate-200 space-y-10 relative overflow-hidden group shadow-lg">
-                   <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-100 blur-[80px] rounded-full" />
-                   <div className="flex items-center gap-8 relative z-10">
-                      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-                         U
-                      </div>
-                      <div>
-                         <h3 className="text-3xl font-bold text-slate-900 uppercase">User Profile</h3>
-                         <p className="text-slate-600 font-medium mt-1 uppercase tracking-widest text-xs">Account Settings</p>
-                      </div>
-                   </div>
-
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 pt-6">
-                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Notifications</p>
-                         <p className="text-sm font-medium text-slate-900 uppercase">High Priority Only</p>
-                      </div>
-                      <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Theme</p>
-                         <p className="text-sm font-medium text-slate-900 uppercase">Clean Light</p>
-                      </div>
-                   </div>
-                 </div>
+                <SettingsPage />
               </motion.div>
             )}
           </AnimatePresence>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import User from "@/models/user";
+import User from "@/models/User";
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();

@@ -380,7 +380,7 @@ export default function Home() {
     </div>
 
     {/* OPTIONAL: CONNECTING LINE (visual flow) */}
-    <div className="hidden md:block absolute top-[55%] left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+    {/* <div className="hidden md:block absolute top-[55%] left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-200 to-transparent" /> */}
 
   </div>
 </section>
@@ -447,20 +447,49 @@ export default function Home() {
       {/* SOCIAL ICONS */}
       <div className="flex gap-4">
 
-        {[
-          { Icon: Linkedin, color: "hover:text-blue-600 hover:bg-blue-50" },
-          { Icon: Facebook, color: "hover:text-indigo-600 hover:bg-indigo-50" },
-          { Icon: Instagram, color: "hover:text-pink-600 hover:bg-pink-50" },
-          { Icon: Github, color: "hover:text-slate-900 hover:bg-slate-100" },
-        ].map(({ Icon, color }, idx) => (
-          <Link
-            key={idx}
-            href="#"
-            className={`w-11 h-11 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 transition-all duration-300 hover:scale-110 hover:shadow-md ${color}`}
-          >
-            <Icon className="w-5 h-5" />
-          </Link>
-        ))}
+       {[
+  {
+    Icon: Linkedin,
+    hover: "hover:text-blue-600 hover:bg-blue-50",
+    active: "active:bg-blue-100 active:scale-95"
+  },
+  {
+    Icon: Facebook,
+    hover: "hover:text-indigo-600 hover:bg-indigo-50",
+    active: "active:bg-indigo-100 active:scale-95"
+  },
+  {
+    Icon: Instagram,
+    hover: "hover:text-pink-600 hover:bg-pink-50",
+    active: "active:bg-pink-100 active:scale-95"
+  },
+  {
+    Icon: Github,
+    hover: "hover:text-slate-900 hover:bg-slate-100",
+    active: "active:bg-slate-200 active:scale-95"
+  },
+].map(({ Icon, hover, active }, idx) => (
+  <Link
+    key={idx}
+    href="#"
+    className={`
+      w-11 h-11 rounded-full
+      border border-slate-200
+      bg-white
+      flex items-center justify-center
+
+      text-slate-500
+
+      transition-all duration-300 ease-out
+
+      hover:scale-110 hover:shadow-md
+      ${hover}
+      ${active}
+    `}
+  >
+    <Icon className="w-5 h-5 transition-colors duration-300" />
+  </Link>
+))}
 
       </div>
     </div>

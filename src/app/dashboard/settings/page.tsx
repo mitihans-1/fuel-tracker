@@ -4,16 +4,17 @@ import React, { useState, useEffect, FormEvent } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 
+
 // ─── Shared styles ─────────────────────────────────────────────────────────────
 const labelClass =
-  "text-[13px] font-black uppercase tracking-widest ml-4 mb-2 block bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent";
+  "text-[13px] font-bold uppercase tracking-wider ml-4 mb-2 block text-slate-600";
 const inputClass =
-  "w-full px-6 py-4 rounded-2xl bg-white/10 text-white placeholder-white/30 border border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none disabled:opacity-40";
+  "w-full px-6 py-4 rounded-2xl bg-white text-slate-900 placeholder-slate-400 border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none disabled:opacity-40 shadow-sm";
 
 function Requirement({ met, text }: { met: boolean; text: string }) {
   return (
-    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${met ? "text-emerald-400" : "text-white/30"}`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${met ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-white/20"}`} />
+    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${met ? "text-emerald-600" : "text-slate-400"}`}>
+      <div className={`w-1.5 h-1.5 rounded-full ${met ? "bg-emerald-500" : "bg-slate-300"}`} />
       {text}
     </div>
   );
@@ -24,8 +25,8 @@ function StatusBanner({ status, message }: { status: "success" | "error" | null;
   return (
     <div className={`px-4 py-3 rounded-xl text-sm font-medium ${
       status === "success"
-        ? "bg-emerald-500/20 border border-emerald-400/30 text-emerald-300"
-        : "bg-red-500/20 border border-red-500/30 text-red-300"
+        ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+        : "bg-red-50 border border-red-200 text-red-800"
     }`}>
       {status === "success" ? "✓ " : ""}{message}
     </div>
@@ -35,12 +36,12 @@ function StatusBanner({ status, message }: { status: "success" | "error" | null;
 // ─── Section card ──────────────────────────────────────────────────────────────
 function SectionCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/10 space-y-6">
-      <div className="flex items-center gap-4 pb-2 border-b border-white/5">
-        <div className="w-11 h-11 bg-gradient-to-br from-blue-500/20 to-indigo-600/20 border border-blue-500/20 rounded-2xl flex items-center justify-center text-xl">
+    <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 space-y-6">
+      <div className="flex items-center gap-4 pb-2 border-b border-slate-100">
+        <div className="w-11 h-11 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl flex items-center justify-center text-xl">
           {icon}
         </div>
-        <h2 className="text-xl font-black text-white">{title}</h2>
+        <h2 className="text-xl font-bold text-slate-900">{title}</h2>
       </div>
       {children}
     </div>
@@ -103,7 +104,7 @@ function ProfilePanel() {
             placeholder="Your display name"
             className={inputClass}
           />
-          <p className="mt-1 text-[11px] text-blue-200/70">
+          <p className="mt-1 text-[11px] text-slate-500">
             Shown to other users across the platform.
           </p>
         </div>
@@ -120,7 +121,7 @@ function ProfilePanel() {
             placeholder="you@example.com"
             className={inputClass}
           />
-          <p className="mt-1 text-[11px] text-blue-200/70">
+          <p className="mt-1 text-[11px] text-slate-500">
             Used for login and account notifications.
           </p>
         </div>
@@ -131,13 +132,13 @@ function ProfilePanel() {
           <button
             type="submit"
             disabled={saving || loading}
-            className={`cursor-pointer px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${
+            className={`cursor-pointer px-8 py-4 rounded-2xl font-bold text-sm uppercase tracking-wider transition-all duration-300 hover:-translate-y-0.5 ${
               saving || loading
-                ? "bg-white/10 text-white/40 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)]"
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg"
             }`}
           >
-            {saving ? "Saving…" : "✦ Save Profile"}
+            {saving ? "Saving…" : "Save Profile"}
           </button>
         </div>
       </form>
@@ -224,7 +225,7 @@ function PasswordPanel() {
             onChange={(e) => setNewPw(e.target.value)}
             className={`${inputClass} ${newPw && !isStrong ? "border-red-500/50" : ""}`}
           />
-          <div className="mt-3 grid grid-cols-2 gap-2 p-4 rounded-2xl bg-white/5 border border-white/5">
+          <div className="mt-3 grid grid-cols-2 gap-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
             <Requirement met={reqs.length} text="8+ Characters" />
             <Requirement met={reqs.hasUpper} text="Uppercase (A-Z)" />
             <Requirement met={reqs.hasLower} text="Lowercase (a-z)" />
@@ -244,7 +245,7 @@ function PasswordPanel() {
             className={`${inputClass} ${confirm && confirm !== newPw ? "border-red-500/50" : ""}`}
           />
           {confirm && confirm !== newPw && (
-            <p className="mt-1 text-[11px] text-red-400/80 font-semibold ml-1">Passwords do not match.</p>
+            <p className="mt-1 text-[11px] text-red-600 font-semibold ml-1">Passwords do not match.</p>
           )}
         </div>
 
@@ -254,13 +255,13 @@ function PasswordPanel() {
           <button
             type="submit"
             disabled={saving}
-            className={`cursor-pointer px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 hover:-translate-y-0.5 ${
+            className={`cursor-pointer px-8 py-4 rounded-2xl font-bold text-sm uppercase tracking-wider transition-all duration-300 hover:-translate-y-0.5 ${
               saving
-                ? "bg-white/10 text-white/40 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_30px_-5px_rgba(99,102,241,0.6)]"
+                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg"
             }`}
           >
-            {saving ? "Saving…" : "✦ Change Password"}
+            {saving ? "Saving…" : "Change Password"}
           </button>
         </div>
       </form>
@@ -279,8 +280,8 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 flex items-center justify-center">
-        <p className="text-blue-200/50 text-sm animate-pulse">Loading…</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <p className="text-slate-500 text-sm animate-pulse">Loading…</p>
       </div>
     );
   }
@@ -289,28 +290,24 @@ export default function SettingsPage() {
     user?.role === "DRIVER" ? "Driver" : user?.role === "STATION" ? "Station Owner" : "Administrator";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950 relative">
-      {/* Glow blobs */}
-      <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-screen filter blur-[100px] opacity-20 pointer-events-none" />
-      <div className="absolute bottom-0 -left-40 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20 pointer-events-none" />
-
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 relative">
       <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-20">
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-4 mb-3">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center text-2xl shadow-xl shadow-blue-500/30">
+            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center text-2xl shadow-lg">
               ⚙️
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-white">Account Settings</h1>
-              <p className="text-blue-100/50 text-sm font-medium mt-0.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-black uppercase tracking-widest">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Account Settings</h1>
+              <p className="text-slate-500 text-sm font-medium mt-0.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider">
                   {roleLabel}
                 </span>
               </p>
             </div>
           </div>
-          <p className="text-blue-100/50 text-sm mt-2">
+          <p className="text-slate-500 text-sm mt-2">
             Manage your name, email address, and password.
           </p>
         </div>
@@ -320,7 +317,7 @@ export default function SettingsPage() {
           <PasswordPanel />
         </div>
 
-        <p className="text-center text-xs font-bold text-green-300/50 uppercase tracking-widest flex items-center justify-center gap-2 mt-10">
+        <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-center gap-2 mt-10">
           🔒 Secure & Encrypted Connection
         </p>
       </div>

@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
 import { motion, AnimatePresence } from "framer-motion";
+import SettingsPage from "@/app/dashboard/settings/page"; // reuse your file
 import { 
   Users, Fuel, MapPin, BarChart3, Settings, 
   Trash2, UserPlus, Shield, CheckCircle, Search, 
   DollarSign, Activity, Zap, ExternalLink,
-  LayoutDashboard, Menu, LogOut, History
+  LayoutDashboard, Menu, LogOut, History, X
 } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler);
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
   const [stations, setStations] = useState<Station[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchUser, setSearchUser] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const tab = (searchParams.get("tab") as Tab) || "analytics";
 
   const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -71,6 +73,7 @@ export default function AdminDashboard() {
     { id: "requests", label: "Requests", icon: <History className="w-5 h-5" /> },
     { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
   ];
+  
   const [analyticsRange] = useState<"7d" | "30d">("30d");
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
@@ -88,9 +91,8 @@ export default function AdminDashboard() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", t);
     router.push(`${window.location.pathname}?${params.toString()}`);
+    setMobileMenuOpen(false);
   };
-
-  const sidebarOpen = false;
 
   useEffect(() => {
     const action = searchParams.get("action");
@@ -227,117 +229,216 @@ export default function AdminDashboard() {
   const requestsOverTime = buildRequestsOverTime();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col overflow-hidden selection:bg-indigo-500/30">
-      {/* Sidebar removed */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+        title="mobile"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 bg-white rounded-lg shadow-sm border border-gray-200"
+        >
+          <Menu className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
 
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative">
-        {/* Mobile Header Removed */}
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-xl font-semibold text-gray-900">FuelAdmin</h1>
+            <button
+            title="mobile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="lg:hidden p-1 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
 
-        <div className="relative z-10 p-6 sm:p-10 space-y-10">
-           <AnimatePresence mode="wait">
+          <nav className="space-y-1">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+               onClick={() => setTab(item.id)}
+                className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-all ${
+                  tab === item.id
+                    ? "bg-indigo-50 text-indigo-600 font-medium"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="lg:pl-64">
+        <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+          <AnimatePresence mode="wait">
             {tab === "users" && (
-              <motion.div key="users" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <motion.div
+                key="users"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><Users className="w-6 h-6 text-indigo-400" />Personnel Directory</h2>
-                    <p className="text-slate-500 text-sm mt-1 font-medium">{filteredUsers.length} system accounts detected</p>
+                    <h2 className="text-2xl font-semibold text-gray-900">Users</h2>
+                    <p className="text-sm text-gray-500 mt-1">Manage platform users and their roles</p>
                   </div>
-                  <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-80">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                      <input type="text" placeholder="Search personnel..." className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" value={searchUser} onChange={e => setSearchUser(e.target.value)} />
+                  <div className="flex gap-3">
+                    <div className="relative flex-1 sm:w-80">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search users..."
+                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value={searchUser}
+                        onChange={e => setSearchUser(e.target.value)}
+                      />
                     </div>
-                    <button onClick={() => setShowCreateUser(true)} className="px-5 py-2.5 bg-indigo-600 rounded-xl text-xs font-bold text-white hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20"><UserPlus className="w-4 h-4" /> Add Account</button>
+                    <button
+                      onClick={() => setShowCreateUser(true)}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Add User
+                    </button>
                   </div>
                 </div>
-                <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden shadow-sm">
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-900/50 border-b border-white/5">
-                      <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                        <th className="px-6 py-4">Full Identity</th>
-                        <th className="px-6 py-4">Email Protocol</th>
-                        <th className="px-6 py-4 text-center">System Authority</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {filteredUsers.map((u) => (
-                        <tr key={u._id} className="group hover:bg-white/[0.02] transition-colors">
-                          <td className="px-6 py-4">
-                             <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xs border border-indigo-500/10">{u.name.charAt(0)}</div>
-                               <span className="font-semibold text-white text-sm">{u.name}</span>
-                             </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-400 text-sm">{u.email}</td>
-                          <td className="px-6 py-4 text-center">
-                              <select 
-                                title="Change User Role"
-                                value={u.role} 
-                                onChange={(e) => updateUserRole(u._id, e.target.value)} 
-                                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border outline-none bg-slate-950 ${u.role === "ADMIN" ? "border-purple-500/20 text-purple-400" : u.role === "STATION" ? "border-amber-500/20 text-amber-400" : "border-emerald-500/20 text-emerald-400"}`}
-                              >
-                                 <option value="DRIVER">Driver</option>
-                                 <option value="STATION">Station</option>
-                                 <option value="ADMIN">Admin</option>
-                              </select>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                             <button 
-                               title="Delete User"
-                               onClick={() => deleteUser(u._id)} 
-                               className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                             >
-                               <Trash2 className="w-4 h-4" />
-                             </button>
-                          </td>
+
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3">Name</th>
+                          <th className="px-6 py-3">Email</th>
+                          <th className="px-6 py-3">Role</th>
+                          <th className="px-6 py-3 text-right">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredUsers.map((u) => (
+                          <tr key={u._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                  <span className="text-indigo-600 text-sm font-medium">{u.name.charAt(0)}</span>
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">{u.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
+                            <td className="px-6 py-4">
+                              <select
+                              title="update"
+                                value={u.role}
+                                onChange={(e) => updateUserRole(u._id, e.target.value)}
+                                className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                                  u.role === "ADMIN"
+                                    ? "border-purple-200 bg-purple-50 text-purple-700"
+                                    : u.role === "STATION"
+                                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                }`}
+                              >
+                                <option value="DRIVER">Driver</option>
+                                <option value="STATION">Station</option>
+                                <option value="ADMIN">Admin</option>
+                              </select>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                              title="delete"
+                                onClick={() => deleteUser(u._id)}
+                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </motion.div>
             )}
 
             {tab === "stations" && (
-              <motion.div key="stations" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
-                <div className="flex justify-between items-center">
+              <motion.div
+                key="stations"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><Fuel className="w-6 h-6 text-emerald-400" />Fuel Grid Nodes</h2>
-                    <p className="text-slate-500 text-sm mt-1 font-medium">{stations.length} distribution points synchronized</p>
+                    <h2 className="text-2xl font-semibold text-gray-900">Stations</h2>
+                    <p className="text-sm text-gray-500 mt-1">Manage fuel stations and their status</p>
                   </div>
+                  <button
+                    onClick={() => setShowCreateStation(true)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Add Station
+                  </button>
                 </div>
+
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {stations.map((s) => (
-                    <div key={s._id} className="group bg-slate-900/50 rounded-2xl p-6 border border-white/5 hover:border-indigo-500/20 hover:bg-slate-900/80 transition-all">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors truncate">{s.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                             <MapPin className="w-3 h-3 text-slate-500" />
-                             <p className="text-xs text-slate-400 font-medium truncate">{s.location}</p>
+                    <div key={s._id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">{s.name}</h3>
+                          <div className="flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-gray-400" />
+                            <p className="text-xs text-gray-500">{s.location}</p>
                           </div>
                         </div>
-                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${s.petrol || s.diesel ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
-                          {s.petrol || s.diesel ? "Online" : "Static"}
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          s.petrol || s.diesel
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {s.petrol || s.diesel ? "Active" : "Inactive"}
                         </div>
                       </div>
-                      <div className="space-y-2 mb-6">
-                        <div className="flex justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                           <span className="text-xs text-slate-500 font-medium">Benzene Flux</span>
-                           <span className={`text-xs font-bold ${s.petrol ? "text-indigo-400" : "text-slate-700"}`}>{s.petrol ? "ACTIVE" : "VOID"}</span>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-xs text-gray-500">Petrol</span>
+                          <span className={`text-xs font-medium ${s.petrol ? "text-emerald-600" : "text-gray-400"}`}>
+                            {s.petrol ? "Available" : "Unavailable"}
+                          </span>
                         </div>
-                        <div className="flex justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                           <span className="text-xs text-slate-500 font-medium">Nafta Unit</span>
-                           <span className={`text-xs font-bold ${s.diesel ? "text-amber-400" : "text-slate-700"}`}>{s.diesel ? "ACTIVE" : "VOID"}</span>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-xs text-gray-500">Diesel</span>
+                          <span className={`text-xs font-medium ${s.diesel ? "text-emerald-600" : "text-gray-400"}`}>
+                            {s.diesel ? "Available" : "Unavailable"}
+                          </span>
                         </div>
                       </div>
-                      <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                         <div className="flex items-center gap-2">
-                           <Shield className={`w-3.5 h-3.5 ${s.ownerUserId ? "text-indigo-500" : "text-slate-700"}`} />
-                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{s.ownerUserId ? "Validated" : "Unverified"}</span>
-                         </div>
-                         <button className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 uppercase tracking-tight">Configure <ExternalLink className="w-3 h-3" /></button>
+                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {s.ownerUserId ? "Verified" : "Unverified"}
+                          </span>
+                        </div>
+                        <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                          Configure
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -346,45 +447,61 @@ export default function AdminDashboard() {
             )}
 
             {tab === "requests" && (
-              <motion.div key="requests" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><Activity className="w-6 h-6 text-indigo-400" />Transaction Ledger</h2>
-                    <p className="text-slate-500 text-sm mt-1 font-medium">Complete platform activity logs</p>
-                  </div>
+              <motion.div
+                key="requests"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Fuel Requests</h2>
+                  <p className="text-sm text-gray-500 mt-1">Monitor and manage fuel requests</p>
                 </div>
-                <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden shadow-sm">
+
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-900/50 border-b border-white/5">
-                        <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
-                          <th className="px-6 py-4">Orchestrator</th>
-                          <th className="px-6 py-4">Node Destination</th>
-                          <th className="px-6 py-4">Resource</th>
-                          <th className="px-6 py-4 text-center">Protocol Status</th>
-                          <th className="px-6 py-4 text-right">Timestamp</th>
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3">Driver</th>
+                          <th className="px-6 py-3">Station</th>
+                          <th className="px-6 py-3">Fuel Type</th>
+                          <th className="px-6 py-3">Status</th>
+                          <th className="px-6 py-3">Date</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-gray-100">
                         {requests.map((r) => (
-                          <tr key={r._id} className="hover:bg-white/[0.02] transition-colors">
+                          <tr key={r._id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4">
-                               <div className="flex items-center gap-3">
-                                 <div className="w-6 h-6 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-[10px] border border-indigo-500/10">{r.driverId?.name.charAt(0)}</div>
-                                 <span className="font-semibold text-white text-sm">{r.driverId?.name}</span>
-                               </div>
+                              <span className="text-sm font-medium text-gray-900">{r.driverId?.name || "N/A"}</span>
                             </td>
-                            <td className="px-6 py-4 text-xs font-medium text-slate-400">{r.stationId?.name}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{r.stationId?.name || "N/A"}</td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-1 h-1 rounded-full ${r.fuelType === "petrol" ? "bg-indigo-500" : "bg-amber-500"}`} />
-                                <span className="text-[10px] font-bold uppercase text-slate-300">{r.fuelType}</span>
-                              </div>
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium ${
+                                r.fuelType === "petrol" ? "text-indigo-600" : "text-amber-600"
+                              }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${
+                                  r.fuelType === "petrol" ? "bg-indigo-500" : "bg-amber-500"
+                                }`} />
+                                {r.fuelType}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 text-center">
-                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${r.status === "PENDING" ? "border-amber-500/20 text-amber-500" : r.status === "APPROVED" ? "border-emerald-500/20 text-emerald-500" : "border-rose-500/20 text-rose-500"}`}>{r.status}</span>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                r.status === "PENDING"
+                                  ? "bg-yellow-50 text-yellow-700"
+                                  : r.status === "APPROVED"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-red-50 text-red-700"
+                              }`}>
+                                {r.status}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 text-right font-medium text-slate-500 text-[10px] tabular-nums">{r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "—"}</td>
+                            <td className="px-6 py-4 text-sm text-gray-500">
+                              {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "N/A"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -395,149 +512,325 @@ export default function AdminDashboard() {
             )}
 
             {tab === "analytics" && (
-              <motion.div key="analytics" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-12">
-                <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {[
-                    { label: "Total Users", value: stats.users, icon: <Users className="w-4 h-4" /> },
-                    { label: "Fleet Drivers", value: stats.drivers, icon: <Activity className="w-4 h-4" /> },
-                    { label: "Grid Nodes", value: stats.stations, icon: <Fuel className="w-4 h-4" /> },
-                    { label: "Gross Data Flow", value: stats.requests, icon: <History className="w-4 h-4" /> },
-                  ].map((s, i) => (
-                    <div key={i} className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{s.label}</p>
-                          <p className="text-2xl font-bold mt-2 text-white">{s.value.toLocaleString()}</p>
-                        </div>
-                        <div className="p-2 bg-white/5 rounded-lg text-slate-400">{s.icon}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Node Saturation</p>
-                      <div className="space-y-3">
-                         <div className="flex justify-between text-xs font-medium"><span className="text-slate-400">Operational Distribution</span><span className="text-emerald-400">{platformSignals.activeStations} Nodes</span></div>
-                         <div className="flex justify-between text-xs font-medium"><span className="text-slate-400">Static Capacity</span><span className="text-slate-600">{platformSignals.idleStations} Nodes</span></div>
-                      </div>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Protocol Efficiency</p>
-                      <div className="flex items-end justify-between"><p className="text-3xl font-bold text-white">{platformSignals.approvalRate}%</p><span className="text-[10px] font-bold text-indigo-400 uppercase">Authorization Rate</span></div>
-                      <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${platformSignals.approvalRate}%` }} /></div>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-4">Unauthorized Pending</p>
-                      <p className="text-3xl font-bold text-amber-500">{stats.pending}</p>
-                      <p className="mt-2 text-[10px] font-medium text-slate-500 uppercase tracking-wider">Awaiting mission approval</p>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="flex justify-between items-center pt-8 border-t border-white/5">
-                  <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3"><BarChart3 className="w-6 h-6 text-indigo-400" />Performance Intelligence</h2>
+              <motion.div
+                key="analytics"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-8"
+              >
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Analytics Overview</h2>
+                  <p className="text-sm text-gray-500 mt-1">Platform performance metrics and insights</p>
                 </div>
 
-                {loadingAnalytics || !analytics ? (
-                  <div className="flex flex-col items-center justify-center py-32 space-y-4"><div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /><p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Synchronizing Intelligence...</p></div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      {[
-                        { label: "Volumetric Flux", value: analytics.totals.litres.toLocaleString(), unit: "Liters", icon: Fuel },
-                        { label: "Economic Value", value: analytics.totals.revenue.toLocaleString(), unit: "ETB", icon: DollarSign },
-                        { label: "System Resolution", value: `${Math.round((analytics.totals.completed / analytics.totals.requests) * 100 || 0)}%`, icon: CheckCircle },
-                        { label: "Active Transactions", value: analytics.totals.approved.toLocaleString(), icon: Zap },
-                      ].map((s, i) => (
-                        <div key={i} className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 shadow-sm">
-                          <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-white/5 rounded-lg text-slate-400"><s.icon className="w-4 h-4" /></div><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{s.label}</p></div>
-                          <div className="flex items-baseline gap-2"><h3 className="text-2xl font-bold text-white">{s.value}</h3>{s.unit && <span className="text-[10px] font-bold text-slate-600 uppercase">{s.unit}</span>}</div>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[
+                    { label: "Total Users", value: stats.users, icon: Users, color: "bg-indigo-50 text-indigo-600" },
+                    { label: "Drivers", value: stats.drivers, icon: Activity, color: "bg-emerald-50 text-emerald-600" },
+                    { label: "Stations", value: stats.stations, icon: Fuel, color: "bg-amber-50 text-amber-600" },
+                    { label: "Total Requests", value: stats.requests, icon: History, color: "bg-purple-50 text-purple-600" },
+                  ].map((s, i) => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`p-2 rounded-lg ${s.color}`}>
+                          <s.icon className="w-5 h-5" />
                         </div>
-                      ))}
+                      </div>
+                      <p className="text-2xl font-semibold text-gray-900">{s.value.toLocaleString()}</p>
+                      <p className="text-sm text-gray-500 mt-1">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Additional Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">Station Status</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Active Stations</span>
+                        <span className="font-medium text-gray-900">{platformSignals.activeStations}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Inactive Stations</span>
+                        <span className="font-medium text-gray-900">{platformSignals.idleStations}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">Approval Rate</h3>
+                    <div>
+                      <p className="text-3xl font-semibold text-gray-900">{platformSignals.approvalRate}%</p>
+                      <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-600 rounded-full transition-all"
+                          style={{ width: `${platformSignals.approvalRate}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">Pending Requests</h3>
+                    <p className="text-3xl font-semibold text-amber-600">{stats.pending}</p>
+                    <p className="text-sm text-gray-500 mt-2">Awaiting approval</p>
+                  </div>
+                </div>
+
+                {/* Charts Section */}
+                {loadingAnalytics || !analytics ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-8 h-8 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
+                      <h3 className="text-sm font-medium text-gray-900 mb-6">Requests Over Time</h3>
+                      <div className="h-80">
+                        {requestsOverTime && requestsOverTime.labels.length > 0 && (
+                          <Line
+                            data={{
+                              labels: requestsOverTime.labels,
+                              datasets: [{
+                                label: "Requests",
+                                data: requestsOverTime.totals,
+                                borderColor: "#6366f1",
+                                backgroundColor: "transparent",
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.4,
+                              }]
+                            }}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                legend: { display: false },
+                                tooltip: { backgroundColor: "#1f2937" }
+                              },
+                              scales: {
+                                x: { grid: { display: false }, ticks: { color: "#6b7280" } },
+                                y: { grid: { color: "#e5e7eb" }, ticks: { color: "#6b7280" }, beginAtZero: true }
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                       <div className="lg:col-span-2 bg-slate-900/50 border border-white/5 rounded-2xl p-8">
-                          <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-8">Demand Velocity</h3>
-                          <div className="h-[350px]">
-                            {requestsOverTime && requestsOverTime.labels.length > 0 && (
-                              <Line data={{ labels: requestsOverTime.labels, datasets: [{ label: "Flow", data: requestsOverTime.totals, borderColor: "#6366f1", backgroundColor: "transparent", borderWidth: 2, pointRadius: 0, tension: 0.15 }] }} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: "#475569", font: { weight: 600, size: 10 } } }, y: { grid: { color: "rgba(255,255,255,0.03)" }, ticks: { color: "#475569", font: { weight: 600, size: 10 } }, beginAtZero: true } } }} />
-                            )}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                      <h3 className="text-sm font-medium text-gray-900 mb-6">Fuel Type Distribution</h3>
+                      <div className="h-48 mb-6">
+                        {analytics.fuelBreakdown && analytics.fuelBreakdown.length > 0 && (
+                          <Doughnut
+                            data={{
+                              labels: analytics.fuelBreakdown.map(f => f._id.toUpperCase()),
+                              datasets: [{
+                                data: analytics.fuelBreakdown.map(f => f.count),
+                                backgroundColor: ["#6366f1", "#f59e0b"],
+                                borderWidth: 0,
+                              }]
+                            }}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              cutout: "70%",
+                              plugins: { legend: { display: false } }
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        {analytics.fuelBreakdown.map((f, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-indigo-500" : "bg-amber-500"}`} />
+                              <span className="text-sm font-medium text-gray-700">{f._id}</span>
+                            </div>
+                            <span className="text-sm text-gray-600">{f.count} requests</span>
                           </div>
-                       </div>
-                       <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-8 flex flex-col items-center">
-                          <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-8 w-full">Fuel Matrix</h3>
-                          <div className="w-full h-56 mb-8">
-                            {analytics.fuelBreakdown && analytics.fuelBreakdown.length > 0 && (
-                               <Doughnut data={{ labels: analytics.fuelBreakdown.map(f => f._id.toUpperCase()), datasets: [{ data: analytics.fuelBreakdown.map(f => f.count), backgroundColor: ["#6366f1", "#f59e0b"], borderColor: "transparent", borderWidth: 0 }] }} options={{ responsive: true, maintainAspectRatio: false, cutout: '85%', plugins: { legend: { display: false } } }} />
-                            )}
-                          </div>
-                          <div className="w-full space-y-2">
-                             {analytics.fuelBreakdown.map((f, idx) => (
-                                <div key={idx} className="flex justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5"><div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-indigo-500" : "bg-amber-500"}`} /><span className="text-[10px] font-bold text-slate-400 uppercase">{f._id}</span></div><span className="text-xs font-bold text-white">{f.count} REQ</span></div>
-                             ))}
-                          </div>
-                       </div>
+                        ))}
+                      </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </motion.div>
             )}
-
             {tab === "settings" && (
-              <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-4xl mx-auto">
-                 <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-8 space-y-8">
-                    <div className="flex items-center gap-6">
-                       <div className="w-16 h-16 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold">A</div>
-                       <div><h3 className="text-xl font-bold text-white">System Authority</h3><p className="text-slate-500 text-sm font-medium">Root Node Administrator</p></div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Authorization Layer</p><p className="text-sm font-semibold text-white">Full Protocol Access Permission</p></div>
-                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Interface Authority</p><p className="text-sm font-semibold text-white">Command Center V2.5 Secure</p></div>
-                    </div>
-                 </div>
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="max-w-3xl mx-auto space-y-12"
+              >
+                <SettingsPage />
               </motion.div>
             )}
-           </AnimatePresence>
+          </AnimatePresence>
         </div>
-      </div>
+      </main>
 
-      {/* MODALS */}
+      {/* Modals */}
       <AnimatePresence>
         {showCreateStation && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateStation(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
-              <h3 className="text-2xl font-bold text-white mb-2">Deploy New Node</h3>
-              <p className="text-slate-500 text-sm mb-8">Register a distribution point into the global fuel matrix.</p>
-              <div className="space-y-6">
-                <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Node Title</label><input type="text" placeholder="e.g., Central Station Prime" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" value={createForm.name} onChange={e => setCreateForm({...createForm, name: e.target.value})} /></div>
-                <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Coordinates / Sector</label><input type="text" placeholder="e.g., Sector 7G, Addis" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" value={createForm.location} onChange={e => setCreateForm({...createForm, location: e.target.value})} /></div>
-                <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Officer Email (Optional)</label><input type="email" placeholder="assign.officer@fuel.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm" value={createForm.ownerEmail} onChange={e => setCreateForm({...createForm, ownerEmail: e.target.value})} /></div>
-                {createError && <p className="text-xs font-bold text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20">{createError}</p>}
-                <button onClick={handleCreateStation} disabled={createLoading} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20">{createLoading ? "DEPLOYING..." : "AUTHORIZE DEPLOYMENT"}</button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCreateStation(false)}
+              className="absolute inset-0 bg-black/50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md bg-white rounded-xl shadow-xl p-6"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Station</h3>
+              <p className="text-sm text-gray-500 mb-6">Register a new fuel station</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Station Name</label>
+                  <input
+                  title="name"
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={createForm.name}
+                    onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                  <input
+                  title="location"
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={createForm.location}
+                    onChange={e => setCreateForm({ ...createForm, location: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Owner Email (Optional)</label>
+                  <input
+                  title="email"
+                    type="email"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={createForm.ownerEmail}
+                    onChange={e => setCreateForm({ ...createForm, ownerEmail: e.target.value })}
+                  />
+                </div>
+                {createError && (
+                  <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{createError}</p>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowCreateStation(false)}
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateStation}
+                    disabled={createLoading}
+                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                  >
+                    {createLoading ? "Adding..." : "Add Station"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
         )}
 
         {showCreateUser && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateUser(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
-              <h3 className="text-2xl font-bold text-white mb-2">Commission Account</h3>
-              <p className="text-slate-500 text-sm mb-8">Establish new personnel credentials for platform access.</p>
-              <div className="space-y-5">
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 px-1">Identity Name</label><input type="text" placeholder="Officer Name" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} /></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 px-1">Comm Channel (Email)</label><input type="email" placeholder="protocol@system.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
-                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 px-1">Access Cipher (Password)</label><input type="password" placeholder="••••••••" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
-                <div className="grid grid-cols-3 gap-2 mt-4">
-                  {["DRIVER", "STATION", "ADMIN"].map(r => (
-                    <button key={r} onClick={() => setUserForm({...userForm, role: r})} className={`py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${userForm.role === r ? "bg-indigo-600 border-indigo-500 text-white" : "bg-white/5 border-white/5 text-slate-500 hover:text-white"}`}>{r}</button>
-                  ))}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCreateUser(false)}
+              className="absolute inset-0 bg-black/50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md bg-white rounded-xl shadow-xl p-6"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Add User</h3>
+              <p className="text-sm text-gray-500 mb-6">Create a new platform user</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                  title="name"
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={userForm.name}
+                    onChange={e => setUserForm({ ...userForm, name: e.target.value })}
+                  />
                 </div>
-                {userError && <p className="text-xs font-bold text-red-400 bg-red-500/10 p-3 rounded-lg border border-red-500/20">{userError}</p>}
-                <button onClick={handleCreateUser} disabled={userLoading} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/20 mt-4">{userLoading ? "COMMISSIONING..." : "FINALIZE COMMISSION"}</button>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                  title="email"
+                    type="email"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={userForm.email}
+                    onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                  title="password"
+                    type="password"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={userForm.password}
+                    onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Role</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["DRIVER", "STATION", "ADMIN"].map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setUserForm({ ...userForm, role: r })}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          userForm.role === r
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {userError && (
+                  <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{userError}</p>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowCreateUser(false)}
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateUser}
+                    disabled={userLoading}
+                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                  >
+                    {userLoading ? "Adding..." : "Add User"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

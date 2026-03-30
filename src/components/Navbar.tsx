@@ -46,6 +46,7 @@ export default function Navbar() {
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.read).length;
+  
 
   const fetchNotifications = useCallback(async () => {
     if (!user || user.role !== "DRIVER") return;
@@ -165,7 +166,6 @@ export default function Navbar() {
       // { name: "Dashboard", path: "/dashboard?tab=dashboard" },
       { name: "Fuel Logs", path: "/dashboard?tab=logs" },
       { name: "Vehicles", path: "/dashboard?tab=vehicles" },
-      { name: "Settings", path: "/dashboard?tab=settings" },
     ].map((link) => {
       const isActive =
         pathname === "/dashboard" &&
@@ -245,62 +245,158 @@ export default function Navbar() {
             )}
 
             {isDashboard ? (
-              (userRole === "DRIVER" || userRole === "STATION") ? (
+              (userRole === "DRIVER" || userRole === "STATION" || userRole === "ADMIN") ? (
                 <div className="relative" ref={profileRef}>
-                  <button
-                    onClick={() => setProfileOpen(prev => !prev)}
-                    className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-                      <UserIcon size={20} />
-                    </div>
-                    <div className="text-left hidden lg:block">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Authenticated</p>
-                      <p className="text-xs font-black text-white truncate max-w-[120px]">{user?.name || "Driver Portal"}</p>
-                    </div>
-                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${profileOpen ? 'rotate-180' : ''}`} />
-                  </button>
+                 <button
+  onClick={() => setProfileOpen(prev => !prev)}
+  className="
+    flex items-center gap-3 px-2 py-2 pr-4
+    rounded-2xl
+    bg-white/5 backdrop-blur-xl
+    border border-white/10
 
-                  {profileOpen && (
-                    <div className="absolute right-0 top-full mt-3 w-64 bg-slate-900 border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
-                      <div className="px-6 py-5 border-b border-white/10 bg-white/5">
-                        <p className="text-xs font-black text-white italic truncate">{user?.email}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">{user?.role} node active</span>
-                        </div>
-                      </div>
-                      
-                      <div className="p-2">
-                         <Link 
-                          href="/dashboard/settings" 
-                          onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
-                         >
-                           <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
-                           <span className="text-xs font-bold uppercase tracking-widest">Protocol Settings</span>
-                         </Link>
-                         <Link 
-                          href="/dashboard" 
-                          onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
-                         >
-                           <Activity className="w-4 h-4" />
-                           <span className="text-xs font-bold uppercase tracking-widest">System Logs</span>
-                         </Link>
-                         
-                         <div className="h-px bg-white/5 my-2 mx-4" />
-                         
-                         <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all group"
-                         >
-                           <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                           <span className="text-xs font-black uppercase tracking-widest">Terminate Session</span>
-                         </button>
-                      </div>
-                    </div>
-                  )}
+    hover:bg-white/10 hover:border-white/20
+    active:scale-95
+
+    transition-all duration-300 ease-out
+    group
+  "
+>
+  {/* Avatar */}
+  <div className="relative">
+    <div className="
+      w-10 h-10 rounded-xl
+      bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-500
+      flex items-center justify-center
+      text-white font-bold text-sm
+      shadow-lg shadow-indigo-500/25
+
+      group-hover:scale-105
+      transition-transform duration-300
+    ">
+      {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+    </div>
+
+    {/* Online status */}
+    <span className="
+      absolute -bottom-1 -right-1
+      w-3 h-3 rounded-full
+      bg-emerald-400
+      border-2 border-slate-900
+      shadow-[0_0_6px_rgba(16,185,129,0.8)]
+    " />
+  </div>
+
+  {/* User Info */}
+  <div className="text-left hidden lg:block leading-tight">
+    <p className="text-xs font-semibold text-white truncate max-w-[120px]">
+      {user?.name || "User"}
+    </p>
+    <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+      {user?.role || "Active"}
+    </p>
+  </div>
+
+  {/* Dropdown Icon */}
+  <ChevronDown
+    className={`
+      w-4 h-4 text-slate-400
+      transition-all duration-300
+      group-hover:text-white
+      ${profileOpen ? "rotate-180" : ""}
+    `}
+  />
+</button>
+{profileOpen && (
+  <div className="absolute right-0 top-full mt-3 w-72 bg-slate-900 border border-white/10 rounded-[1.5rem] shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+
+    {/* HEADER */}
+    <div className="px-5 py-4 border-b border-white/10 bg-white/5">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        </div>
+
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-white truncate">
+            {user?.name || "User"}
+          </p>
+          <p className="text-xs text-slate-400 truncate">
+            {user?.email}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 mt-3">
+        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+        <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold">
+          {user?.role} active
+        </span>
+      </div>
+    </div>
+
+    {/* ONLY SHOW EXTRA NAVS IF NOT ADMIN */}
+    {userRole !== "ADMIN" && (
+      <>
+        <div className="p-2">
+          <p className="px-3 pt-2 pb-1 text-[10px] text-slate-500 uppercase tracking-widest">
+            Quick Access
+          </p>
+
+          <Link
+            href="/dashboard"
+            onClick={() => setProfileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span className="text-sm">Dashboard</span>
+          </Link>
+
+          <Link
+            href="/dashboard?tab=vehicles"
+            onClick={() => setProfileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <Car className="w-4 h-4" />
+            <span className="text-sm">Vehicles</span>
+          </Link>
+
+          <Link
+            href="/dashboard?tab=logs"
+            onClick={() => setProfileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <History className="w-4 h-4" />
+            <span className="text-sm">Fuel Logs</span>
+          </Link>
+        </div>
+
+        <div className="p-2 border-t border-white/5">
+          <Link
+            href="/dashboard/settings"
+            onClick={() => setProfileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-sm">Settings</span>
+          </Link>
+        </div>
+      </>
+    )}
+
+    {/* LOGOUT ALWAYS SHOWN */}
+    <div className="p-2 border-t border-white/5">
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-all group"
+      >
+        <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        <span className="text-sm font-semibold">Logout</span>
+      </button>
+    </div>
+
+  </div>
+)}
                 </div>
               ) : (
                 <button
