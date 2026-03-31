@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, FormEvent } from "react";
-import Link from "react-redux";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Key, Mail, ArrowRight, CheckCircle2, Shield } from "lucide-react";
 
