@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import ClientNavbar  from "@/components/ClientNavbar";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -17,48 +18,39 @@ export default function ProductsPage() {
   const [avgRating, setAvgRating] = useState<number | null>(null);
   const [ratingCount, setRatingCount] = useState(0);
 
-  const refreshData = useCallback(async () => {
-    try {
-      const statusRes = await fetch("/api/stations/me");
-      if (statusRes.ok) {
+
+
+  useEffect(() => {
+    const fetchDataForStation = async () => {
+      try {
+        const statusRes = await fetch("/api/stations/me");
+        if (!statusRes.ok) return;
+
         const data = await statusRes.json();
+
         if (Array.isArray(data) && data.length > 0) {
           const currentStation = data[0];
-          if (currentStation) {
-            setPetrol(!!currentStation.petrol);
-            setPetrolQty(currentStation.petrolQty ?? 0);
-            setPetrolPrice(currentStation.petrolPrice ?? 80);
-            setDiesel(!!currentStation.diesel);
-            setDieselQty(currentStation.dieselQty ?? 0);
-            setDieselPrice(currentStation.dieselPrice ?? 75);
-            setAvgRating(currentStation.rating || null);
-            setRatingCount(currentStation.ratingCount || 0);
-          }
-        } else if (!Array.isArray(data) && !data.error) {
-           setPetrol(!!data.petrol);
-           setPetrolQty(data.petrolQty ?? 0);
-           setPetrolPrice(data.petrolPrice ?? 80);
-           setDiesel(!!data.diesel);
-           setDieselQty(data.dieselQty ?? 0);
-           setDieselPrice(data.dieselPrice ?? 75);
-           setAvgRating(data.rating || null);
-           setRatingCount(data.ratingCount || 0);
-        }
-      }
-    } catch {
-      // silent
-    }
-  }, []);
 
-  useEffect(() => {
-    if (user !== null && user.role !== "STATION") {
-      router.push("/dashboard");
+          setPetrol(!!currentStation.petrol);
+          setPetrolQty(currentStation.petrolQty ?? 0);
+          setPetrolPrice(currentStation.petrolPrice ?? 80);
+          setDiesel(!!currentStation.diesel);
+          setDieselQty(currentStation.dieselQty ?? 0);
+          setDieselPrice(currentStation.dieselPrice ?? 75);
+          setAvgRating(currentStation.rating || null);
+          setRatingCount(currentStation.ratingCount || 0);
+        }
+      } catch {}
+    };
+
+    if (user) {
+      if (user.role === "STATION") {
+        fetchDataForStation();
+      } else {
+        router.push("/dashboard");
+      }
     }
   }, [user, router]);
-
-  useEffect(() => {
-    if (user?.role === "STATION") refreshData();
-  }, [refreshData, user]);
 
   return (
     <main className="min-h-screen bg-[#09090b] text-white selection:bg-indigo-500/30 transition-colors duration-300">
@@ -67,11 +59,11 @@ export default function ProductsPage() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
       </div>
 
-      <Navbar />
+      <ClientNavbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 relative z-10">
         <div className="mb-12">
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-br from-white via-indigo-100 to-indigo-300 bg-clip-text text-transparent drop-shadow-sm mb-2">Live Products</h1>
-          <p className="text-indigo-400 font-bold uppercase tracking-widest text-xs">Monitor your station's active fuel lineup and reputation</p>
+          <p className="text-indigo-400 font-bold uppercase tracking-widest text-xs">Monitor your stations active fuel lineup and reputation</p>
         </div>
 
         {/* MASSIVE INVENTORY GRID */}
