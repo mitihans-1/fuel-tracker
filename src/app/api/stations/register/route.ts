@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import UserModel from "@/models/User";
+import UserModel from "@/models/user";
 import Station from "@/models/Station";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";

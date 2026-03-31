@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import UserModel from "@/models/User";
+import UserModel from "@/models/user";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";

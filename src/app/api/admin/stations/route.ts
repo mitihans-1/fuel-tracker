@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Station from "@/models/Station";
-import User from "@/models/User";
+import User from "@/models/user";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 
