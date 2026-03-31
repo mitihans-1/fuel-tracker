@@ -1,4 +1,4 @@
-import PageLayout from '@/components/PageLayout';
+﻿import PageLayout from '@/components/PageLayout';
 import { FileText, CheckCircle, AlertCircle, Scale, ShieldAlert } from 'lucide-react';
 
 export default function TermsPage() {
@@ -26,43 +26,45 @@ export default function TermsPage() {
       title="Terms of Engagement"
       subtitle="The professional framework governing the use of the FuelSync Strategic Grid."
     >
-      <div className="space-y-12 text-left">
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-widest w-fit">
-          <FileText className="w-4 h-4" />
+      <div className="space-y-16 text-left">
+        <div className="flex items-center gap-4 p-5 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 text-xs font-black uppercase tracking-widest w-fit shadow-sm">
+          <FileText className="w-5 h-5" />
           <span>Last Revised: March 28, 2026</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {provisions.map((term, idx) => (
-            <div key={idx} className="p-8 rounded-[2rem] bg-white/5 border border-white/5 space-y-4 hover:bg-white/[0.07] transition-all group">
-              <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-                    <CheckCircle className="w-4 h-4 text-indigo-400" />
+            <div key={idx} className="p-10 rounded-[2.5rem] bg-white border border-slate-200 space-y-6 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="flex items-center gap-4 relative z-10">
+                 <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-indigo-100 transition-colors shadow-inner">
+                    <CheckCircle className="w-5 h-5 text-indigo-600" />
                  </div>
-                 <h3 className="text-lg font-black text-white uppercase tracking-tight">{term.title}</h3>
+                 <h3 className="text-xl font-black text-slate-900 tracking-tight">{term.title}</h3>
               </div>
-              <p className="text-slate-400 font-medium leading-relaxed text-sm">
+              <p className="text-slate-500 font-semibold leading-relaxed text-lg relative z-10">
                 {term.desc}
               </p>
             </div>
           ))}
         </div>
 
-        <div className="p-10 rounded-[2.5rem] bg-red-500/5 border border-red-500/10 space-y-4">
-           <div className="flex items-center gap-3 text-red-400">
-              <ShieldAlert className="w-6 h-6" />
-              <h4 className="text-xl font-black uppercase tracking-tight">Limitation of Liability</h4>
+        <div className="p-12 rounded-[3rem] bg-red-50 border border-red-100 space-y-6 shadow-sm">
+           <div className="flex items-center gap-4 text-red-600">
+              <ShieldAlert className="w-8 h-8" />
+              <h4 className="text-2xl font-black tracking-tight">Limitation of Liability</h4>
            </div>
-           <p className="text-slate-500 font-bold text-sm leading-relaxed">
+           <p className="text-red-900/70 font-bold text-lg leading-relaxed italic">
              TO THE MAXIMUM EXTENT PERMITTED UNDER ETHIOPIAN LAW, FUELSYNC SHALL NOT BE LIABLE FOR ANY CONSEQUENTIAL, INCIDENTAL, OR SPECIAL DAMAGES ARISING OUT OF THE USE OF OR INABILITY TO ACCESS THE FUEL GRID TELEMETRY.
            </p>
         </div>
 
-        <div className="flex justify-center pt-8">
-           <div className="flex items-center gap-2 opacity-20">
-              <Scale className="w-5 h-5 text-white" />
-              <div className="w-24 h-[1px] bg-white" />
-              <div className="w-1.5 h-1.5 rounded-full bg-white" />
+        <div className="flex justify-center pt-10">
+           <div className="flex items-center gap-4 opacity-30">
+              <Scale className="w-6 h-6 text-slate-400" />
+              <div className="w-32 h-1 bg-slate-200 rounded-full" />
+              <div className="w-2 h-2 rounded-full bg-slate-300" />
            </div>
         </div>
       </div>

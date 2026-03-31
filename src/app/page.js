@@ -386,9 +386,9 @@ export default function Home() {
 </section>
 
       {/* Footer */}
-      <footer className="py-20 bg-gradient-to-br from-slate-50 via-white to-indigo-50 border-t border-slate-200">
+      <footer className="py-20 bg-gradient-to-br from-slate-50 via-white to-indigo-50 border-t border-slate-200 pb-5">
 
-  <div className="max-w-7xl mx-auto px-6">
+  <div className="max-w-7xl mx-auto px-6 ">
 
     {/* TOP GRID */}
     <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
@@ -445,28 +445,28 @@ export default function Home() {
       </p>
 
       {/* SOCIAL ICONS */}
-      <div className="flex gap-4">
+      <div className="flex gap-2">
 
-       {[
+      {[
   {
     Icon: Linkedin,
-    hover: "hover:text-blue-600 hover:bg-blue-50",
-    active: "active:bg-blue-100 active:scale-95"
+    hover: "hover:bg-green-600 hover:text-white",
+    active: "active:bg-blue-700 active:scale-95"
   },
   {
     Icon: Facebook,
-    hover: "hover:text-indigo-600 hover:bg-indigo-50",
-    active: "active:bg-indigo-100 active:scale-95"
+    hover: "hover:bg-blue-600 hover:text-white",
+    active: "active:bg-blue-700 active:scale-95"
   },
   {
     Icon: Instagram,
-    hover: "hover:text-pink-600 hover:bg-pink-50",
-    active: "active:bg-pink-100 active:scale-95"
+    hover: "hover:bg-pink-600 hover:text-white",
+    active: "active:bg-pink-700 active:scale-95"
   },
   {
     Icon: Github,
-    hover: "hover:text-slate-900 hover:bg-slate-100",
-    active: "active:bg-slate-200 active:scale-95"
+    hover: "hover:bg-slate-900 hover:text-white",
+    active: "active:bg-slate-800 active:scale-95"
   },
 ].map(({ Icon, hover, active }, idx) => (
   <Link

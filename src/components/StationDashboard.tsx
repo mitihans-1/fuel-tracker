@@ -288,9 +288,9 @@ export default function StationDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-slate-900 font-sans">
       {/* Animated Background Grid */}
-      <div className="fixed inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
         {/* Header Section */}
@@ -300,14 +300,14 @@ export default function StationDashboard() {
           className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
         >
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-indigo-400 text-sm font-medium">
+            <div className="flex items-center gap-2 text-indigo-600 text-sm font-semibold">
               <Activity className="w-4 h-4" />
               <span>Live Operations Dashboard</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Station Control Center
             </h1>
-            <p className="text-slate-400 text-sm max-w-xl">
+            <p className="text-slate-500 text-sm max-w-xl font-medium">
               Manage fuel inventory, process driver requests, and track performance metrics in real-time.
             </p>
           </div>
@@ -319,7 +319,7 @@ export default function StationDashboard() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white/5 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl"
+          className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 p-6 shadow-xl"
         >
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="flex items-center gap-5">
@@ -331,7 +331,7 @@ export default function StationDashboard() {
                   <div className="relative group">
                     <select
                       title="Select Active Station"
-                      className="bg-transparent text-2xl font-black outline-none cursor-pointer appearance-none pr-10 text-white hover:text-indigo-300 transition-colors"
+                      className="bg-transparent text-2xl font-black outline-none cursor-pointer appearance-none pr-10 text-slate-900 hover:text-indigo-600 transition-colors"
                       value={activeStationId || ""}
                       onChange={(e) => {
                         setActiveStationId(e.target.value);
@@ -339,31 +339,31 @@ export default function StationDashboard() {
                       }}
                     >
                       {myStations.map((station) => (
-                        <option key={station._id} value={station._id} className="bg-slate-950 text-base font-normal">
+                        <option key={station._id} value={station._id} className="bg-white text-slate-900 text-base font-normal">
                           {station.name}
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform pointer-events-none" />
+                    <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform pointer-events-none" />
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                    <p className="text-sm text-slate-400 font-medium tracking-tight">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <p className="text-sm text-slate-500 font-bold tracking-tight">
                       {myStations.find(s => s._id === activeStationId)?.location || "Global View"}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-400">No stations registered.</p>
+                <p className="text-slate-500">No stations registered.</p>
               )}
             </div>
             
             <div className="flex gap-4">
-               <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
+               <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">System Online</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">System Online</span>
                </div>
-               <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 text-slate-400">
+               <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-3 text-slate-600">
                   <Calendar className="w-4 h-4" />
                   <span className="text-xs font-bold">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                </div>
@@ -377,16 +377,16 @@ export default function StationDashboard() {
            <motion.div 
             whileHover={{ scale: 1.01 }}
             className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
-              petrol ? "bg-indigo-600/10 border-indigo-500/30" : "bg-slate-900/50 border-white/5 opacity-80"
+              petrol ? "bg-white border-indigo-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
             }`}
            >
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full" />
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full" />
               
               <div className="relative space-y-6">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                    <h3 className="text-xl font-black text-white uppercase tracking-wider">Benzene (Petrol)</h3>
-                    <p className="text-sm text-indigo-300/60 font-medium">Main supply line</p>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Benzene (Petrol)</h3>
+                    <p className="text-sm text-indigo-500/60 font-bold">Main supply line</p>
                   </div>
                   <button 
                     onClick={async () => {
@@ -400,15 +400,15 @@ export default function StationDashboard() {
                       showToast(`Petrol ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
                     }}
                     className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    petrol ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "bg-white/5 text-white/40 border border-white/10"
+                    petrol ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
                   }`}>
                     {petrol ? "Available ✓" : "Out of Stock ✕"}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                      <p className="text-[10px] font-bold text-indigo-300/50 uppercase tracking-widest mb-1">Current Price</p>
+                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                      <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Current Price</p>
                       <div className="flex items-center gap-2">
                         <input 
                           title="Petrol Price"
@@ -423,16 +423,16 @@ export default function StationDashboard() {
                              });
                              showToast("Petrol price updated", "success");
                           }}
-                          className="bg-transparent text-2xl font-black text-white w-20 outline-none"
+                          className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
                         />
-                        <span className="text-sm font-bold text-indigo-400">ETB/L</span>
+                        <span className="text-sm font-bold text-indigo-600">ETB/L</span>
                       </div>
                    </div>
-                   <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                      <p className="text-[10px] font-bold text-indigo-300/50 uppercase tracking-widest mb-1">Stock Level</p>
+                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                      <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Stock Level</p>
                       <div className="flex items-center gap-2">
-                         <p className="text-2xl font-black text-white">{petrolQty.toLocaleString()}</p>
-                         <span className="text-sm font-bold text-indigo-400">Litres</span>
+                         <p className="text-2xl font-black text-slate-900">{petrolQty.toLocaleString()}</p>
+                         <span className="text-sm font-bold text-indigo-600">Litres</span>
                       </div>
                    </div>
                 </div>
@@ -452,7 +452,7 @@ export default function StationDashboard() {
                          showToast(`Added ${amount}L of Petrol`, "success");
                       }
                     }}
-                    className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-black uppercase tracking-widest transition-all"
+                    className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
                    >
                      + Add Stock
                    </button>
@@ -464,16 +464,16 @@ export default function StationDashboard() {
            <motion.div 
             whileHover={{ scale: 1.01 }}
             className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
-              diesel ? "bg-amber-600/10 border-amber-500/30" : "bg-slate-900/50 border-white/5 opacity-80"
+              diesel ? "bg-white border-amber-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
             }`}
            >
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/10 blur-[100px] rounded-full" />
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full" />
               
               <div className="relative space-y-6">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
-                    <h3 className="text-xl font-black text-white uppercase tracking-wider">Nafta (Diesel)</h3>
-                    <p className="text-sm text-amber-300/60 font-medium">Commercial fuel</p>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Nafta (Diesel)</h3>
+                    <p className="text-sm text-amber-600/60 font-bold">Commercial fuel</p>
                   </div>
                   <button 
                     onClick={async () => {
@@ -487,15 +487,15 @@ export default function StationDashboard() {
                       showToast(`Diesel ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
                     }}
                     className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    diesel ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30" : "bg-white/5 text-white/40 border border-white/10"
+                    diesel ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
                   }`}>
                     {diesel ? "Available ✓" : "Out of Stock ✕"}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                      <p className="text-[10px] font-bold text-amber-300/50 uppercase tracking-widest mb-1">Current Price</p>
+                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                      <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Current Price</p>
                       <div className="flex items-center gap-2">
                         <input 
                           title="Diesel Price"
@@ -510,16 +510,16 @@ export default function StationDashboard() {
                              });
                              showToast("Diesel price updated", "success");
                           }}
-                          className="bg-transparent text-2xl font-black text-white w-20 outline-none"
+                          className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
                         />
-                        <span className="text-sm font-bold text-amber-400">ETB/L</span>
+                        <span className="text-sm font-bold text-amber-600">ETB/L</span>
                       </div>
                    </div>
-                   <div className="bg-black/20 p-5 rounded-3xl border border-white/5">
-                      <p className="text-[10px] font-bold text-amber-300/50 uppercase tracking-widest mb-1">Stock Level</p>
+                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                      <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Stock Level</p>
                       <div className="flex items-center gap-2">
-                         <p className="text-2xl font-black text-white">{dieselQty.toLocaleString()}</p>
-                         <span className="text-sm font-bold text-amber-400">Litres</span>
+                         <p className="text-2xl font-black text-slate-900">{dieselQty.toLocaleString()}</p>
+                         <span className="text-sm font-bold text-amber-600">Litres</span>
                       </div>
                    </div>
                 </div>
@@ -539,7 +539,7 @@ export default function StationDashboard() {
                          showToast(`Added ${amount}L of Diesel`, "success");
                       }
                     }}
-                    className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-black uppercase tracking-widest transition-all"
+                    className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
                    >
                      + Add Stock
                    </button>
@@ -556,8 +556,8 @@ export default function StationDashboard() {
               label: "Queue Size",
               value: throughput.queueSize,
               color: "from-indigo-500 to-purple-600",
-              bgColor: "bg-indigo-500/10",
-              iconColor: "text-indigo-400",
+              bgColor: "bg-indigo-50",
+              iconColor: "text-indigo-600",
               trend: "+12%",
               trendUp: true
             },
@@ -566,8 +566,8 @@ export default function StationDashboard() {
               label: "Fulfilled Today",
               value: throughput.todayApproved,
               color: "from-emerald-500 to-teal-600",
-              bgColor: "bg-emerald-500/10",
-              iconColor: "text-emerald-400",
+              bgColor: "bg-emerald-50",
+              iconColor: "text-emerald-600",
               trend: "+8%",
               trendUp: true
             },
@@ -576,8 +576,8 @@ export default function StationDashboard() {
               label: "Declined Today",
               value: throughput.todayRejected,
               color: "from-red-500 to-rose-600",
-              bgColor: "bg-red-500/10",
-              iconColor: "text-red-400",
+              bgColor: "bg-red-50",
+              iconColor: "text-red-600",
               trend: "-3%",
               trendUp: false
             }
@@ -587,23 +587,23 @@ export default function StationDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="group relative bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-white/20 transition-all"
+              className="group relative bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity`} />
+              <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-[0.02] rounded-2xl transition-opacity`} />
               <div className="relative flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{stat.label}</p>
-                  <p className="text-4xl font-bold text-white">{stat.value}</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{stat.label}</p>
+                  <p className="text-4xl font-black text-slate-900">{stat.value}</p>
                   <div className="flex items-center gap-1 mt-2">
                     {stat.trendUp ? (
-                      <TrendingUp className="w-3 h-3 text-emerald-400" />
+                      <TrendingUp className="w-3 h-3 text-emerald-600" />
                     ) : (
-                      <TrendingDown className="w-3 h-3 text-red-400" />
+                      <TrendingDown className="w-3 h-3 text-red-600" />
                     )}
-                    <span className={`text-xs ${stat.trendUp ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-xs font-bold ${stat.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
                       {stat.trend}
                     </span>
-                    <span className="text-xs text-slate-500">vs yesterday</span>
+                    <span className="text-xs text-slate-400">vs yesterday</span>
                   </div>
                 </div>
                 <div className={`p-3 rounded-xl ${stat.bgColor}`}>
@@ -615,8 +615,8 @@ export default function StationDashboard() {
         </div>
 
         {/* Main Content Tabs */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
-          <div className="flex flex-wrap gap-1 p-4 border-b border-white/10">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="flex flex-wrap gap-1 p-4 border-b border-slate-100 bg-slate-50/50">
             {[
               { id: "pending" as const, label: "Operations Queue", icon: Clock, count: pendingRequests.length },
               { id: "analytics" as const, label: "Business Insights", icon: BarChart3, count: null },
@@ -625,15 +625,15 @@ export default function StationDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === tab.id
-                  ? "bg-indigo-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.4)] border border-indigo-400/30"
-                  : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                className={`relative px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === tab.id
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-white transition-colors"
                   }`}
               >
-                <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? "text-white" : "text-indigo-400/60"}`} />
+                <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? "text-white" : "text-indigo-400"}`} />
                 {tab.label}
                 {tab.count !== null && tab.count > 0 && (
-                  <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-indigo-500/20 text-indigo-300"
+                  <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-600"
                     }`}>
                     {tab.count}
                   </span>
@@ -653,15 +653,15 @@ export default function StationDashboard() {
                   className="space-y-6"
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h3 className="text-lg font-semibold text-white">Performance Analytics</h3>
+                    <h3 className="text-lg font-black text-slate-900">Performance Analytics</h3>
                     <div className="flex gap-2">
                       {(["today", "7d", "30d"] as const).map((r) => (
                         <button
                           key={r}
                           onClick={() => setAnalyticsRange(r)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${analyticsRange === r
-                            ? "bg-indigo-500 text-white"
-                            : "bg-white/5 text-slate-400 hover:bg-white/10"
+                          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${analyticsRange === r
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                         >
                           {r === "today" ? "Today" : r === "7d" ? "7 Days" : "30 Days"}
@@ -670,7 +670,7 @@ export default function StationDashboard() {
                       <button
                         onClick={exportCSV}
                         disabled={!analytics}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 transition-all disabled:opacity-50 font-bold"
                       >
                         <Download className="w-4 h-4" />
                         Export
@@ -680,7 +680,7 @@ export default function StationDashboard() {
 
                   {loadingAnalytics || !analytics ? (
                     <div className="flex items-center justify-center py-20">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500" />
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
                     </div>
                   ) : (
                     <>
@@ -690,23 +690,23 @@ export default function StationDashboard() {
                           { icon: DollarSign, label: "Estimated Revenue", value: `${(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB`, color: "emerald" },
                           { icon: Users, label: "Total Transactions", value: analytics.totals?.count ?? 0, color: "purple" }
                         ].map((metric, idx) => (
-                          <div key={metric.label} className="bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-white/5 hover:border-white/10 transition-all">
+                          <div key={metric.label} className="bg-slate-50 rounded-3xl p-6 border border-slate-200 hover:border-indigo-200 transition-all">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className={`p-3 rounded-2xl bg-${metric.color}-500/10 border border-${metric.color}-500/20`}>
-                                <metric.icon className={`w-5 h-5 text-${metric.color}-400`} />
+                              <div className={`p-3 rounded-2xl bg-${metric.color}-50 border border-${metric.color}-100`}>
+                                <metric.icon className={`w-5 h-5 text-${metric.color}-600`} />
                               </div>
-                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{metric.label}</p>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{metric.label}</p>
                             </div>
-                            <p className="text-3xl font-black text-white tracking-tight">{metric.value}</p>
+                            <p className="text-3xl font-black text-slate-900 tracking-tight">{metric.value}</p>
                           </div>
                         ))}
                       </div>
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {analytics.byDay && analytics.byDay.length > 0 && (
-                          <div className="bg-white/5 rounded-xl p-5 border border-white/5">
-                            <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4 text-indigo-400" />
+                          <div className="bg-white rounded-xl p-5 border border-slate-200">
+                            <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-indigo-600" />
                               Sales Trend
                             </h4>
                             <Bar
@@ -716,13 +716,13 @@ export default function StationDashboard() {
                                   {
                                     label: "Litres",
                                     data: analytics.byDay.map((d) => d.litres),
-                                    backgroundColor: "rgba(99,102,241,0.8)",
+                                    backgroundColor: "rgba(79, 70, 229, 0.8)",
                                     borderRadius: 8,
                                   },
                                   {
                                     label: "Revenue (ETB)",
                                     data: analytics.byDay.map((d) => d.revenue),
-                                    backgroundColor: "rgba(16,185,129,0.8)",
+                                    backgroundColor: "rgba(16, 185, 129, 0.8)",
                                     borderRadius: 8,
                                   },
                                 ],
@@ -732,12 +732,12 @@ export default function StationDashboard() {
                                 maintainAspectRatio: false,
                                 plugins: {
                                   legend: {
-                                    labels: { color: "#94a3b8", font: { size: 11 } }
+                                    labels: { color: "#64748b", font: { size: 11, weight: 'bold' } }
                                   }
                                 },
                                 scales: {
-                                  x: { ticks: { color: "#64748b" }, grid: { color: "#ffffff05" } },
-                                  y: { ticks: { color: "#64748b" }, grid: { color: "#ffffff05" } },
+                                  x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
+                                  y: { ticks: { color: "#94a3b8" }, grid: { color: "#f1f5f9" } },
                                 },
                               }}
                             />
@@ -745,9 +745,9 @@ export default function StationDashboard() {
                         )}
 
                         {analytics.byFuel && analytics.byFuel.length > 0 && (
-                          <div className="bg-white/5 rounded-xl p-5 border border-white/5">
-                            <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                              <Fuel className="w-4 h-4 text-amber-400" />
+                          <div className="bg-white rounded-xl p-5 border border-slate-200">
+                            <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                              <Fuel className="w-4 h-4 text-amber-600" />
                               Fuel Distribution
                             </h4>
                             <div className="flex justify-center">
@@ -756,9 +756,9 @@ export default function StationDashboard() {
                                   labels: analytics.byFuel.map((f) => f._id),
                                   datasets: [{
                                     data: analytics.byFuel.map((f) => f.litres),
-                                    backgroundColor: ["rgba(99,102,241,0.9)", "rgba(245,158,11,0.9)"],
-                                    borderColor: ["#4f46e5", "#d97706"],
-                                    borderWidth: 0,
+                                    backgroundColor: ["rgba(79, 70, 229, 0.9)", "rgba(245, 158, 11, 0.9)"],
+                                    borderColor: ["#ffffff", "#ffffff"],
+                                    borderWidth: 4,
                                   }],
                                 }}
                                 options={{
@@ -767,7 +767,7 @@ export default function StationDashboard() {
                                   plugins: {
                                     legend: {
                                       position: 'bottom',
-                                      labels: { color: "#94a3b8", padding: 20 }
+                                      labels: { color: "#64748b", padding: 20, font: { weight: 'bold' } }
                                     }
                                   },
                                   cutout: '70%',
@@ -779,43 +779,43 @@ export default function StationDashboard() {
                       </div>
 
                       {/* Price History Table */}
-                      <div className="bg-white/5 rounded-xl p-5 border border-white/5">
-                        <h4 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-rose-400" />
+                      <div className="bg-white rounded-xl p-5 border border-slate-200">
+                        <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-rose-600" />
                           Price History
                         </h4>
                         {loadingPriceHistory ? (
                           <div className="flex justify-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
                           </div>
                         ) : priceHistory.length === 0 ? (
                           <div className="text-center py-8 text-slate-400">
-                            <Fuel className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                            <p>No price changes recorded yet</p>
+                            <Fuel className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p className="font-medium">No price changes recorded yet</p>
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
-                                <tr className="border-b border-white/10">
-                                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Fuel Type</th>
-                                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Price (ETB/L)</th>
-                                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Recorded At</th>
+                                <tr className="border-b border-slate-100">
+                                  <th className="text-left py-3 px-4 text-slate-500 font-bold uppercase tracking-widest text-[10px]">Fuel Type</th>
+                                  <th className="text-left py-3 px-4 text-slate-500 font-bold uppercase tracking-widest text-[10px]">Price (ETB/L)</th>
+                                  <th className="text-left py-3 px-4 text-slate-500 font-bold uppercase tracking-widest text-[10px]">Recorded At</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {priceHistory.map((p) => (
-                                  <tr key={p._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <tr key={p._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                                     <td className="py-3 px-4">
-                                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${p.fuelType === "petrol"
-                                        ? "bg-indigo-500/20 text-indigo-300"
-                                        : "bg-amber-500/20 text-amber-300"
+                                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${p.fuelType === "petrol"
+                                        ? "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                                        : "bg-amber-50 text-amber-600 border border-amber-100"
                                         }`}>
                                         {p.fuelType}
                                       </span>
                                     </td>
-                                    <td className="py-3 px-4 font-semibold text-white">{p.price.toLocaleString()} ETB</td>
-                                    <td className="py-3 px-4 text-slate-400 text-xs">{formatDateTime(p.createdAt)}</td>
+                                    <td className="py-3 px-4 font-black text-slate-900">{p.price.toLocaleString()} ETB</td>
+                                    <td className="py-3 px-4 text-slate-500 font-medium">{formatDateTime(p.createdAt)}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -836,13 +836,13 @@ export default function StationDashboard() {
                 >
                   {(activeTab === "pending" ? pendingRequests : historyRequests).length === 0 ? (
                     <div className="text-center py-20">
-                      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/5 mb-4">
-                        <Clock className="w-10 h-10 text-slate-600" />
+                      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 mb-4 border border-slate-100">
+                        <Clock className="w-10 h-10 text-slate-300" />
                       </div>
-                      <p className="text-slate-400 font-medium">
+                      <p className="text-slate-900 font-bold">
                         {activeTab === "pending" ? "No pending requests" : "No history available"}
                       </p>
-                      <p className="text-sm text-slate-500 mt-1">
+                      <p className="text-sm text-slate-500 mt-1 font-medium">
                         {activeTab === "pending"
                           ? "All caught up! New requests will appear here."
                           : "Completed requests will show up here."}
@@ -856,31 +856,31 @@ export default function StationDashboard() {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
                         whileHover={{ translateY: -5 }}
-                        className="group relative overflow-hidden bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-[2.5rem] p-8 border border-white/10 hover:border-indigo-500/30 transition-all shadow-xl mb-6"
+                        className="group relative overflow-hidden bg-white rounded-[2.5rem] p-8 border border-slate-200 hover:border-indigo-500 transition-all shadow-sm hover:shadow-xl mb-6"
                       >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[60px] rounded-full" />
                         
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
                           <div className="flex items-center gap-6">
-                            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 flex items-center justify-center text-white font-black text-3xl shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 flex items-center justify-center text-white font-black text-3xl shadow-lg rotate-3 group-hover:rotate-0 transition-transform duration-500">
                               {r.driverId?.name?.charAt(0) ?? "?"}
                             </div>
                             <div>
                               <div className="flex items-center gap-3 mb-2">
-                                <h4 className="text-2xl font-black text-white tracking-tight">{r.driverId?.name ?? "Guest Driver"}</h4>
+                                <h4 className="text-2xl font-black text-slate-900 tracking-tight">{r.driverId?.name ?? "Guest Driver"}</h4>
                                 <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                  r.fuelType === "petrol" ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  r.fuelType === "petrol" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-amber-50 text-amber-600 border border-amber-100"
                                 }`}>
                                   {r.fuelType === "petrol" ? "Benzene" : "Nafta"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-4">
-                                <span className="flex items-center gap-1.5 text-slate-400 text-xs font-bold">
-                                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                                <span className="flex items-center gap-1.5 text-slate-500 text-xs font-bold">
+                                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
                                   {formatDateTime(r.createdAt)}
                                 </span>
-                                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                                <span className="text-indigo-300/60 text-xs font-black uppercase tracking-widest">{r.status}</span>
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                                <span className="text-indigo-600/60 text-xs font-black uppercase tracking-widest">{r.status}</span>
                               </div>
                             </div>
                           </div>
@@ -890,13 +890,13 @@ export default function StationDashboard() {
                               <>
                                 <button
                                   onClick={() => updateRequest(r._id, "REJECTED")}
-                                  className="px-8 py-4 text-xs font-black uppercase tracking-widest text-red-400 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-2xl transition-all active:scale-95"
+                                  className="px-8 py-4 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-2xl transition-all active:scale-95"
                                 >
                                   Decline
                                 </button>
                                 <button
                                   onClick={() => updateRequest(r._id, "APPROVED")}
-                                  className="px-10 py-4 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl shadow-xl shadow-emerald-900/40 transition-all active:scale-95 hover:scale-105"
+                                  className="px-10 py-4 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95 hover:scale-105"
                                 >
                                   Fill Fuel ✓
                                 </button>
@@ -904,23 +904,23 @@ export default function StationDashboard() {
                             ) : r.status === "APPROVED" ? (
                               <button
                                 onClick={() => updateRequest(r._id, "COMPLETED")}
-                                className="px-10 py-4 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl shadow-xl shadow-indigo-900/40 transition-all active:scale-95 hover:scale-105"
+                                className="px-10 py-4 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95 hover:scale-105"
                               >
                                 Complete ✓
                               </button>
                             ) : (
                               <div className="flex items-center gap-4">
                                 <span className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-[0.2em] border ${
-                                  r.status === "COMPLETED" ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-300" :
-                                  r.status === "CANCELED" ? "bg-white/5 border-white/10 text-slate-500" :
-                                  "bg-red-500/10 border-red-500/20 text-red-300"
+                                  r.status === "COMPLETED" ? "bg-indigo-50 border-indigo-100 text-indigo-600" :
+                                  r.status === "CANCELED" ? "bg-slate-50 border-slate-100 text-slate-400" :
+                                  "bg-red-50 border-red-100 text-red-600"
                                 }`}>
                                   {r.status}
                                 </span>
                                 <button
                                 title="oklo"
                                   onClick={() => removeRequest(r._id)}
-                                  className="w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all group/btn border border-transparent hover:border-red-500/20"
+                                  className="w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all group/btn border border-transparent hover:border-red-100"
                                 >
                                   <XCircle className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
                                 </button>
@@ -945,36 +945,36 @@ export default function StationDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => !stationRegisterLoading && setShowAddStation(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                className="relative bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-2xl"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex justify-between items-start mb-6">
                 <div>
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 w-fit mb-3">
-                    <Building2 className="w-5 h-5 text-white" />
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 w-fit mb-4 shadow-lg shadow-indigo-500/20">
+                    <Building2 className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-white">Register New Station</h3>
-                  <p className="text-sm text-slate-400 mt-1">Add a new fuel station branch to your network</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Register New Station</h3>
+                 <p className="text-sm text-slate-500 mt-1 font-medium">Add a new fuel station branch to your network</p>
                 </div>
                 <button
                   onClick={() => setShowAddStation(false)}
                   disabled={stationRegisterLoading}
-                  className="p-2 hover:bg-white/10 rounded-lg transition"
+                  className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 hover:text-slate-900"
                 >
                   ✕
                 </button>
               </div>
 
-              <form onSubmit={handleRegisterStation} className="space-y-4">
+             <form onSubmit={handleRegisterStation} className="space-y-6">
                 <div>
-                  <label htmlFor="station-name-input" className="text-xs font-medium text-slate-400 block mb-2">Station Name</label>
+                 <label htmlFor="station-name-input" className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Station Name</label>
                   <input
                     id="station-name-input"
                     type="text"
@@ -982,14 +982,14 @@ export default function StationDashboard() {
                     placeholder="e.g., Central Fuel Depot"
                     value={stationForm.name}
                     onChange={(e) => setStationForm(p => ({ ...p, name: e.target.value }))}
-                    className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="station-location-input" className="text-xs font-medium text-slate-400 block mb-2">Station Location</label>
+                   <label htmlFor="station-location-input" className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Station Location</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       id="station-location-input"
                       type="text"
@@ -997,7 +997,7 @@ export default function StationDashboard() {
                       placeholder="Address or coordinates"
                       value={stationForm.location}
                       onChange={(e) => setStationForm(p => ({ ...p, location: e.target.value }))}
-                      className="w-full bg-white/10 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-5 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500  focus:bg-white transition-all"
                     />
                   </div>
                 </div>
@@ -1005,9 +1005,9 @@ export default function StationDashboard() {
                 <button
                   type="submit"
                   disabled={stationRegisterLoading}
-                  className="w-full py-3.5 rounded-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition-all disabled:opacity-50 shadow-lg"
+                  className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all  disabled:opacity-50 active:scale-95"
                 >
-                  {stationRegisterLoading ? "Registering..." : "Register Station"}
+                   {stationRegisterLoading ? "Synchronizing..." : "Register Station ✓"}
                 </button>
               </form>
             </motion.div>
@@ -1024,14 +1024,18 @@ export default function StationDashboard() {
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
-              className={`flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl backdrop-blur-xl border text-sm font-medium ${t.type === "success"
-                ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-200"
+             className={`flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl backdrop-blur-xl border text-sm font-bold ${t.type === "success"
+                ? "bg-white border-emerald-100 text-emerald-600"
                 : t.type === "error"
-                  ? "bg-red-500/20 border-red-400/30 text-red-200"
-                  : "bg-indigo-500/20 border-indigo-400/30 text-indigo-200"
+                   ? "bg-white border-red-100 text-red-600"
+                  : "bg-white border-indigo-100 text-indigo-600"
                 }`}
             >
-              <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
+              <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs ${
+                t.type === "success" ? "bg-emerald-50 text-emerald-600" :
+                t.type === "error" ? "bg-red-50 text-red-600" :
+                "bg-indigo-50 text-indigo-600"
+              }`}>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
               <span className="flex-1">
                 {typeof t.message === 'string' ? t.message : JSON.stringify(t.message)}
               </span>

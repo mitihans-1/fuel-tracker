@@ -1,4 +1,4 @@
-import PageLayout from '@/components/PageLayout';
+﻿import PageLayout from '@/components/PageLayout';
 import { Lock, Eye, ShieldCheck, Database, Globe } from 'lucide-react';
 
 export default function PrivacyPage() {
@@ -25,22 +25,24 @@ export default function PrivacyPage() {
       title="Privacy Protocol"
       subtitle="Ensuring the security of the Ethiopian fuel grid and protecting user sovereignty."
     >
-      <div className="space-y-12 text-left">
-        <div className="flex items-center gap-4 text-slate-500 font-black uppercase tracking-[0.4em] text-[10px] mb-8">
-           <Globe className="w-4 h-4" />
+      <div className="space-y-16 text-left">
+        <div className="flex items-center gap-4 text-slate-400 font-black uppercase tracking-[0.4em] text-xs mb-10">
+           <Globe className="w-5 h-5 text-indigo-500" />
            <span>Global Security Compliance v2.6</span>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-10">
           {policies.map((p, i) => (
-            <div key={i} className="p-10 rounded-[2.5rem] bg-white/5 border border-white/5 relative group hover:bg-white/[0.08] transition-all">
-              <div className="flex flex-col md:flex-row items-start gap-8">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <div key={i} className="p-12 rounded-[3rem] bg-white border border-slate-200 relative group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 shadow-lg overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full pointer-events-none" />
+              
+              <div className="flex flex-col md:flex-row items-start gap-10 relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                   {p.icon}
                 </div>
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{p.title}</h3>
-                  <p className="text-slate-400 font-medium leading-relaxed max-w-2xl">
+                <div className="space-y-5">
+                  <h3 className="text-3xl font-black text-slate-900 tracking-tight">{p.title}</h3>
+                  <p className="text-slate-500 font-semibold leading-relaxed max-w-2xl text-lg">
                     {p.text}
                   </p>
                 </div>
@@ -49,11 +51,11 @@ export default function PrivacyPage() {
           ))}
         </div>
 
-        <div className="p-8 border-t border-white/5 flex justify-between items-center opacity-40">
-           <p className="text-[9px] font-black uppercase tracking-widest leading-none text-slate-500">Last Verified: March 2026</p>
-           <div className="flex gap-4">
-              <ShieldCheck className="w-4 h-4" />
-              <div className="w-12 h-0.5 bg-white/20 mt-2" />
+        <div className="p-10 border-t border-slate-100 flex justify-between items-center opacity-50">
+           <p className="text-xs font-black uppercase tracking-widest leading-none text-slate-400">Last Verified: March 2026</p>
+           <div className="flex items-center gap-6">
+              <ShieldCheck className="w-5 h-5 text-emerald-500" />
+              <div className="w-16 h-1 bg-slate-200 rounded-full mt-1" />
            </div>
         </div>
       </div>
