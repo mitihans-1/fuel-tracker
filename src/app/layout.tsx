@@ -17,14 +17,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              const saved = localStorage.getItem("theme") || "dark";
-              document.documentElement.setAttribute("data-theme", saved);
-            })()
-          `
-        }} />
+       <script
+  dangerouslySetInnerHTML={{
+    __html: `
+      try {
+        const saved = localStorage.getItem("theme") || "dark";
+        document.documentElement.setAttribute("data-theme", saved);
+      } catch (e) {}
+    `,
+  }}
+/>
       </head>
       <body className={`${inter.className} text-gray-900 antialiased`}>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>

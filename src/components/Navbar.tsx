@@ -3,17 +3,7 @@ import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { 
-  Bell, 
-  User as UserIcon, 
-  LogOut, 
-  Settings, 
-  ChevronDown,  
-  Activity,
-  LayoutDashboard,
-  History,
-  Car
-} from "lucide-react";
+import {  Bell,  User as UserIcon,  LogOut,  Settings,  ChevronDown,   Activity,LayoutDashboard,History, Car } from "lucide-react";
 import ThemeSwitcher from "./ThemeSwitcher";
 
 interface Notification {
@@ -33,7 +23,7 @@ interface NavigationLink {
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+ const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, clear } = useUser();
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -167,10 +157,14 @@ export default function Navbar() {
       { name: "Fuel Logs", path: "/dashboard?tab=logs" },
       { name: "Vehicles", path: "/dashboard?tab=vehicles" },
     ].map((link) => {
-      const isActive =
-        pathname === "/dashboard" &&
-        (searchParams.get("tab") === link.path.split("=")[1] ||
-          (!searchParams.get("tab") && link.name === "Dashboard"));
+     const currentTab = searchParams.get("tab");
+
+const isActive =
+  pathname === "/dashboard" &&
+  (
+    currentTab === link.path.split("=")[1] ||
+    (!currentTab && link.name === "Fuel Logs") // default tab
+  );
 
       return (
         <Link
