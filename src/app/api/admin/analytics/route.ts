@@ -81,7 +81,7 @@ export async function GET(req: Request) {
           as: "station",
         },
       },
-      { $unwind: { path: "$station", preserveNullAndEmpty: true } },
+      { $unwind: { path: "$station", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           name: { $ifNull: ["$station.name", "Unknown Station"] },
