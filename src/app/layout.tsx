@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Suspense } from "react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/contexts/UserContext";
+import ClientNavbar from "@/components/ClientNavbar";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "700", "900"] });
 
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider>
             <UserProvider>
               <Suspense fallback={<div>Loading...</div>}>
-                <Navbar />
+               <ClientNavbar />
               </Suspense>
               <main className="flex flex-col pt-16 sm:pt-20">{children}</main>
             </UserProvider>
