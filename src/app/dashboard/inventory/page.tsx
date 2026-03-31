@@ -81,7 +81,6 @@ const refreshData = useCallback(async () => {
 
   return (
     <main className="min-h-screen bg-bg text-text selection:bg-primary/30 transition-colors duration-300">
-      <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20">
         <div className="mb-12">
           <h1 className="text-4xl font-black text-text mb-2">Inventory Management</h1>
