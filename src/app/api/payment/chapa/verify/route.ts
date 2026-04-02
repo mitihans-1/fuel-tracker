@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
   const meta: { stationId?: string; fuelType?: string; litres?: number; userId?: string; stationName?: string } =
     txData.meta ?? {};
   const paidAmount = parseFloat(txData.amount ?? "0");
+  const commissionRate = Number(process.env.PLATFORM_COMMISSION_RATE ?? 0.1);
+  const platformCommission = Number((paidAmount * commissionRate).toFixed(2));
+  const stationEarning = Number((paidAmount - platformCommission).toFixed(2));
 
   // 2. Idempotency: skip if already recorded for this tx_ref
   await connectDB();
@@ -37,8 +40,16 @@ export async function GET(req: NextRequest) {
         fuelType: meta.fuelType ?? "petrol",
         amount: Number(meta.litres ?? 0),
         totalPrice: paidAmount,
+        stationEarning,
+        platformCommission,
+        commissionRate,
+        payoutStatus: "PENDING",
         paymentStatus: "PAID",
         status: "PENDING",
+        meta: {
+          tx_ref,
+          paymentProvider: "CHAPA",
+        },
       });
 
       // 4. Record wallet debit transaction

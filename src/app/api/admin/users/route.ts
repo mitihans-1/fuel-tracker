@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import User from "@/models/user";
 import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
+import { createAuditLog } from "@/lib/audit";
 
 async function requireAdmin() {
   const cookieStore = await cookies();
@@ -51,6 +52,15 @@ export async function POST(req: Request) {
       isVerified: true // Admins create verified users
     });
 
+    await createAuditLog({
+      actorUserId: admin.id,
+      actorRole: "ADMIN",
+      action: "USER_CREATED",
+      targetType: "user",
+      targetId: String(user._id),
+      metadata: { role, email },
+    });
+
     return NextResponse.json(user, { status: 201 });
   } catch (err) {
     console.error("admin/users POST error:", err);
@@ -83,6 +93,15 @@ export async function PATCH(req: Request) {
     if (!updatedUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    await createAuditLog({
+      actorUserId: admin.id,
+      actorRole: "ADMIN",
+      action: "USER_ROLE_UPDATED",
+      targetType: "user",
+      targetId: userId,
+      metadata: { role },
+    });
 
     return NextResponse.json(updatedUser);
   } catch (err) {

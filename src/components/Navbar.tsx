@@ -26,6 +26,10 @@ export default function Navbar() {
  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, clear } = useUser();
+  const profileDisplayName =
+    user?.name?.trim() ||
+    user?.email?.split("@")[0] ||
+    "Account";
   const isDashboard = pathname?.startsWith("/dashboard");
   const userRole = isDashboard ? (user?.role ?? null) : null;
 
@@ -284,7 +288,7 @@ const isActive =
   {/* User Info */}
   <div className="text-left hidden lg:block leading-tight">
     <p className="text-xs font-semibold text-white truncate max-w-[120px]">
-      {user?.name || "User"}
+      {profileDisplayName}
     </p>
     <p className="text-[10px] text-slate-400 uppercase tracking-wider">
       {user?.role || "Active"}
@@ -313,7 +317,7 @@ const isActive =
 
         <div className="flex-1">
           <p className="text-sm font-semibold text-white truncate">
-            {user?.name || "User"}
+            {profileDisplayName}
           </p>
           <p className="text-xs text-slate-400 truncate">
             {user?.email}
@@ -329,54 +333,7 @@ const isActive =
       </div>
     </div>
 
-    {/* ONLY SHOW EXTRA NAVS IF NOT ADMIN */}
-    {userRole !== "ADMIN" && (
-      <>
-        <div className="p-2">
-          <p className="px-3 pt-2 pb-1 text-[10px] text-slate-500 uppercase tracking-widest">
-            Quick Access
-          </p>
-
-          <Link
-            href="/dashboard"
-            onClick={() => setProfileOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span className="text-sm">Dashboard</span>
-          </Link>
-
-          <Link
-            href="/dashboard?tab=vehicles"
-            onClick={() => setProfileOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
-          >
-            <Car className="w-4 h-4" />
-            <span className="text-sm">Vehicles</span>
-          </Link>
-
-          <Link
-            href="/dashboard?tab=logs"
-            onClick={() => setProfileOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
-          >
-            <History className="w-4 h-4" />
-            <span className="text-sm">Fuel Logs</span>
-          </Link>
-        </div>
-
-        <div className="p-2 border-t border-white/5">
-          <Link
-            href="/dashboard/settings"
-            onClick={() => setProfileOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-all"
-          >
-            <Settings className="w-4 h-4" />
-            <span className="text-sm">Settings</span>
-          </Link>
-        </div>
-      </>
-    )}
+    {/* Navigation moved to dashboard sidebars (keep logout below). */}
 
     {/* LOGOUT ALWAYS SHOWN */}
     <div className="p-2 border-t border-white/5">

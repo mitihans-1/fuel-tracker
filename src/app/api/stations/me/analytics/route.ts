@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const stationIdQuery = searchParams.get("stationId");
   
-  const query: any = { ownerUserId: decoded.id };
+  const query: { ownerUserId: string; _id?: string } = { ownerUserId: decoded.id };
   if (stationIdQuery) query._id = stationIdQuery;
 
   const station = await Station.findOne(query);
@@ -46,6 +46,7 @@ export async function GET(req: Request) {
   const baseMatch = {
     stationId: station._id,
     status: { $in: ["APPROVED", "COMPLETED"] },
+    paymentStatus: { $ne: "REFUNDED" },
     createdAt: { $gte: from, $lte: now },
   };
 
@@ -57,6 +58,26 @@ export async function GET(req: Request) {
         _id: null,
         totalLitres: { $sum: "$amount" },
         totalRevenue: { $sum: "$totalPrice" },
+        totalStationEarnings: { $sum: "$stationEarning" },
+        totalPlatformCommission: { $sum: "$platformCommission" },
+        pendingPayoutBalance: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: ["$status", "COMPLETED"] }, { $eq: ["$payoutStatus", "PENDING"] }] },
+              "$stationEarning",
+              0,
+            ],
+          },
+        },
+        paidOutTotal: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: ["$status", "COMPLETED"] }, { $eq: ["$payoutStatus", "PAID"] }] },
+              "$stationEarning",
+              0,
+            ],
+          },
+        },
         count: { $sum: 1 },
       },
     },
@@ -65,6 +86,10 @@ export async function GET(req: Request) {
   const totals = totalAgg[0] || {
     totalLitres: 0,
     totalRevenue: 0,
+    totalStationEarnings: 0,
+    totalPlatformCommission: 0,
+    pendingPayoutBalance: 0,
+    paidOutTotal: 0,
     count: 0,
   };
 

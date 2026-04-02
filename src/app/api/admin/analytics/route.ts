@@ -26,7 +26,10 @@ export async function GET(req: Request) {
       from.setDate(from.getDate() - 30);
     }
 
-    const baseMatch = { createdAt: { $gte: from, $lte: now } };
+    const baseMatch = {
+      createdAt: { $gte: from, $lte: now },
+      paymentStatus: { $ne: "REFUNDED" },
+    };
 
     // Requests by day with fuel type breakdown
     const byDay = await FuelRequest.aggregate([
@@ -100,7 +103,9 @@ export async function GET(req: Request) {
           _id: null,
           requests: { $sum: 1 },
           litres: { $sum: "$amount" },
-          revenue: { $sum: "$totalPrice" },
+          grossRevenue: { $sum: "$totalPrice" },
+          stationEarnings: { $sum: "$stationEarning" },
+          platformCommission: { $sum: "$platformCommission" },
           approved: {
             $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] },
           },
@@ -116,7 +121,9 @@ export async function GET(req: Request) {
     const totals = totalsAgg[0] || {
       requests: 0,
       litres: 0,
-      revenue: 0,
+      grossRevenue: 0,
+      stationEarnings: 0,
+      platformCommission: 0,
       approved: 0,
       completed: 0,
       pending: 0,

@@ -6,6 +6,10 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement,
 import { Doughnut, Line } from "react-chartjs-2";
 import { motion, AnimatePresence } from "framer-motion";
 import SettingsPage from "@/app/dashboard/settings/page"; // reuse your file
+import KpiCard from "@/components/ui/KpiCard";
+import SectionHeader from "@/components/ui/SectionHeader";
+import StatusBadge from "@/components/ui/StatusBadge";
+import DataTable from "@/components/ui/DataTable";
 import { 
   Users, Fuel, MapPin, BarChart3, Settings, 
   Trash2, UserPlus, Shield, CheckCircle, Search, 
@@ -35,6 +39,8 @@ interface FuelRequest {
   _id: string;
   fuelType: string;
   status: string;
+  paymentStatus?: string;
+  refundStatus?: "NONE" | "PROCESSED";
   driverId?: { name: string };
   stationId?: { name: string };
   createdAt?: string;
@@ -44,7 +50,16 @@ interface AdminAnalytics {
   byDay: { _id: { y: number; m: number; d: number; fuelType: string }; count: number; litres: number; revenue: number }[];
   fuelBreakdown: { _id: string; count: number; litres: number; revenue: number }[];
   topStations: { name: string; count: number; revenue: number; litres: number }[];
-  totals: { requests: number; litres: number; revenue: number; approved: number; completed: number; pending: number };
+  totals: {
+    requests: number;
+    litres: number;
+    grossRevenue: number;
+    stationEarnings: number;
+    platformCommission: number;
+    approved: number;
+    completed: number;
+    pending: number;
+  };
   stationCount: number;
 }
 
@@ -54,7 +69,35 @@ interface CreateStationForm {
   ownerEmail: string;
 }
 
-type Tab = "users" | "stations" | "requests" | "analytics" | "settings";
+type Tab = "users" | "stations" | "requests" | "analytics" | "payouts" | "audit" | "settings";
+
+interface PayoutStationSummary {
+  stationId: string;
+  stationName: string;
+  pendingAmount: number;
+  paidAmount: number;
+  pendingCount: number;
+  paidCount: number;
+}
+
+interface PayoutSummaryResponse {
+  totals: {
+    pendingAmount: number;
+    paidAmount: number;
+    pendingCount: number;
+    paidCount: number;
+  };
+  stations: PayoutStationSummary[];
+}
+
+interface AuditLogItem {
+  _id: string;
+  actorRole: "ADMIN" | "STATION" | "DRIVER";
+  action: string;
+  targetType: string;
+  targetId?: string;
+  createdAt?: string;
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -68,6 +111,8 @@ export default function AdminDashboard() {
 
   const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: "payouts", label: "Payout Center", icon: <DollarSign className="w-5 h-5" /> },
+    { id: "audit", label: "Audit Logs", icon: <Shield className="w-5 h-5" /> },
     { id: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
     { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5" /> },
     { id: "requests", label: "Requests", icon: <History className="w-5 h-5" /> },
@@ -77,6 +122,11 @@ export default function AdminDashboard() {
   const [analyticsRange] = useState<"7d" | "30d">("30d");
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [payouts, setPayouts] = useState<PayoutSummaryResponse | null>(null);
+  const [loadingPayouts, setLoadingPayouts] = useState(false);
+  const [settlingStationId, setSettlingStationId] = useState<string | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [showCreateStation, setShowCreateStation] = useState(false);
   const [createForm, setCreateForm] = useState<CreateStationForm>({ name: "", location: "", ownerEmail: "" });
   const [createLoading, setCreateLoading] = useState(false);
@@ -114,6 +164,28 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const loadPayouts = useCallback(async () => {
+    try {
+      setLoadingPayouts(true);
+      const res = await fetch("/api/admin/payouts");
+      if (res.ok) setPayouts(await res.json());
+    } finally {
+      setLoadingPayouts(false);
+    }
+  }, []);
+
+  const loadAuditLogs = useCallback(async () => {
+    try {
+      setLoadingAuditLogs(true);
+      const res = await fetch("/api/admin/audit-logs?limit=100");
+      if (!res.ok) return;
+      const data = await res.json();
+      setAuditLogs(Array.isArray(data) ? data : []);
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -137,7 +209,48 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (tab === "analytics") loadAnalytics(analyticsRange);
-  }, [tab, analyticsRange, loadAnalytics]);
+    if (tab === "payouts") loadPayouts();
+    if (tab === "audit") loadAuditLogs();
+  }, [tab, analyticsRange, loadAnalytics, loadPayouts, loadAuditLogs]);
+
+  const settleStationPayout = async (stationId: string) => {
+    try {
+      setSettlingStationId(stationId);
+      const res = await fetch("/api/admin/payouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stationId }),
+      });
+      if (res.ok) await loadPayouts();
+    } finally {
+      setSettlingStationId(null);
+    }
+  };
+
+  const processRefund = async (requestId: string) => {
+    try {
+      const res = await fetch("/api/admin/refunds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      });
+      if (!res.ok) return;
+      const [usersRes, stationsRes, requestsRes] = await Promise.all([
+        fetch("/api/admin/users"),
+        fetch("/api/admin/stations"),
+        fetch("/api/admin/requests"),
+      ]);
+      const usersData = await usersRes.json();
+      const stationsData = await stationsRes.json();
+      const requestsData = await requestsRes.json();
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setStations(Array.isArray(stationsData) ? stationsData : []);
+      setRequests(Array.isArray(requestsData) ? requestsData : []);
+      await Promise.all([loadAnalytics(analyticsRange), loadPayouts()]);
+    } catch {
+      // silent
+    }
+  };
 
   const stats = {
     users: users.length,
@@ -229,7 +342,7 @@ export default function AdminDashboard() {
   const requestsOverTime = buildRequestsOverTime();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div className="dashboard-root dashboard-shell min-h-screen">
       {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
@@ -242,7 +355,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
         <div className="p-6">
@@ -314,8 +427,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
+                <DataTable>
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -368,8 +480,7 @@ export default function AdminDashboard() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                </div>
+                </DataTable>
               </motion.div>
             )}
 
@@ -397,7 +508,7 @@ export default function AdminDashboard() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {stations.map((s) => (
-                    <div key={s._id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    <div key={s._id} className="pro-card p-6 transition-shadow">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900">{s.name}</h3>
@@ -454,12 +565,12 @@ export default function AdminDashboard() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-6"
               >
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Fuel Requests</h2>
-                  <p className="text-sm text-gray-500 mt-1">Monitor and manage fuel requests</p>
-                </div>
+                <SectionHeader
+                  title="Fuel Requests"
+                  subtitle="Monitor and manage fuel requests"
+                />
 
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="pro-card overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b border-gray-200">
@@ -468,7 +579,9 @@ export default function AdminDashboard() {
                           <th className="px-6 py-3">Station</th>
                           <th className="px-6 py-3">Fuel Type</th>
                           <th className="px-6 py-3">Status</th>
+                          <th className="px-6 py-3">Payment</th>
                           <th className="px-6 py-3">Date</th>
+                          <th className="px-6 py-3 text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -489,21 +602,106 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
+                              <StatusBadge
+                                label={r.status}
+                                tone={r.status === "PENDING" ? "warning" : r.status === "APPROVED" ? "success" : "danger"}
+                                className="text-xs font-medium normal-case tracking-normal px-2 py-1"
+                              />
+                            </td>
+                            <td className="px-6 py-4">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                r.status === "PENDING"
-                                  ? "bg-yellow-50 text-yellow-700"
-                                  : r.status === "APPROVED"
+                                r.paymentStatus === "REFUNDED"
+                                  ? "bg-red-50 text-red-700"
+                                  : r.paymentStatus === "PAID"
                                   ? "bg-emerald-50 text-emerald-700"
-                                  : "bg-red-50 text-red-700"
+                                  : "bg-slate-100 text-slate-600"
                               }`}>
-                                {r.status}
+                                {r.paymentStatus || "PENDING"}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500">
                               {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "N/A"}
                             </td>
+                            <td className="px-6 py-4 text-right">
+                              {r.paymentStatus === "PAID" && r.refundStatus !== "PROCESSED" ? (
+                                <button
+                                  onClick={() => processRefund(r._id)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-700"
+                                >
+                                  Refund
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {tab === "payouts" && (
+              <motion.div
+                key="payouts"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <SectionHeader
+                  title="Payout Center"
+                  subtitle="Settle completed request balances for stations."
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <KpiCard label="Pending Balance" value={`${(payouts?.totals.pendingAmount ?? 0).toLocaleString()} ETB`} />
+                  <KpiCard label="Total Paid Out" value={`${(payouts?.totals.paidAmount ?? 0).toLocaleString()} ETB`} />
+                  <KpiCard label="Pending Tickets" value={(payouts?.totals.pendingCount ?? 0).toLocaleString()} />
+                </div>
+
+                <div className="pro-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3">Station</th>
+                          <th className="px-6 py-3">Pending Amount</th>
+                          <th className="px-6 py-3">Paid Amount</th>
+                          <th className="px-6 py-3">Pending Tickets</th>
+                          <th className="px-6 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {loadingPayouts ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">Loading payouts...</td>
+                          </tr>
+                        ) : (payouts?.stations ?? []).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">No payout records yet.</td>
+                          </tr>
+                        ) : (
+                          (payouts?.stations ?? []).map((row) => (
+                            <tr key={row.stationId} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.stationName}</td>
+                              <td className="px-6 py-4 text-sm text-amber-700 font-semibold">{row.pendingAmount.toLocaleString()} ETB</td>
+                              <td className="px-6 py-4 text-sm text-emerald-700 font-semibold">{row.paidAmount.toLocaleString()} ETB</td>
+                              <td className="px-6 py-4 text-sm text-gray-700">{row.pendingCount}</td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  onClick={() => settleStationPayout(row.stationId)}
+                                  disabled={row.pendingCount === 0 || settlingStationId === row.stationId}
+                                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white disabled:opacity-40"
+                                >
+                                  {settlingStationId === row.stationId ? "Settling..." : "Settle Payout"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -577,6 +775,30 @@ export default function AdminDashboard() {
                     <h3 className="text-sm font-medium text-gray-900 mb-4">Pending Requests</h3>
                     <p className="text-3xl font-semibold text-amber-600">{stats.pending}</p>
                     <p className="text-sm text-gray-500 mt-2">Awaiting approval</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-xl border border-emerald-100 p-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Platform Balance</h3>
+                    <p className="text-3xl font-semibold text-emerald-600">
+                      {(analytics?.totals?.platformCommission ?? 0).toLocaleString()} ETB
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">Commission earned by platform</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-indigo-100 p-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Station Payouts</h3>
+                    <p className="text-3xl font-semibold text-indigo-600">
+                      {(analytics?.totals?.stationEarnings ?? 0).toLocaleString()} ETB
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">Net amount owed/paid to stations</p>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Gross Processed</h3>
+                    <p className="text-3xl font-semibold text-slate-900">
+                      {(analytics?.totals?.grossRevenue ?? 0).toLocaleString()} ETB
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">Total fuel payment volume</p>
                   </div>
                 </div>
 
@@ -659,6 +881,67 @@ export default function AdminDashboard() {
                 )}
               </motion.div>
             )}
+
+            {tab === "audit" && (
+              <motion.div
+                key="audit"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <SectionHeader
+                  title="Audit Logs"
+                  subtitle="Track sensitive actions for security and accountability."
+                />
+
+                <div className="pro-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3">Time</th>
+                          <th className="px-6 py-3">Actor Role</th>
+                          <th className="px-6 py-3">Action</th>
+                          <th className="px-6 py-3">Target</th>
+                          <th className="px-6 py-3">Target ID</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {loadingAuditLogs ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">Loading audit logs...</td>
+                          </tr>
+                        ) : auditLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">No audit entries found.</td>
+                          </tr>
+                        ) : (
+                          auditLogs.map((log) => (
+                            <tr key={log._id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {log.createdAt ? new Date(log.createdAt).toLocaleString() : "—"}
+                              </td>
+                              <td className="px-6 py-4">
+                                <StatusBadge
+                                  label={log.actorRole}
+                                  tone={log.actorRole === "ADMIN" ? "info" : log.actorRole === "STATION" ? "warning" : "neutral"}
+                                  className="text-xs font-medium normal-case tracking-normal px-2 py-1"
+                                />
+                              </td>
+                              <td className="px-6 py-4 text-sm font-medium text-gray-900">{log.action}</td>
+                              <td className="px-6 py-4 text-sm text-gray-700">{log.targetType}</td>
+                              <td className="px-6 py-4 text-xs text-gray-500 font-mono">{log.targetId || "—"}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {tab === "settings" && (
               <motion.div
                 key="settings"

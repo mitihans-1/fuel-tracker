@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Station } from "./OSMMap";
+import StatusBadge from "@/components/ui/StatusBadge";
+import { useUser } from "@/contexts/UserContext";
 
 const OSMMap = dynamic(() => import("@/components/OSMMap"), { ssr: false });
 
@@ -25,6 +27,15 @@ interface FuelRequest {
   amount?: number;
   totalPrice?: number;
   paymentStatus?: string;
+  refundStatus?: string;
+  createdAt?: string;
+}
+
+interface WalletTimelineItem {
+  _id: string;
+  type: "TOP_UP" | "DEBIT" | "REFUND";
+  amount: number;
+  description?: string;
   createdAt?: string;
 }
 
@@ -189,6 +200,7 @@ const StatCard = ({ icon: Icon, label, value, color, trend, trendValue }: StatCa
 export default function DriverDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUser();
   const [stations, setStations] = useState<FullStation[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,6 +216,7 @@ export default function DriverDashboard() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletCurrency, setWalletCurrency] = useState<string>("ETB");
   const [walletLoading, setWalletLoading] = useState(false);
+  const [walletTimeline, setWalletTimeline] = useState<WalletTimelineItem[]>([]);
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState<number>(100);
   const [topUpLoading, setTopUpLoading] = useState(false);
@@ -305,8 +318,14 @@ export default function DriverDashboard() {
         const data = await res.json();
         setWalletBalance(typeof data.balance === "number" ? data.balance : 0);
         if (data.currency) setWalletCurrency(data.currency);
+        if (Array.isArray(data.recentTransactions)) {
+          setWalletTimeline(data.recentTransactions);
+        } else {
+          setWalletTimeline([]);
+        }
       } catch {
         setWalletBalance(null);
+        setWalletTimeline([]);
       } finally {
         setWalletLoading(false);
       }
@@ -435,6 +454,28 @@ export default function DriverDashboard() {
       showToast("Error initializing top-up", "error");
     } finally {
       setTopUpLoading(false);
+    }
+  };
+
+  const downloadReceipt = async (requestId: string) => {
+    try {
+      const res = await fetch(`/api/request/driver/${requestId}/receipt`);
+      if (!res.ok) {
+        showToast("Failed to generate receipt", "error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fuelsync-receipt-${requestId}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showToast("Receipt downloaded", "success");
+    } catch {
+      showToast("Failed to download receipt", "error");
     }
   };
 
@@ -606,11 +647,60 @@ export default function DriverDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900 flex flex-col overflow-hidden">
-      {/* Sidebar removed */}
+    <div className="dashboard-root dashboard-shell min-h-screen text-slate-900 overflow-hidden">
+      <aside className="hidden lg:block fixed inset-y-0 left-0 z-40 w-72 pro-surface border-r border-slate-200/60">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-blue-500/20">
+              ⛽
+            </div>
+            <div>
+              <p className="text-sm font-black text-slate-900 leading-tight">FuelSync</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Driver</p>
+            </div>
+          </div>
+
+          <div className="pro-card p-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Signed in</p>
+            <p className="text-sm font-semibold text-slate-900 mt-1 truncate">{user?.name || "Driver"}</p>
+            <p className="text-[11px] text-slate-500 truncate">{user?.email || ""}</p>
+          </div>
+
+          <nav className="space-y-1">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setView(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  view === item.id
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="pro-card p-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wallet</p>
+            <div className="flex items-baseline justify-between">
+              <p className="text-xl font-black text-slate-900">{walletLoading ? "…" : (walletBalance ?? 0).toLocaleString()}</p>
+              <p className="text-xs font-bold text-indigo-600">{walletCurrency}</p>
+            </div>
+            <button
+              onClick={() => setShowTopUp(true)}
+              className="mt-3 w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition"
+            >
+              Top Up
+            </button>
+          </div>
+        </div>
+      </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative">
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative lg:pl-72">
         {/* Mobile Header Removed */}
 
         {/* Soft gradient background */}
@@ -626,8 +716,8 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-10"
               >
-         <section className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-gradient-to-br from-sky-100 via-white to-cyan-100/80 p-1 shadow-[0_30px_90px_-45px_rgba(14,116,144,0.55)]">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-sky-200/60 bg-gradient-to-br from-white/85 via-sky-50/95 to-cyan-50/90 px-6 py-8 sm:px-8 sm:py-10 backdrop-blur-xl">
+        <section className="relative overflow-hidden rounded-[2rem] p-1 pro-surface">
+          <div className="relative overflow-hidden rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-6 py-8 sm:px-8 sm:py-10 backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-sky-300/25 blur-3xl" />
               <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-cyan-300/30 blur-3xl" />
@@ -727,7 +817,7 @@ export default function DriverDashboard() {
           {/* Wallet Card */}
           <motion.div
             whileHover={{ scale: 1.02, translateY: -5 }}
-          className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-[2rem] p-8 border border-slate-200/70 shadow-md hover:shadow-2xl transition-all duration-300"
+          className="group relative overflow-hidden pro-card rounded-[1.25rem] p-8 transition-all duration-300"
           >
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-400/10 blur-[100px] rounded-full opacity-70 group-hover:opacity-100 transition" />
             <div className="relative flex flex-col justify-between h-full">
@@ -774,7 +864,7 @@ export default function DriverDashboard() {
           {/* Recommended Station */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-2xl p-6 border border-slate-200/70 shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300 cursor-pointer"
             onClick={() => {
               if (recommendedStation) {
                 const loc = recommendedStation.location;
@@ -820,7 +910,7 @@ export default function DriverDashboard() {
           {/* Alerts & Insights */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl rounded-2xl p-6 border border-slate-200/70 shadow-md hover:shadow-2xl transition-all duration-300"
+            className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
             <div className="relative">
@@ -880,6 +970,38 @@ export default function DriverDashboard() {
             </div>
           </motion.div>
         </div>
+
+        <section className="pro-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-slate-900">Wallet Timeline</h3>
+            <span className="text-xs text-slate-500 uppercase tracking-wider">Recent Activity</span>
+          </div>
+          {walletLoading ? (
+            <p className="text-sm text-slate-500">Loading wallet activity...</p>
+          ) : walletTimeline.length === 0 ? (
+            <p className="text-sm text-slate-500">No wallet transactions yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {walletTimeline.map((tx) => (
+                <div key={tx._id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3 bg-white">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {tx.type === "TOP_UP" ? "Wallet Top-Up" : tx.type === "DEBIT" ? "Fuel Payment" : "Refund Received"}
+                    </p>
+                    <p className="text-xs text-slate-500">{tx.description || "—"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${tx.type === "DEBIT" ? "text-red-600" : "text-emerald-600"}`}>
+                      {tx.type === "DEBIT" ? "-" : "+"}
+                      {Number(tx.amount || 0).toLocaleString()} {walletCurrency}
+                    </p>
+                    <p className="text-[11px] text-slate-500">{formatDateTime(tx.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Search & Map Section */}
         <section className="space-y-8 relative">
@@ -1232,6 +1354,7 @@ export default function DriverDashboard() {
                           <th className="px-8 py-6">Fuel Type</th>
                           <th className="px-8 py-6">Quantity</th>
                           <th className="px-8 py-6">Total</th>
+                          <th className="px-8 py-6">Payment</th>
                           <th className="px-8 py-6 text-center">Status</th>
                           <th className="px-8 py-6">Date</th>
                           <th className="px-8 py-6 text-right">Actions</th>
@@ -1263,41 +1386,70 @@ export default function DriverDashboard() {
                             <td className="px-8 py-6 text-slate-700 font-semibold">{r.amount ? `${r.amount} L` : "—"}</td>
                             <td className="px-8 py-6 font-bold text-slate-900">{r.totalPrice ? `${r.totalPrice.toLocaleString()} ETB` : "—"}</td>
                             <td className="px-8 py-6">
+                              <StatusBadge
+                                label={r.paymentStatus ?? "PENDING"}
+                                tone={r.paymentStatus === "REFUNDED" ? "danger" : r.paymentStatus === "PAID" ? "success" : "neutral"}
+                                className="text-[9px]"
+                              />
+                            </td>
+                            <td className="px-8 py-6">
                                <div className="flex justify-center">
-                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] ${r.status === "PENDING" ? "bg-orange-100 text-orange-700 border border-orange-200" :
-                                    r.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 border border-emerald-200" :
-                                      r.status === "CANCELED" ? "bg-slate-100 text-slate-600 border border-slate-200" :
-                                        "bg-red-100 text-red-700 border border-red-200"
-                                    }`}>
-                                    {r.status}
-                                  </span>
+                                  <StatusBadge
+                                    label={r.status}
+                                    tone={
+                                      r.status === "PENDING"
+                                        ? "warning"
+                                        : r.status === "APPROVED"
+                                        ? "success"
+                                        : r.status === "CANCELED"
+                                        ? "neutral"
+                                        : "danger"
+                                    }
+                                    className="px-4 py-1.5 text-[9px]"
+                                  />
                                </div>
                             </td>
                             <td className="px-8 py-6 text-[10px] text-slate-500 font-medium uppercase tracking-widest">{formatDateTime(r.createdAt)}</td>
                             <td className="px-8 py-6 text-right">
                               {r.status === "PENDING" ? (
-                                <button
-                                  onClick={() => openCancelConfirm(r._id)}
-                                  disabled={mutatingId === r._id}
-                                  className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-200 transition-all border border-red-200"
-                                >
-                                  Cancel
-                                </button>
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => downloadReceipt(r._id)}
+                                    className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-200 transition-all border border-indigo-200"
+                                  >
+                                    Receipt
+                                  </button>
+                                  <button
+                                    onClick={() => openCancelConfirm(r._id)}
+                                    disabled={mutatingId === r._id}
+                                    className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-200 transition-all border border-red-200"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
                               ) : (
-                                <button
-                                  onClick={() => openRemoveConfirm(r._id)}
-                                  disabled={mutatingId === r._id}
-                                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200"
-                                >
-                                  Remove
-                                </button>
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => downloadReceipt(r._id)}
+                                    className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-200 transition-all border border-indigo-200"
+                                  >
+                                    Receipt
+                                  </button>
+                                  <button
+                                    onClick={() => openRemoveConfirm(r._id)}
+                                    disabled={mutatingId === r._id}
+                                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </motion.tr>
                         ))}
                         {requests.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="text-center py-20 text-slate-500 font-medium uppercase tracking-[0.4em] text-xs">
+                            <td colSpan={8} className="text-center py-20 text-slate-500 font-medium uppercase tracking-[0.4em] text-xs">
                               No fuel requests found.
                             </td>
                           </tr>

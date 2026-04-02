@@ -20,15 +20,67 @@ const requestSchema = new mongoose.Schema({
     required: true,
     default: 0
   },
+  stationEarning: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  platformCommission: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  commissionRate: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  payoutStatus: {
+    type: String,
+    enum: ["PENDING", "PAID"],
+    default: "PENDING"
+  },
+  payoutAt: {
+    type: Date,
+    required: false
+  },
+  refundStatus: {
+    type: String,
+    enum: ["NONE", "PROCESSED"],
+    default: "NONE"
+  },
+  refundAt: {
+    type: Date,
+    required: false
+  },
+  refundAmount: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  stationReversal: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  commissionReversal: {
+    type: Number,
+    required: true,
+    default: 0
+  },
   paymentStatus: {
     type: String,
-    enum: ["PENDING", "PAID", "FAILED"],
+    enum: ["PENDING", "PAID", "FAILED", "REFUNDED"],
     default: "PENDING"
   },
   status: {
     type: String,
     enum: ["PENDING", "APPROVED", "REJECTED", "CANCELED", "COMPLETED"],
     default: "PENDING"
+  },
+  meta: {
+    tx_ref: { type: String },
+    paymentProvider: { type: String, default: "CHAPA" }
   }
 }, { timestamps: true });
 

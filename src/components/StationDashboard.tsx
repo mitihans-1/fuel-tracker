@@ -13,9 +13,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp, TrendingDown, Fuel, DollarSign,
   Clock, CheckCircle, XCircle, BarChart3,
-  Download, Plus, ChevronDown, Calendar,
+  Download, ChevronDown, Calendar,
   MapPin, Building2, Users, Activity
 } from "lucide-react";
+import ActionBar from "@/components/ui/ActionBar";
+import StatusBadge from "@/components/ui/StatusBadge";
+import PageHeader from "@/components/ui/PageHeader";
+import { useUser } from "@/contexts/UserContext";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Title);
 
@@ -41,6 +45,7 @@ interface StationData {
 }
 
 export default function StationDashboard() {
+  const { user } = useUser();
   const [myStations, setMyStations] = useState<StationData[]>([]);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const [showAddStation, setShowAddStation] = useState(false);
@@ -57,7 +62,15 @@ export default function StationDashboard() {
   const [activeTab, setActiveTab] = useState<"pending" | "history" | "analytics">("pending");
   const [analyticsRange, setAnalyticsRange] = useState<"today" | "7d" | "30d">("7d");
   const [analytics, setAnalytics] = useState<{
-    totals: { totalLitres: number; totalRevenue: number; count: number };
+    totals: {
+      totalLitres: number;
+      totalRevenue: number;
+      totalStationEarnings: number;
+      totalPlatformCommission: number;
+      pendingPayoutBalance: number;
+      paidOutTotal: number;
+      count: number;
+    };
     byDay: { _id: { y: number; m: number; d: number }; litres: number; revenue: number }[];
     byFuel: { _id: string; litres: number; revenue: number }[];
     byHour: { _id: number; count: number }[];
@@ -66,6 +79,14 @@ export default function StationDashboard() {
   const [priceHistory, setPriceHistory] = useState<{ _id: string; fuelType: string; price: number; createdAt: string }[]>([]);
   const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [stockModal, setStockModal] = useState<{
+    open: boolean;
+    fuelType: "petrol" | "diesel";
+    amount: number;
+  }>({ open: false, fuelType: "petrol", amount: 1000 });
+  const [stockSaving, setStockSaving] = useState(false);
   const searchParams = useSearchParams();
   const toastIdRef = useRef(0);
 
@@ -234,7 +255,7 @@ export default function StationDashboard() {
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [refreshData]);
+  }, [refreshData, activeStationId]);
 
   const updateRequest = async (id: string, status: string) => {
     try {
@@ -248,6 +269,73 @@ export default function StationDashboard() {
       );
     } catch {
       // no-op
+    }
+  };
+
+  const bulkUpdateRequests = async (status: "APPROVED" | "REJECTED") => {
+    if (selectedPendingIds.length === 0) return;
+    try {
+      setBulkLoading(true);
+      const res = await fetch("/api/request/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestIds: selectedPendingIds, status }),
+      });
+      if (!res.ok) {
+        showToast("Bulk update failed", "error");
+        return;
+      }
+      setRequests((prev) =>
+        prev.map((r) =>
+          selectedPendingIds.includes(r._id) ? { ...r, status } : r
+        )
+      );
+      setSelectedPendingIds([]);
+      showToast(`Updated ${selectedPendingIds.length} requests to ${status}`, "success");
+    } catch {
+      showToast("Bulk update failed", "error");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const togglePendingSelect = (id: string) => {
+    setSelectedPendingIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const openStockModal = (fuelType: "petrol" | "diesel") => {
+    setStockModal({ open: true, fuelType, amount: 1000 });
+  };
+
+  const submitStockAdd = async () => {
+    if (!activeStationId || stockModal.amount <= 0) return;
+    try {
+      setStockSaving(true);
+      if (stockModal.fuelType === "petrol") {
+        const newQty = petrolQty + stockModal.amount;
+        setPetrolQty(newQty);
+        await fetch("/api/stations/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stationId: activeStationId, petrolQty: newQty }),
+        });
+      } else {
+        const newQty = dieselQty + stockModal.amount;
+        setDieselQty(newQty);
+        await fetch("/api/stations/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stationId: activeStationId, dieselQty: newQty }),
+        });
+      }
+      showToast(`Added ${stockModal.amount}L of ${stockModal.fuelType}`, "success");
+      setStockModal((prev) => ({ ...prev, open: false }));
+    } catch {
+      showToast("Failed to add stock", "error");
+    } finally {
+      setStockSaving(false);
     }
   };
 
@@ -275,6 +363,10 @@ export default function StationDashboard() {
   const pendingRequests = safeRequests.filter(r => r.status === "PENDING");
   const historyRequests = safeRequests.filter(r => r.status !== "PENDING");
 
+  useEffect(() => {
+    setSelectedPendingIds((prev) => prev.filter((id) => pendingRequests.some((r) => r._id === id)));
+  }, [pendingRequests]);
+
   const stats = {
     pending: pendingRequests.length,
     approvedToday: requests.filter(r => r.status === "APPROVED").length,
@@ -287,39 +379,101 @@ export default function StationDashboard() {
     queueSize: stats.pending,
   };
 
+  const sidebarTabs: { id: "pending" | "analytics" | "history"; label: string; icon: React.ReactNode }[] = [
+    { id: "pending", label: "Operations Queue", icon: <Clock className="w-5 h-5" /> },
+    { id: "analytics", label: "Business Insights", icon: <BarChart3 className="w-5 h-5" /> },
+    { id: "history", label: "Transaction Logs", icon: <CheckCircle className="w-5 h-5" /> },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-slate-900 font-sans">
+    <div className="dashboard-root dashboard-shell min-h-screen text-slate-900 font-sans overflow-hidden">
       {/* Animated Background Grid */}
       <div className="fixed inset-0 bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
-      <div className="relative z-10 max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
-        {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-        >
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-indigo-600 text-sm font-semibold">
-              <Activity className="w-4 h-4" />
-              <span>Live Operations Dashboard</span>
+      <aside className="hidden lg:block fixed inset-y-0 left-0 z-40 w-72 pro-surface border-r border-slate-200/60">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-500/20">
+              ⛽
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              Station Control Center
-            </h1>
-            <p className="text-slate-500 text-sm max-w-xl font-medium">
-              Manage fuel inventory, process driver requests, and track performance metrics in real-time.
-            </p>
+            <div>
+              <p className="text-sm font-black text-slate-900 leading-tight">FuelSync</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Station</p>
+            </div>
           </div>
 
-          {/* Register control transitioned to Global Navbar */}
+          <div className="pro-card p-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Signed in</p>
+            <p className="text-sm font-semibold text-slate-900 mt-1 truncate">{user?.name || "Station Owner"}</p>
+            <p className="text-[11px] text-slate-500 truncate">{user?.email || ""}</p>
+          </div>
+
+          <nav className="space-y-1">
+            {sidebarTabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  activeTab === t.id
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                {t.icon}
+                {t.label}
+                {t.id === "pending" && pendingRequests.length > 0 && (
+                  <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
+                    {pendingRequests.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <div className="pro-card p-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Quick Actions</p>
+            <button
+              onClick={() => setShowAddStation(true)}
+              className="w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition"
+            >
+              Register Station
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="relative z-10 max-w-7xl mx-auto p-4 sm:p-8 space-y-6 lg:pl-72">
+        {/* Header Section */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+          <PageHeader
+            eyebrow="Live Operations Dashboard"
+            title="Station Control Center"
+            subtitle="Manage fuel inventory, process driver requests, and track performance metrics in real-time."
+          />
         </motion.div>
+
+        <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2">
+          {sidebarTabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+                activeTab === t.id
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {t.label}
+              {t.id === "pending" && pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}
+            </button>
+          ))}
+        </div>
 
         {/* Station Selector Card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-slate-200 p-6 shadow-xl"
+          className="pro-surface rounded-[1.25rem] p-6"
         >
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="flex items-center gap-5">
@@ -439,19 +593,7 @@ export default function StationDashboard() {
 
                 <div className="flex gap-3">
                    <button 
-                    onClick={() => {
-                      const amount = Number(prompt("Add Petrol (Litres):", "1000"));
-                      if (amount) {
-                         const newQty = petrolQty + amount;
-                         setPetrolQty(newQty);
-                         fetch("/api/stations/update", {
-                           method: "PUT",
-                           headers: { "Content-Type": "application/json" },
-                           body: JSON.stringify({ stationId: activeStationId, petrolQty: newQty })
-                         });
-                         showToast(`Added ${amount}L of Petrol`, "success");
-                      }
-                    }}
+                    onClick={() => openStockModal("petrol")}
                     className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
                    >
                      + Add Stock
@@ -526,19 +668,7 @@ export default function StationDashboard() {
 
                 <div className="flex gap-3">
                    <button 
-                    onClick={() => {
-                      const amount = Number(prompt("Add Diesel (Litres):", "1000"));
-                      if (amount) {
-                         const newQty = dieselQty + amount;
-                         setDieselQty(newQty);
-                         fetch("/api/stations/update", {
-                           method: "PUT",
-                           headers: { "Content-Type": "application/json" },
-                           body: JSON.stringify({ stationId: activeStationId, dieselQty: newQty })
-                         });
-                         showToast(`Added ${amount}L of Diesel`, "success");
-                      }
-                    }}
+                    onClick={() => openStockModal("diesel")}
                     className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
                    >
                      + Add Stock
@@ -587,7 +717,7 @@ export default function StationDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="group relative bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all"
+              className="group relative pro-card p-6 transition-all"
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-[0.02] rounded-2xl transition-opacity`} />
               <div className="relative flex items-start justify-between">
@@ -614,34 +744,96 @@ export default function StationDashboard() {
           ))}
         </div>
 
-        {/* Main Content Tabs */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="flex flex-wrap gap-1 p-4 border-b border-slate-100 bg-slate-50/50">
-            {[
-              { id: "pending" as const, label: "Operations Queue", icon: Clock, count: pendingRequests.length },
-              { id: "analytics" as const, label: "Business Insights", icon: BarChart3, count: null },
-              { id: "history" as const, label: "Transaction Logs", icon: CheckCircle, count: null }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === tab.id
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-white transition-colors"
-                  }`}
-              >
-                <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? "text-white" : "text-indigo-400"}`} />
-                {tab.label}
-                {tab.count !== null && tab.count > 0 && (
-                  <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-600"
-                    }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group relative pro-card p-6 transition-all"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Station Balance</p>
+                <p className="text-4xl font-black text-slate-900">
+                  {(analytics?.totals?.totalStationEarnings ?? 0).toLocaleString()} ETB
+                </p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">
+                  Net earnings after platform commission ({analyticsRange})
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-50">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+            </div>
+          </motion.div>
 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group relative pro-card p-6 transition-all"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform Commission</p>
+                <p className="text-4xl font-black text-slate-900">
+                  {(analytics?.totals?.totalPlatformCommission ?? 0).toLocaleString()} ETB
+                </p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">
+                  Commission collected from your processed payments ({analyticsRange})
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-indigo-50">
+                <BarChart3 className="w-5 h-5 text-indigo-600" />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group relative pro-card p-6 transition-all"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pending Payout</p>
+                <p className="text-4xl font-black text-slate-900">
+                  {(analytics?.totals?.pendingPayoutBalance ?? 0).toLocaleString()} ETB
+                </p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">
+                  Eligible amount not yet settled by platform
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-amber-50">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group relative pro-card p-6 transition-all"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Paid Out</p>
+                <p className="text-4xl font-black text-slate-900">
+                  {(analytics?.totals?.paidOutTotal ?? 0).toLocaleString()} ETB
+                </p>
+                <p className="text-xs text-slate-500 mt-2 font-medium">
+                  Total settled to your station so far
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-50">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-6">
             <AnimatePresence mode="wait">
               {activeTab === "analytics" ? (
@@ -689,7 +881,7 @@ export default function StationDashboard() {
                           { icon: Fuel, label: "Total Volume", value: `${analytics.totals?.totalLitres ?? 0}L`, color: "indigo" },
                           { icon: DollarSign, label: "Estimated Revenue", value: `${(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB`, color: "emerald" },
                           { icon: Users, label: "Total Transactions", value: analytics.totals?.count ?? 0, color: "purple" }
-                        ].map((metric, idx) => (
+                        ].map((metric) => (
                           <div key={metric.label} className="bg-slate-50 rounded-3xl p-6 border border-slate-200 hover:border-indigo-200 transition-all">
                             <div className="flex items-center gap-4 mb-4">
                               <div className={`p-3 rounded-2xl bg-${metric.color}-50 border border-${metric.color}-100`}>
@@ -834,6 +1026,45 @@ export default function StationDashboard() {
                   exit={{ opacity: 0, y: -20 }}
                   className="space-y-4"
                 >
+                  {activeTab === "pending" && pendingRequests.length > 0 && (
+                    <ActionBar
+                      left={
+                        <>
+                        <input
+                          type="checkbox"
+                          title="Select all pending requests"
+                          checked={selectedPendingIds.length > 0 && selectedPendingIds.length === pendingRequests.length}
+                          onChange={(e) =>
+                            setSelectedPendingIds(e.target.checked ? pendingRequests.map((r) => r._id) : [])
+                          }
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                        />
+                        <p className="text-sm font-semibold text-slate-700">
+                          {selectedPendingIds.length} selected
+                        </p>
+                        </>
+                      }
+                      right={
+                        <>
+                        <button
+                          disabled={bulkLoading || selectedPendingIds.length === 0}
+                          onClick={() => bulkUpdateRequests("REJECTED")}
+                          className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-100 disabled:opacity-50"
+                        >
+                          Reject Selected
+                        </button>
+                        <button
+                          disabled={bulkLoading || selectedPendingIds.length === 0}
+                          onClick={() => bulkUpdateRequests("APPROVED")}
+                          className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white disabled:opacity-50"
+                        >
+                          Approve Selected
+                        </button>
+                        </>
+                      }
+                    />
+                  )}
+
                   {(activeTab === "pending" ? pendingRequests : historyRequests).length === 0 ? (
                     <div className="text-center py-20">
                       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 mb-4 border border-slate-100">
@@ -862,6 +1093,15 @@ export default function StationDashboard() {
                         
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
                           <div className="flex items-center gap-6">
+                            {activeTab === "pending" && (
+                              <input
+                                type="checkbox"
+                                title="Select request"
+                                checked={selectedPendingIds.includes(r._id)}
+                                onChange={() => togglePendingSelect(r._id)}
+                                className="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                              />
+                            )}
                             <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 flex items-center justify-center text-white font-black text-3xl shadow-lg rotate-3 group-hover:rotate-0 transition-transform duration-500">
                               {r.driverId?.name?.charAt(0) ?? "?"}
                             </div>
@@ -879,8 +1119,21 @@ export default function StationDashboard() {
                                   <Clock className="w-3.5 h-3.5 text-indigo-500" />
                                   {formatDateTime(r.createdAt)}
                                 </span>
+                                {r.status === "PENDING" && r.createdAt && (() => {
+                                  const ageMinutes = Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 60000);
+                                  const tone = ageMinutes >= 30 ? "bg-red-50 text-red-700 border-red-100" : ageMinutes >= 15 ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-emerald-50 text-emerald-700 border-emerald-100";
+                                  return (
+                                    <span className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+                                      SLA {ageMinutes}m
+                                    </span>
+                                  );
+                                })()}
                                 <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                <span className="text-indigo-600/60 text-xs font-black uppercase tracking-widest">{r.status}</span>
+                                <StatusBadge
+                                  label={r.status}
+                                  tone={r.status === "PENDING" ? "warning" : r.status === "APPROVED" ? "success" : r.status === "COMPLETED" ? "info" : "danger"}
+                                  className="text-[9px]"
+                                />
                               </div>
                             </div>
                           </div>
@@ -937,6 +1190,72 @@ export default function StationDashboard() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {stockModal.open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => !stockSaving && setStockModal((prev) => ({ ...prev, open: false }))}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                    Add {stockModal.fuelType === "petrol" ? "Petrol" : "Diesel"} Stock
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1 font-medium">
+                    Enter litres to update inventory safely.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setStockModal((prev) => ({ ...prev, open: false }))}
+                  disabled={stockSaving}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400 hover:text-slate-900"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">
+                    Quantity (Litres)
+                  </label>
+                  <input
+                    type="number"
+                    title="Stock amount in litres"
+                    min={1}
+                    value={stockModal.amount}
+                    onChange={(e) =>
+                      setStockModal((prev) => ({
+                        ...prev,
+                        amount: Math.max(1, Number(e.target.value) || 1),
+                      }))
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                  />
+                </div>
+                <button
+                  onClick={submitStockAdd}
+                  disabled={stockSaving || stockModal.amount <= 0}
+                  className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all disabled:opacity-50 active:scale-95"
+                >
+                  {stockSaving ? "Saving..." : "Update Stock"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal */}
       <AnimatePresence>
