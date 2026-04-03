@@ -37,6 +37,7 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [hasOwnedStation, setHasOwnedStation] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -63,6 +64,25 @@ export default function Navbar() {
 
   return () => clearInterval(interval);
 }, [fetchNotifications]);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkOwnedStation = async () => {
+      if (!isDashboard || !user) return;
+      try {
+        const res = await fetch("/api/stations/owned");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted) setHasOwnedStation(Boolean(data?.hasOwnedStation));
+      } catch {
+        // ignore
+      }
+    };
+    checkOwnedStation();
+    return () => {
+      mounted = false;
+    };
+  }, [isDashboard, user]);
 
   // Close bell dropdown on outside click
   useEffect(() => {
@@ -107,6 +127,9 @@ export default function Navbar() {
   }
   if (isDashboard && userRole === "ADMIN") {
     coreLinks.push({ name: "Register New Station", path: "/dashboard?action=register" });
+  }
+  if (isDashboard && (userRole === "DRIVER" || userRole === "ADMIN") && hasOwnedStation) {
+    coreLinks.push({ name: "Station Dashboard", path: "/dashboard?view=station" });
   }
   
 
@@ -160,6 +183,7 @@ export default function Navbar() {
       // { name: "Dashboard", path: "/dashboard?tab=dashboard" },
       { name: "Fuel Logs", path: "/dashboard?tab=logs" },
       { name: "Vehicles", path: "/dashboard?tab=vehicles" },
+      ...(hasOwnedStation ? [{ name: "Station", path: "/dashboard?view=station" }] : []),
     ].map((link) => {
      const currentTab = searchParams.get("tab");
 

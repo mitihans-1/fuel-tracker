@@ -33,7 +33,7 @@ export async function PUT(req: Request) {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     const actor = token ? verifyToken(token) : null;
-    if (!actor || !["ADMIN", "STATION"].includes(actor.role)) {
+    if (!actor || !["ADMIN", "STATION", "DRIVER"].includes(actor.role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -49,7 +49,7 @@ export async function PUT(req: Request) {
     const targetIds = requestIds?.length ? requestIds : requestId ? [requestId] : [];
 
     const requests = await FuelRequest.find({ _id: { $in: targetIds } });
-    if (actor.role === "STATION") {
+    if (actor.role !== "ADMIN") {
       const stationIds = [...new Set(requests.map((r) => String(r.stationId)))];
       const owned = await Station.find({ _id: { $in: stationIds }, ownerUserId: actor.id })
         .select("_id")
@@ -89,7 +89,7 @@ export async function PUT(req: Request) {
 
     await createAuditLog({
       actorUserId: actor.id,
-      actorRole: actor.role as "ADMIN" | "STATION",
+      actorRole: actor.role as "ADMIN" | "STATION" | "DRIVER",
       action: "REQUEST_STATUS_UPDATE",
       targetType: "FuelRequest",
       metadata: { status, requestCount: targetIds.length, requestIds: targetIds },

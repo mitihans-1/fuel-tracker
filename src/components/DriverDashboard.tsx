@@ -707,6 +707,22 @@ export default function DriverDashboard() {
         <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/50 to-indigo-50/30 pointer-events-none" />
 
         <div className="relative z-10 p-4 sm:p-10 space-y-10">
+          <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setView(item.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+                  view === item.id
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           <AnimatePresence mode="wait">
             {view === "dashboard" && (
               <motion.div

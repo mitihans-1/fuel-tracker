@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     if (!token) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
 
     const decoded = verifyToken(token);
-    if (!decoded || decoded.role !== "STATION") {
+    if (!decoded?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

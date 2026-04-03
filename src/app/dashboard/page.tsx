@@ -5,13 +5,32 @@ import DriverDashboard from "@/components/DriverDashboard";
 import StationDashboard from "@/components/StationDashboard";
 import AdminDashboard from "../../components/AdminDashboard";
 import { useUser } from "@/contexts/UserContext";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 function DashboardContent() {
   const { user, loading } = useUser();
   const searchParams = useSearchParams();
   const role = user?.role ?? "";
   const viewOverride = searchParams.get("view");
+  const [hasOwnedStation, setHasOwnedStation] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkOwned = async () => {
+      try {
+        const res = await fetch("/api/stations/owned");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted) setHasOwnedStation(Boolean(data?.hasOwnedStation));
+      } catch {
+        // ignore
+      }
+    };
+    checkOwned();
+    return () => {
+      mounted = false;
+    };
+  }, [role]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 font-bold">Loading Dashboard...</div>;
   if (!role) return (
@@ -24,10 +43,13 @@ function DashboardContent() {
 
   // If role is STATION or ADMIN, and view=driver is requested, show DriverDashboard
   const showDriverView = (role === "STATION" || role === "ADMIN") && viewOverride === "driver";
+  const showStationViewFromOwned =
+    (role === "DRIVER" || role === "ADMIN") && viewOverride === "station" && hasOwnedStation;
 
   return (
     <div className="bg-slate-50 min-h-screen">
-      {role === "DRIVER" && <DriverDashboard />}
+      {role === "DRIVER" && !showStationViewFromOwned && <DriverDashboard />}
+      {role === "DRIVER" && showStationViewFromOwned && <StationDashboard />}
       {role === "STATION" && !showDriverView && <StationDashboard />}
       {role === "STATION" && showDriverView && (
         <div className="relative">
@@ -43,8 +65,9 @@ function DashboardContent() {
           <DriverDashboard />
         </div>
       )}
-      {role === "ADMIN" && !showDriverView && <AdminDashboard />}
+      {role === "ADMIN" && !showDriverView && !showStationViewFromOwned && <AdminDashboard />}
       {role === "ADMIN" && showDriverView && <DriverDashboard />}
+      {role === "ADMIN" && showStationViewFromOwned && <StationDashboard />}
     </div>
   );
 }

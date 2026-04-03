@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   }
 
   const decoded = verifyToken(token);
-  if (!decoded || decoded.role !== "STATION") {
+  if (!decoded?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 

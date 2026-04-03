@@ -16,7 +16,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
   const user = verifyToken(token);
-  if (!user || user.role !== "STATION") {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -50,7 +50,7 @@ export async function PUT(req: Request) {
     }
 
     if (id) {
-      const station = await Station.findById(id);
+      const station = await Station.findOne({ _id: id, ownerUserId: user.id });
       if (station) {
         station.petrol = petrol;
         station.petrolQty = petrolQty;
@@ -74,7 +74,7 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "Station not found" }, { status: 404 });
       }
     } else {
-      const station = await Station.findOne({ ownerUserId: user.id });
+        const station = await Station.findOne({ ownerUserId: user.id });
       if (station) {
         station.petrol = petrol;
         station.petrolQty = petrolQty;
