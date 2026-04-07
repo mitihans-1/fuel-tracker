@@ -1,25 +1,23 @@
-"use client";
-
+"use client"
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatDateTime } from "@/lib/utils";
-import {
-  Chart as ChartJS,
-  CategoryScale, LinearScale, BarElement,
-  ArcElement, Tooltip, Legend, Title,
-} from "chart.js";
+import { Chart as ChartJS , CategoryScale, LinearScale, BarElement,ArcElement, Tooltip, Legend, Title,} from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp, TrendingDown, Fuel, DollarSign,
   Clock, CheckCircle, XCircle, BarChart3,
-  Download, ChevronDown, Calendar,
-  MapPin, Building2, Users, Activity
+  Download, ChevronDown, Calendar, Menu, X, LogOut,
+  MapPin, Building2, Users, Activity, ScanLine, CheckCircle2,
+  LayoutDashboard
 } from "lucide-react";
+import { Html5QrcodeScanner } from "html5-qrcode";
+import SectionHeader from "@/components/ui/SectionHeader";
 import ActionBar from "@/components/ui/ActionBar";
 import StatusBadge from "@/components/ui/StatusBadge";
-import PageHeader from "@/components/ui/PageHeader";
 import { useUser } from "@/contexts/UserContext";
+import { useRouter } from "next/navigation";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Title);
 
@@ -44,10 +42,56 @@ interface StationData {
   dieselPrice?: number;
 }
 
+// QR Scanner component using html5-qrcode
+function QRScannerPanel({
+  onScan,
+  scannerMounted,
+  setScannerMounted,
+}: {
+  onScan: (token: string) => void;
+  scannerMounted: boolean;
+  setScannerMounted: (v: boolean) => void;
+}) {
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const domId = "qr-reader-station";
+
+  useEffect(() => {
+    if (scannerMounted) return;
+    setScannerMounted(true);
+    const scanner = new Html5QrcodeScanner(domId, { fps: 10, qrbox: 250 }, false);
+    scannerRef.current = scanner;
+    scanner.render(
+      (decodedText) => {
+        scanner.clear().catch(() => {});
+        onScan(decodedText);
+        setScannerMounted(false);
+      },
+      () => {}
+    );
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-50 border-2 border-dashed border-indigo-200 rounded-2xl p-4 overflow-hidden">
+        <div id={domId} />
+      </div>
+      <p className="text-xs text-center text-slate-500 font-medium">
+        Point the camera at the driver&apos;s QR code to verify their fuel ticket
+      </p>
+    </div>
+  );
+}
+
 export default function StationDashboard() {
-  const { user } = useUser();
+  const { user, clear } = useUser();
+  const router = useRouter();
   const [myStations, setMyStations] = useState<StationData[]>([]);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAddStation, setShowAddStation] = useState(false);
   const [stationForm, setStationForm] = useState({ name: '', location: '' });
   const [stationRegisterLoading, setStationRegisterLoading] = useState(false);
@@ -59,7 +103,46 @@ export default function StationDashboard() {
   const [dieselQty, setDieselQty] = useState(0);
   const [dieselPrice, setDieselPrice] = useState(75);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<"pending" | "history" | "analytics">("pending");
+  const [activeTab, setActiveTab] = useState<"overview" | "pending" | "history" | "analytics" | "scanner" | "settings" | "products">("overview");
+  const [loadingStations, setLoadingStations] = useState(true);
+
+  const pageHeadings = {
+    overview: {
+      title: "Dashboard Overview",
+      subtitle: "Performance metrics and platform status at a glance.",
+    },
+    pending: {
+      title: "Operations Queue",
+      subtitle: "Review and process incoming fuel requests in real time.",
+    },
+    products: {
+      title: "Fuel Inventory",
+      subtitle: "Manage inventory, pricing, and availability across your station.",
+    },
+    analytics: {
+      title: "Business Insights",
+      subtitle: "Track performance, demand, and revenue with clear analytics.",
+    },
+    history: {
+      title: "Transaction Log",
+      subtitle: "Audit past requests, approvals, and fulfillment history.",
+    },
+    scanner: {
+      title: "QR Verification",
+      subtitle: "Scan tickets and verify driver requests instantly.",
+    },
+    settings: {
+      title: "Station Profile",
+      subtitle: "Update station details, operating hours, and verification settings.",
+    },
+  } as const;
+
+  const activePage = pageHeadings[activeTab];
+  const managerName = user?.name?.split(" ")[0] || "Manager";
+  // const petrolLevelWidthClass = petrolQty >= 10000 ? "w-full" : petrolQty >= 7500 ? "w-5/6" : petrolQty >= 5000 ? "w-3/4" : petrolQty >= 2500 ? "w-1/2" : petrolQty >= 1000 ? "w-1/4" : "w-12";
+  // const dieselLevelWidthClass = dieselQty >= 10000 ? "w-full" : dieselQty >= 7500 ? "w-5/6" : dieselQty >= 5000 ? "w-3/4" : dieselQty >= 2500 ? "w-1/2" : dieselQty >= 1000 ? "w-1/4" : "w-12";
+  const [scanResult, setScanResult] = useState<{ success: boolean; message: string; driverName?: string; fuelType?: string; amount?: number } | null>(null);
+  const [scannerMounted, setScannerMounted] = useState(false);
   const [analyticsRange, setAnalyticsRange] = useState<"today" | "7d" | "30d">("7d");
   const [analytics, setAnalytics] = useState<{
     totals: {
@@ -93,8 +176,21 @@ export default function StationDashboard() {
   // Tactical parameter observation
   useEffect(() => {
     const action = searchParams.get("action");
+    const tab = searchParams.get("tab");
+
     if (action === "register") {
       setShowAddStation(true);
+    }
+    
+    if (tab === "products") {
+      setActiveTab("products");
+    } else if (tab === "overview") {
+      setActiveTab("overview");
+    } else if (tab === "overview") {
+      setActiveTab("overview");
+    }
+
+    if (action || tab) {
       // Clear parameter
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
@@ -138,6 +234,7 @@ export default function StationDashboard() {
 
   const refreshData = useCallback(async () => {
     try {
+      setLoadingStations(true);
       const statusRes = await fetch("/api/stations/me");
       if (statusRes.ok) {
         const data = await statusRes.json();
@@ -155,8 +252,13 @@ export default function StationDashboard() {
             setDieselQty(currentStation.dieselQty ?? 0);
             setDieselPrice(currentStation.dieselPrice ?? 75);
           }
+        } else {
+          setMyStations([]);
         }
+      } else {
+        setMyStations([]);
       }
+      
       let reqUrl = "/api/request/station";
       if (activeStationId) reqUrl += `?stationId=${activeStationId}`;
       const reqRes = await fetch(reqUrl);
@@ -168,6 +270,8 @@ export default function StationDashboard() {
       }
     } catch {
       // silent
+    } finally {
+      setLoadingStations(false);
     }
   }, [activeStationId]);
 
@@ -364,7 +468,13 @@ export default function StationDashboard() {
   const historyRequests = safeRequests.filter(r => r.status !== "PENDING");
 
   useEffect(() => {
-    setSelectedPendingIds((prev) => prev.filter((id) => pendingRequests.some((r) => r._id === id)));
+    setSelectedPendingIds((prev) => {
+      const next = prev.filter((id) => pendingRequests.some((r) => r._id === id));
+      if (next.length === prev.length && next.every((id, idx) => id === prev[idx])) {
+        return prev;
+      }
+      return next;
+    });
   }, [pendingRequests]);
 
   const stats = {
@@ -378,95 +488,186 @@ export default function StationDashboard() {
     todayRejected: stats.rejectedToday,
     queueSize: stats.pending,
   };
-
-  const sidebarTabs: { id: "pending" | "analytics" | "history"; label: string; icon: React.ReactNode }[] = [
-    { id: "pending", label: "Operations Queue", icon: <Clock className="w-5 h-5" /> },
-    { id: "analytics", label: "Business Insights", icon: <BarChart3 className="w-5 h-5" /> },
-    { id: "history", label: "Transaction Logs", icon: <CheckCircle className="w-5 h-5" /> },
+ const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      clear();
+      router.push("/auth/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+  const sidebarTabs: { id: "overview" | "pending" | "analytics" | "history" | "scanner" | "settings" | "products"; label: string; icon: React.ReactNode; color: string }[] = [
+    { id: "overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500" },
+    { id: "pending", label: "Operations Queue", icon: <Clock className="w-5 h-5" />, color: "text-indigo-500" },
+    { id: "products", label: "Manage Products", icon: <Fuel className="w-5 h-5" />, color: "text-amber-500" },
+    { id: "analytics", label: "Business Insights", icon: <BarChart3 className="w-5 h-5" />, color: "text-emerald-500" },
+    { id: "history", label: "Transaction Logs", icon: <CheckCircle className="w-5 h-5" />, color: "text-purple-500" },
+    { id: "scanner", label: "QR Verify", icon: <ScanLine className="w-5 h-5" />, color: "text-blue-500" },
+    { id: "settings", label: "Station Profile", icon: <Building2 className="w-5 h-5" />, color: "text-slate-500" },
   ];
 
+  const navGroups = [
+    { label: "Main", ids: ["overview"] },
+    { label: "Operations", ids: ["pending", "scanner"] },
+    { label: "Inventory",  ids: ["products"] },
+    { label: "Reporting",  ids: ["analytics", "history"] },
+    { label: "Station",    ids: ["settings"] },
+  ];
+
+  const getTabBadge = (id: string): { value: string | number; color: string } | null => {
+    switch (id) {
+      case "overview":
+        return null;
+      case "pending":
+        return pendingRequests.length > 0
+          ? { value: pendingRequests.length, color: "bg-red-100 text-red-700" }
+          : { value: "Clear", color: "bg-emerald-100 text-emerald-700" };
+      case "products": {
+        const activeCount = (petrol ? 1 : 0) + (diesel ? 1 : 0);
+        return { value: `${activeCount}/2 live`, color: "bg-amber-100 text-amber-700" };
+      }
+      case "analytics":
+        return analytics
+          ? { value: `${analytics.totals.count} tx`, color: "bg-emerald-100 text-emerald-700" }
+          : { value: analyticsRange, color: "bg-slate-100 text-slate-500" };
+      case "history":
+        return historyRequests.length > 0
+          ? { value: historyRequests.length, color: "bg-purple-100 text-purple-700" }
+          : { value: "Empty", color: "bg-slate-100 text-slate-500" };
+      case "scanner":
+        return { value: "Ready", color: "bg-blue-100 text-blue-700" };
+      case "settings":
+        return { value: "Online", color: "bg-emerald-100 text-emerald-700" };
+      default:
+        return null;
+    }
+  };
+
+  if (!loadingStations && myStations.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center text-3xl mb-6 shadow-xl shadow-red-500/10">
+          ⚠️
+        </div>
+        <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
+        <p className="text-slate-500 max-w-md mb-8 font-medium">
+          You are not currently assigned to any fuel station. If you are a station manager, please contact the system administrator to register your station and account.
+        </p>
+        <button 
+          onClick={() => window.location.href = "/"}
+          className="px-8 py-4 rounded-xl bg-slate-900 text-white font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg"
+        >
+          Return Home
+        </button>
+      </div>
+    );
+  }
+
+  if (loadingStations) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading Operations...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="dashboard-root dashboard-shell min-h-screen text-slate-900 font-sans overflow-hidden">
-      {/* Animated Background Grid */}
-      <div className="fixed inset-0 bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+    <div className="dashboard-root dashboard-shell min-h-screen">
+      {/* Mobile Menu Button - to match AdminDashboard behavior */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+          title="mobile"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 bg-white rounded-lg shadow-sm border border-gray-200"
+        >
+          <Menu className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
 
-      <aside className="hidden lg:block fixed inset-y-0 left-0 z-40 w-72 pro-surface border-r border-slate-200/60">
-        <div className="p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-500/20">
-              ⛽
-            </div>
-            <div>
-              <p className="text-sm font-black text-slate-900 leading-tight">FuelSync</p>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Station</p>
-            </div>
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        <div className="p-6 pt-24 h-full flex flex-col">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">FuelStation</h1>
+            <button
+              title="mobile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="lg:hidden p-1 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
 
-          <div className="pro-card p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Signed in</p>
-            <p className="text-sm font-semibold text-slate-900 mt-1 truncate">{user?.name || "Station Owner"}</p>
-            <p className="text-[11px] text-slate-500 truncate">{user?.email || ""}</p>
-          </div>
-
-          <nav className="space-y-1">
-            {sidebarTabs.map((t) => (
+          <nav className="space-y-1 flex-1">
+            {sidebarTabs.map((item) => (
               <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                  activeTab === t.id
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                key={item.id}
+                onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${
+                  activeTab === item.id
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
-                {t.icon}
-                {t.label}
-                {t.id === "pending" && pendingRequests.length > 0 && (
-                  <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
-                    {pendingRequests.length}
-                  </span>
-                )}
+                <div className={`${activeTab === item.id ? "text-white" : item.color}`}>
+                  {item.icon}
+                </div>
+                {item.label}
               </button>
             ))}
           </nav>
 
-          <div className="pro-card p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Quick Actions</p>
+          <div className="mt-auto pt-6 border-t border-slate-100">
             <button
-              onClick={() => setShowAddStation(true)}
-              className="w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition"
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
             >
-              Register Station
+              <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              Sign Out
             </button>
           </div>
         </div>
       </aside>
 
-      <div className="relative z-10 max-w-7xl mx-auto p-4 sm:p-8 space-y-6 lg:pl-72">
-        {/* Header Section */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-          <PageHeader
-            eyebrow="Live Operations Dashboard"
-            title="Station Control Center"
-            subtitle="Manage fuel inventory, process driver requests, and track performance metrics in real-time."
+      <main className="lg:pl-64 min-h-screen pt-16 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="dashboard-content space-y-8">
+          <SectionHeader
+            title={activePage.title}
+            subtitle={`${managerName}, ${activePage.subtitle}`}
           />
-        </motion.div>
 
-        <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2">
-          {sidebarTabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-                activeTab === t.id
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {t.label}
-              {t.id === "pending" && pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}
-            </button>
-          ))}
+        <div className="lg:hidden pro-card p-2 flex overflow-x-auto no-scrollbar gap-2 mb-4">
+          {sidebarTabs.map((t) => {
+            const badge = getTabBadge(t.id);
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                title="activetab"
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`whitespace-nowrap flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                <div className={`shrink-0 ${isActive ? "text-white" : t.color}`}>{t.icon}</div>
+                {t.label}
+                {badge && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                    isActive ? "bg-white/25 text-white" : badge.color
+                  }`}>
+                    {badge.value}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Station Selector Card */}
@@ -483,6 +684,7 @@ export default function StationDashboard() {
               {myStations.length > 0 ? (
                 <div>
                   <div className="relative group">
+                    <label htmlFor=""></label>
                     <select
                       title="Select Active Station"
                       className="bg-transparent text-2xl font-black outline-none cursor-pointer appearance-none pr-10 text-slate-900 hover:text-indigo-600 transition-colors"
@@ -525,318 +727,527 @@ export default function StationDashboard() {
           </div>
         </motion.div>
 
-        {/* FUEL INVENTORY CONTROLS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-           {/* Petrol Card */}
-           <motion.div 
-            whileHover={{ scale: 1.01 }}
-            className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
-              petrol ? "bg-white border-indigo-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
-            }`}
-           >
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full" />
-              
-              <div className="relative space-y-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Benzene (Petrol)</h3>
-                    <p className="text-sm text-indigo-500/60 font-bold">Main supply line</p>
-                  </div>
-                  <button 
-                    onClick={async () => {
-                      const newStatus = !petrol;
-                      setPetrol(newStatus);
-                      await fetch("/api/stations/update", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ stationId: activeStationId, petrol: newStatus })
-                      });
-                      showToast(`Petrol ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
-                    }}
-                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    petrol ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
-                  }`}>
-                    {petrol ? "Available ✓" : "Out of Stock ✕"}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                      <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Current Price</p>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          title="Petrol Price"
-                          type="number"
-                          value={petrolPrice}
-                          onChange={(e) => setPetrolPrice(Number(e.target.value))}
-                          onBlur={async () => {
-                             await fetch("/api/stations/update", {
-                               method: "PUT",
-                               headers: { "Content-Type": "application/json" },
-                               body: JSON.stringify({ stationId: activeStationId, petrolPrice })
-                             });
-                             showToast("Petrol price updated", "success");
-                          }}
-                          className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
-                        />
-                        <span className="text-sm font-bold text-indigo-600">ETB/L</span>
-                      </div>
-                   </div>
-                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                      <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Stock Level</p>
-                      <div className="flex items-center gap-2">
-                         <p className="text-2xl font-black text-slate-900">{petrolQty.toLocaleString()}</p>
-                         <span className="text-sm font-bold text-indigo-600">Litres</span>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="flex gap-3">
-                   <button 
-                    onClick={() => openStockModal("petrol")}
-                    className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
-                   >
-                     + Add Stock
-                   </button>
-                </div>
-              </div>
-           </motion.div>
-
-           {/* Diesel Card */}
-           <motion.div 
-            whileHover={{ scale: 1.01 }}
-            className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
-              diesel ? "bg-white border-amber-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
-            }`}
-           >
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full" />
-              
-              <div className="relative space-y-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Nafta (Diesel)</h3>
-                    <p className="text-sm text-amber-600/60 font-bold">Commercial fuel</p>
-                  </div>
-                  <button 
-                    onClick={async () => {
-                      const newStatus = !diesel;
-                      setDiesel(newStatus);
-                      await fetch("/api/stations/update", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ stationId: activeStationId, diesel: newStatus })
-                      });
-                      showToast(`Diesel ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
-                    }}
-                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                    diesel ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
-                  }`}>
-                    {diesel ? "Available ✓" : "Out of Stock ✕"}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                      <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Current Price</p>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          title="Diesel Price"
-                          type="number"
-                          value={dieselPrice}
-                          onChange={(e) => setDieselPrice(Number(e.target.value))}
-                          onBlur={async () => {
-                             await fetch("/api/stations/update", {
-                               method: "PUT",
-                               headers: { "Content-Type": "application/json" },
-                               body: JSON.stringify({ stationId: activeStationId, dieselPrice })
-                             });
-                             showToast("Diesel price updated", "success");
-                          }}
-                          className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
-                        />
-                        <span className="text-sm font-bold text-amber-600">ETB/L</span>
-                      </div>
-                   </div>
-                   <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                      <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Stock Level</p>
-                      <div className="flex items-center gap-2">
-                         <p className="text-2xl font-black text-slate-900">{dieselQty.toLocaleString()}</p>
-                         <span className="text-sm font-bold text-amber-600">Litres</span>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="flex gap-3">
-                   <button 
-                    onClick={() => openStockModal("diesel")}
-                    className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
-                   >
-                     + Add Stock
-                   </button>
-                </div>
-              </div>
-           </motion.div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[
-            {
-              icon: Clock,
-              label: "Queue Size",
-              value: throughput.queueSize,
-              color: "from-indigo-500 to-purple-600",
-              bgColor: "bg-indigo-50",
-              iconColor: "text-indigo-600",
-              trend: "+12%",
-              trendUp: true
-            },
-            {
-              icon: CheckCircle,
-              label: "Fulfilled Today",
-              value: throughput.todayApproved,
-              color: "from-emerald-500 to-teal-600",
-              bgColor: "bg-emerald-50",
-              iconColor: "text-emerald-600",
-              trend: "+8%",
-              trendUp: true
-            },
-            {
-              icon: XCircle,
-              label: "Declined Today",
-              value: throughput.todayRejected,
-              color: "from-red-500 to-rose-600",
-              bgColor: "bg-red-50",
-              iconColor: "text-red-600",
-              trend: "-3%",
-              trendUp: false
-            }
-          ].map((stat, idx) => (
+        {/* Conditional Content rendering */}
+        <AnimatePresence mode="wait">
+          {activeTab === "overview" && (
             <motion.div
-              key={stat.label}
+              key="overview"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="group relative pro-card p-6 transition-all"
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-8"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-[0.02] rounded-2xl transition-opacity`} />
-              <div className="relative flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{stat.label}</p>
-                  <p className="text-4xl font-black text-slate-900">{stat.value}</p>
-                  <div className="flex items-center gap-1 mt-2">
-                    {stat.trendUp ? (
-                      <TrendingUp className="w-3 h-3 text-emerald-600" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 text-red-600" />
-                    )}
-                    <span className={`text-xs font-bold ${stat.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {stat.trend}
-                    </span>
-                    <span className="text-xs text-slate-400">vs yesterday</span>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {[
+                  {
+                    icon: Clock,
+                    label: "Queue Size",
+                    value: throughput.queueSize,
+                    color: "from-indigo-500 to-purple-600",
+                    bgColor: "bg-indigo-50",
+                    iconColor: "text-indigo-600",
+                    trend: "+12%",
+                    trendUp: true
+                  },
+                  {
+                    icon: CheckCircle,
+                    label: "Fulfilled Today",
+                    value: throughput.todayApproved,
+                    color: "from-emerald-500 to-teal-600",
+                    bgColor: "bg-emerald-50",
+                    iconColor: "text-emerald-600",
+                    trend: "+8%",
+                    trendUp: true
+                  },
+                  {
+                    icon: XCircle,
+                    label: "Declined Today",
+                    value: throughput.todayRejected,
+                    color: "from-red-500 to-rose-600",
+                    bgColor: "bg-red-50",
+                    iconColor: "text-red-600",
+                    trend: "-3%",
+                    trendUp: false
+                  }
+                ].map((stat, idx) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="group relative pro-card p-6 transition-all"
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-[0.02] rounded-2xl transition-opacity`} />
+                    <div className="relative flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{stat.label}</p>
+                        <p className="text-4xl font-black text-slate-900">{stat.value}</p>
+                        <div className="flex items-center gap-1 mt-2">
+                          {stat.trendUp ? (
+                            <TrendingUp className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 text-red-600" />
+                          )}
+                          <span className={`text-xs font-bold ${stat.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {stat.trend}
+                          </span>
+                          <span className="text-xs text-slate-400">vs yesterday</span>
+                        </div>
+                      </div>
+                      <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+                        <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative pro-card p-6 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Station Balance</p>
+                      <p className="text-4xl font-black text-slate-900">
+                        {(analytics?.totals?.totalStationEarnings ?? 0).toLocaleString()} ETB
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2 font-medium">
+                        Net earnings after platform commission ({analyticsRange})
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-emerald-50">
+                      <DollarSign className="w-5 h-5 text-emerald-600" />
+                    </div>
                   </div>
-                </div>
-                <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                  <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
-                </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative pro-card p-6 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform Commission</p>
+                      <p className="text-4xl font-black text-slate-900">
+                        {(analytics?.totals?.totalPlatformCommission ?? 0).toLocaleString()} ETB
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2 font-medium">
+                        Commission collected from your processed payments ({analyticsRange})
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-indigo-50">
+                      <BarChart3 className="w-5 h-5 text-indigo-600" />
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative pro-card p-6 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pending Payout</p>
+                      <p className="text-4xl font-black text-slate-900">
+                        {(analytics?.totals?.pendingPayoutBalance ?? 0).toLocaleString()} ETB
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2 font-medium">
+                        Eligible amount not yet settled by platform
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-amber-50">
+                      <Clock className="w-5 h-5 text-amber-600" />
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="group relative pro-card p-6 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Paid Out</p>
+                      <p className="text-4xl font-black text-slate-900">
+                        {(analytics?.totals?.paidOutTotal ?? 0).toLocaleString()} ETB
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2 font-medium">
+                        Total settled to your station so far
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-emerald-50">
+                      <CheckCircle className="w-5 h-5 text-emerald-600" />
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="group relative pro-card p-6 transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Station Balance</p>
-                <p className="text-4xl font-black text-slate-900">
-                  {(analytics?.totals?.totalStationEarnings ?? 0).toLocaleString()} ETB
-                </p>
-                <p className="text-xs text-slate-500 mt-2 font-medium">
-                  Net earnings after platform commission ({analyticsRange})
-                </p>
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-50">
-                <DollarSign className="w-5 h-5 text-emerald-600" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="group relative pro-card p-6 transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform Commission</p>
-                <p className="text-4xl font-black text-slate-900">
-                  {(analytics?.totals?.totalPlatformCommission ?? 0).toLocaleString()} ETB
-                </p>
-                <p className="text-xs text-slate-500 mt-2 font-medium">
-                  Commission collected from your processed payments ({analyticsRange})
-                </p>
-              </div>
-              <div className="p-3 rounded-xl bg-indigo-50">
-                <BarChart3 className="w-5 h-5 text-indigo-600" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="group relative pro-card p-6 transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pending Payout</p>
-                <p className="text-4xl font-black text-slate-900">
-                  {(analytics?.totals?.pendingPayoutBalance ?? 0).toLocaleString()} ETB
-                </p>
-                <p className="text-xs text-slate-500 mt-2 font-medium">
-                  Eligible amount not yet settled by platform
-                </p>
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="group relative pro-card p-6 transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Paid Out</p>
-                <p className="text-4xl font-black text-slate-900">
-                  {(analytics?.totals?.paidOutTotal ?? 0).toLocaleString()} ETB
-                </p>
-                <p className="text-xs text-slate-500 mt-2 font-medium">
-                  Total settled to your station so far
-                </p>
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-50">
-                <CheckCircle className="w-5 h-5 text-emerald-600" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
+          )}
+        </AnimatePresence>
 
         {/* Main Content */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-6">
             <AnimatePresence mode="wait">
-              {activeTab === "analytics" ? (
+              {activeTab === "products" ? (
+                <motion.div
+                  key="products"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-8"
+                >
+                  {/* FUEL INVENTORY CONTROLS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Petrol Card */}
+                    <motion.div 
+                      whileHover={{ scale: 1.01 }}
+                      className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
+                        petrol ? "bg-white border-indigo-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
+                      }`}
+                    >
+                      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full" />
+                      
+                      <div className="relative space-y-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Benzene (Petrol)</h3>
+                            <p className="text-sm text-indigo-500/60 font-bold">Main supply line</p>
+                          </div>
+                          <button 
+                            title="status"
+                            onClick={async () => {
+                              const newStatus = !petrol;
+                              setPetrol(newStatus);
+                              await fetch("/api/stations/update", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ stationId: activeStationId, petrol: newStatus })
+                              });
+                              showToast(`Petrol ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                              petrol ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
+                            }`}
+                          >
+                            {petrol ? "Available ✓" : "Out of Stock ✕"}
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                            <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Current Price</p>
+                            <div className="flex items-center gap-2">
+                              <label htmlFor=""></label>
+                              <input 
+                                title="Petrol Price"
+                                type="number"
+                                value={petrolPrice}
+                                onChange={(e) => setPetrolPrice(Number(e.target.value))}
+                                onBlur={async () => {
+                                  await fetch("/api/stations/update", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ stationId: activeStationId, petrolPrice })
+                                  });
+                                  showToast("Petrol price updated", "success");
+                                }}
+                                className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
+                              />
+                              <span className="text-sm font-bold text-indigo-600">ETB/L</span>
+                            </div>
+                          </div>
+                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                            <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Stock Level</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-2xl font-black text-slate-900">{petrolQty.toLocaleString()}</p>
+                              <span className="text-sm font-bold text-indigo-600">Litres</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button 
+                            title="addstock"
+                            onClick={() => openStockModal("petrol")}
+                            className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+                          >
+                            + Add Stock
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Diesel Card */}
+                    <motion.div 
+                      whileHover={{ scale: 1.01 }}
+                      className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
+                        diesel ? "bg-white border-amber-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
+                      }`}
+                    >
+                      <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full" />
+                      
+                      <div className="relative space-y-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Nafta (Diesel)</h3>
+                            <p className="text-sm text-amber-600/60 font-bold">Commercial fuel</p>
+                          </div>
+                          <button 
+                            title="stationadd"
+                            onClick={async () => {
+                              const newStatus = !diesel;
+                              setDiesel(newStatus);
+                              await fetch("/api/stations/update", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ stationId: activeStationId, diesel: newStatus })
+                              });
+                              showToast(`Diesel ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                              diesel ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
+                            }`}
+                          >
+                            {diesel ? "Available ✓" : "Out of Stock ✕"}
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                            <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Current Price</p>
+                            <div className="flex items-center gap-2">
+                              <label htmlFor=""></label>
+                              <input 
+                                title="Diesel Price"
+                                type="number"
+                                value={dieselPrice}
+                                onChange={(e) => setDieselPrice(Number(e.target.value))}
+                                onBlur={async () => {
+                                  await fetch("/api/stations/update", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ stationId: activeStationId, dieselPrice })
+                                  });
+                                  showToast("Diesel price updated", "success");
+                                }}
+                                className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
+                              />
+                              <span className="text-sm font-bold text-amber-600">ETB/L</span>
+                            </div>
+                          </div>
+                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
+                            <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Stock Level</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-2xl font-black text-slate-900">{dieselQty.toLocaleString()}</p>
+                              <span className="text-sm font-bold text-amber-600">Litres</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button 
+                            title="addstack"
+                            onClick={() => openStockModal("diesel")}
+                            className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+                          >
+                            + Add Stock
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              ) : activeTab === "settings" ? (
+                <motion.div
+                  key="settings"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-8"
+                >
+                  <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-3xl">🏗️</div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900">Station Profile</h3>
+                      <p className="text-sm text-slate-500 font-medium">Update your station public information and operational settings.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Station Name</label>
+                          <input 
+                          title="stationname"
+                            type="text" 
+                            defaultValue={myStations.find(s => s._id === activeStationId)?.name}
+                            className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Location Address</label>
+                          <input 
+                          title="stationlocation"
+                            type="text" 
+                            defaultValue={myStations.find(s => s._id === activeStationId)?.location}
+                            className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-6 rounded-[2rem] bg-indigo-600 text-white shadow-xl shadow-indigo-500/20">
+                         <h4 className="font-black uppercase tracking-widest text-xs mb-4 opacity-80">Operational Hours</h4>
+                         <div className="flex items-center justify-between mb-4">
+                            <span className="font-bold">24/7 Operations</span>
+                            <div className="w-12 h-6 bg-white/20 rounded-full relative p-1 cursor-pointer">
+                               <div className="w-4 h-4 bg-white rounded-full ml-auto shadow-sm" />
+                            </div>
+                         </div>
+                         <p className="text-xs text-indigo-100 font-medium leading-relaxed">
+                            Enabling 24/7 operations allows drivers to see your station on the map at any time. If disabled, you can set custom opening and closing times.
+                         </p>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4">
+                         <button className="px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Discard Changes</button>
+                         <button className="px-8 py-3 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">Save Profile</button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                       <div className="pro-card p-6 border-slate-200">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4">Verification Status</h4>
+                          <div className="space-y-4">
+                             <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">✓</div>
+                                <div>
+                                   <p className="text-xs font-bold text-slate-900">Email Verified</p>
+                                   <p className="text-[10px] text-slate-500">Confirmed on account creation</p>
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-bold">!</div>
+                                <div>
+                                   <p className="text-xs font-bold text-slate-900">Business License</p>
+                                   <p className="text-[10px] text-slate-500">Pending manual review</p>
+                                </div>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="p-6 rounded-3xl border border-red-100 bg-red-50/50">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-red-600 mb-2">Danger Zone</h4>
+                          <p className="text-[10px] text-red-500/70 font-medium mb-4 leading-relaxed">
+                             Permanently remove this station from the platform. This action cannot be undone.
+                          </p>
+                          <button className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">
+                             Deactivate Station
+                          </button>
+                       </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : activeTab === "scanner" ? (
+                <motion.div
+                  key="scanner"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100">
+                      <ScanLine className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-slate-900">QR Ticket Verification</h3>
+                      <p className="text-xs text-slate-500 font-medium">Scan a driver&apos;s QR code to mark their fuel request as completed</p>
+                    </div>
+                  </div>
+
+                  {scanResult && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className={`p-5 rounded-2xl border flex items-start gap-4 ${
+                        scanResult.success
+                          ? "bg-emerald-50 border-emerald-200"
+                          : "bg-red-50 border-red-200"
+                      }`}
+                    >
+                      {scanResult.success ? (
+                        <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className={`font-bold text-sm ${scanResult.success ? "text-emerald-900" : "text-red-900"}`}>
+                          {scanResult.success ? "Ticket Verified ✓" : "Verification Failed"}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${scanResult.success ? "text-emerald-700" : "text-red-700"}`}>
+                          {scanResult.message}
+                        </p>
+                        {scanResult.success && (
+                          <div className="mt-2 flex gap-3 text-xs text-emerald-700 font-medium">
+                            {scanResult.driverName && <span>Driver: <strong>{scanResult.driverName}</strong></span>}
+                            {scanResult.fuelType && <span>Fuel: <strong className="capitalize">{scanResult.fuelType}</strong></span>}
+                            {scanResult.amount && <span>Qty: <strong>{scanResult.amount}L</strong></span>}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setScanResult(null)}
+                          className="mt-3 text-xs underline underline-offset-2 opacity-60 hover:opacity-100"
+                        >
+                          Scan another
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {!scanResult && (
+                    <QRScannerPanel
+                      onScan={async (qrToken) => {
+                        try {
+                          const res = await fetch("/api/request/qr-verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ qrToken }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) {
+                            setScanResult({ success: false, message: data.error || "Verification failed" });
+                          } else {
+                            setScanResult({
+                              success: true,
+                              message: `Request #${data.request._id.slice(-6).toUpperCase()} completed successfully`,
+                              driverName: data.request.driverId?.name,
+                              fuelType: data.request.fuelType,
+                              amount: data.request.amount,
+                            });
+                            showToast("Ticket verified and completed!", "success");
+                            refreshData();
+                          }
+                        } catch {
+                          setScanResult({ success: false, message: "Network error during verification" });
+                        }
+                      }}
+                      scannerMounted={scannerMounted}
+                      setScannerMounted={setScannerMounted}
+                    />
+                  )}
+                </motion.div>
+              ) : activeTab === "analytics" ? (
                 <motion.div
                   key="analytics"
                   initial={{ opacity: 0, y: 20 }}
@@ -969,6 +1380,55 @@ export default function StationDashboard() {
                           </div>
                         )}
                       </div>
+
+                      {/* Peak Hours Chart */}
+                      {analytics.byHour && analytics.byHour.length > 0 && (
+                        <div className="bg-white rounded-xl p-5 border border-slate-200">
+                          <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-indigo-600" />
+                            Peak Hours
+                            <span className="ml-auto text-[10px] text-slate-400 font-normal uppercase tracking-widest">Requests by hour of day</span>
+                          </h4>
+                          <div className="h-48">
+                            <Bar
+                              data={{
+                                labels: analytics.byHour.map(h => {
+                                  const hr = h._id;
+                                  return hr === 0 ? "12am" : hr < 12 ? `${hr}am` : hr === 12 ? "12pm" : `${hr - 12}pm`;
+                                }),
+                                datasets: [{
+                                  label: "Requests",
+                                  data: analytics.byHour.map(h => h.count),
+                                  backgroundColor: analytics.byHour.map(h => {
+                                    const maxCount = Math.max(...analytics.byHour.map(x => x.count));
+                                    return h.count === maxCount ? "rgba(99, 102, 241, 0.9)" : "rgba(148, 163, 184, 0.5)";
+                                  }),
+                                  borderRadius: 6,
+                                }],
+                              }}
+                              options={{
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                  x: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { display: false } },
+                                  y: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { color: "#f1f5f9" }, beginAtZero: true },
+                                },
+                              }}
+                            />
+                          </div>
+                          {analytics.byHour.length > 0 && (() => {
+                            const peak = analytics.byHour.reduce((a, b) => a.count > b.count ? a : b);
+                            const hr = peak._id;
+                            const label = hr === 0 ? "12:00 AM" : hr < 12 ? `${hr}:00 AM` : hr === 12 ? "12:00 PM" : `${hr - 12}:00 PM`;
+                            return (
+                              <p className="text-xs text-slate-500 mt-3 font-medium">
+                                🔥 Peak hour: <span className="text-indigo-600 font-bold">{label}</span> with <span className="font-bold">{peak.count}</span> requests
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      )}
 
                       {/* Price History Table */}
                       <div className="bg-white rounded-xl p-5 border border-slate-200">
@@ -1190,6 +1650,7 @@ export default function StationDashboard() {
           </div>
         </div>
       </div>
+    </main>
 
       <AnimatePresence>
         {stockModal.open && (

@@ -24,6 +24,7 @@ export default function Register() {
     upper: /[A-Z]/.test(form.password),
     lower: /[a-z]/.test(form.password),
     number: /[0-9]/.test(form.password),
+    symbol: /[!@#$%^&*(),.?":{}|<>]/.test(form.password),
   };
 
   const isPasswordStrong = Object.values(passwordRequirements).every(Boolean);
@@ -56,6 +57,7 @@ export default function Register() {
       }
 
       setSuccessMessage("Account created successfully. Redirecting...");
+      localStorage.setItem("fuel_sync_returning_user", "true");
       setTimeout(() => router.push("/auth/login"), 2000);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -162,6 +164,9 @@ export default function Register() {
               </p>
               <p className={passwordRequirements.number ? "text-emerald-500" : "text-slate-400"}>
                 • One number
+              </p>
+              <p className={passwordRequirements.symbol ? "text-emerald-500" : "text-slate-400"}>
+                • One symbol
               </p>
             </div>
           </div>

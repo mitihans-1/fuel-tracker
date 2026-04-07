@@ -8,11 +8,18 @@ import { useUser } from "@/contexts/UserContext";
 import { Suspense, useEffect, useState } from "react";
 
 function DashboardContent() {
+  const router = useRouter();
   const { user, loading } = useUser();
   const searchParams = useSearchParams();
   const role = user?.role ?? "";
   const viewOverride = searchParams.get("view");
   const [hasOwnedStation, setHasOwnedStation] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !role) {
+      router.push("/auth/login");
+    }
+  }, [loading, role, router]);
 
   useEffect(() => {
     let mounted = true;
@@ -33,24 +40,22 @@ function DashboardContent() {
   }, [role]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 font-bold">Loading Dashboard...</div>;
-  if (!role) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <p className="px-6 py-4 rounded-xl bg-red-50 text-red-600 border border-red-200 font-bold">
-        Session expired. Please sign in again.
-      </p>
-    </div>
-  );
+  if (!role) return <div className="min-h-screen bg-slate-50" />;
 
   // If role is STATION or ADMIN, and view=driver is requested, show DriverDashboard
   const showDriverView = (role === "STATION" || role === "ADMIN") && viewOverride === "driver";
   const showStationViewFromOwned =
     (role === "DRIVER" || role === "ADMIN") && viewOverride === "station" && hasOwnedStation;
+  const showStationDashboard = (role === "STATION" && !showDriverView) || showStationViewFromOwned;
+  const showAdminDashboard = role === "ADMIN" && !showDriverView && !showStationViewFromOwned;
+  const pageShellClass = showStationDashboard
+    ? "min-h-screen"
+    : "bg-slate-50 min-h-screen";
 
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className={pageShellClass}>
       {role === "DRIVER" && !showStationViewFromOwned && <DriverDashboard />}
-      {role === "DRIVER" && showStationViewFromOwned && <StationDashboard />}
-      {role === "STATION" && !showDriverView && <StationDashboard />}
+      {showStationDashboard && <StationDashboard />}
       {role === "STATION" && showDriverView && (
         <div className="relative">
           {/* Back to Station Owner view floating button */}
@@ -65,9 +70,8 @@ function DashboardContent() {
           <DriverDashboard />
         </div>
       )}
-      {role === "ADMIN" && !showDriverView && !showStationViewFromOwned && <AdminDashboard />}
+      {showAdminDashboard && <AdminDashboard />}
       {role === "ADMIN" && showDriverView && <DriverDashboard />}
-      {role === "ADMIN" && showStationViewFromOwned && <StationDashboard />}
     </div>
   );
 }

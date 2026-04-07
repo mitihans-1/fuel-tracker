@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@/contexts/UserContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronRight, Fuel, MapPin, CreditCard, Zap, Shield,
-  Award, Clock, Activity, Linkedin, Facebook, Instagram, Github
+  ChevronRight, Fuel, Zap,
+  Award, Clock, Linkedin, Facebook, Instagram, Github,
+  Truck, Star, ArrowRight
 } from "lucide-react";
 
 const slides = [
@@ -13,8 +16,8 @@ const slides = [
     title: ["Find", "Fuel.", "Skip", "the", "Line."],
     // subtitle: "⚡ Real-time fuel availability across all stations in Ethiopia",
     description: "Join thousands of drivers using digital queuing to save hours at the pump. Real-time tracking for Benzene, Nafta, and Premium fuels.",
-    primaryCTA: "Register Now",
-    secondaryCTA: "See Features",
+    primaryCTA: "Start Free Trial",
+    secondaryCTA: "Explore Platform",
     image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=1920",
     color: "from-blue-600 to-indigo-600"
   },
@@ -31,7 +34,7 @@ const slides = [
     title: ["Secure", "Digital", "Payments"],
     // subtitle: "📱 Contactless transactions & wallet management",
     description: "Pay seamlessly with Chapa, TeleBirr, or your FuelSync wallet. Secure, transparent pricing with digital receipts for every fill-up.",
-    primaryCTA: "Join Today",
+    primaryCTA: "Get Started",
     secondaryCTA: "Pricing Info",
     image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=1920",
     color: "from-purple-600 to-indigo-600"
@@ -40,101 +43,55 @@ const slides = [
 
 
 
-const DiscoveryTimeline = () => {
-  const [notes, setNotes] = useState(() => {
-    if (typeof window === "undefined") return ["", "", ""];
-    return [
-      localStorage.getItem("fs-note-0") || "",
-      localStorage.getItem("fs-note-1") || "",
-      localStorage.getItem("fs-note-2") || "",
-    ];
-  });
 
-  const saveNote = (idx, val) => {
-    const newNotes = [...notes];
-    newNotes[idx] = val;
-    setNotes(newNotes);
-    localStorage.setItem(`fs-note-${idx}`, val);
-  };
-
-  const steps = [
-    {
-      title: "Monitor Intelligence",
-      desc: "Analyze real-time fuel grid telemetry. Monitor stock intensities, queue densities, and site productivity.",
-      icon: <Activity className="w-6 h-6" />,
-      color: "blue"
-    },
-    {
-      title: "Strategic Deployment",
-      desc: "Initialize digital queue synchronization. Secure your tactical position and receive automated tickets.",
-      icon: <Zap className="w-6 h-6" />,
-      color: "indigo"
-    },
-    {
-      title: "Resource Acquisition",
-      desc: "Execute high-speed terminal transactions. Secure decentralized receipts and manage fuel assets.",
-      icon: <Shield className="w-6 h-6" />,
-      color: "emerald"
-    }
-  ];
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {steps.map((step, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1, duration: 0.8 }}
-          viewport={{ once: true }}
-          className="group relative flex flex-col p-8 rounded-[2.5rem] bg-gradient-to-br from-white/10 to-transparent border border-white/10 backdrop-blur-3xl shadow-2xl overflow-hidden hover:border-white/20 transition-all"
-        >
-          <div className={`absolute -right-16 -top-16 w-48 h-48 bg-${step.color}-500/10 blur-[60px] rounded-full group-hover:bg-${step.color}-500/20 transition-all`} />
-
-          <div className="relative z-10 space-y-6">
-            <div className="flex justify-between items-start">
-              <div className={`p-4 rounded-2xl bg-${step.color}-500/20 border border-${step.color}-500/30 flex items-center justify-center shadow-lg`}>
-                {step.icon}
-              </div>
-              <span className="text-[10px] font-black text-slate-700 uppercase tracking-[0.5em]">0{i + 1}</span>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-black text-white uppercase tracking-tight mb-3 group-hover:text-indigo-400 transition-colors">
-                {step.title}
-              </h3>
-              <p className="text-slate-400 text-sm font-medium leading-relaxed">
-                {step.desc}
-              </p>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-white/5">
-              <div className="flex justify-between items-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Tactical Notes</p>
-                <div className={`w-1.5 h-1.5 rounded-full bg-${step.color}-500 animate-pulse`} />
-              </div>
-              <textarea
-                value={notes[i]}
-                onChange={(e) => saveNote(i, e.target.value)}
-                placeholder="Secure observations..."
-                className="w-full h-24 bg-white/5 border border-white/5 rounded-xl p-3 text-xs text-slate-300 placeholder:text-slate-800 focus:ring-1 focus:ring-white/20 outline-none resize-none font-medium custom-scrollbar transition-all"
-              />
-            </div>
-
-            <div className="flex gap-1.5 opacity-20">
-              <div className="w-1 h-1 rounded-full bg-white" />
-              <div className="w-4 h-1 rounded-full bg-white" />
-              <div className="w-1 h-1 rounded-full bg-white" />
-            </div>
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-};
 
 export default function Home() {
+  const router = useRouter();
+  const { user } = useUser();
   const [activeSlide, setActiveSlide] = useState(0);
+
+  // Products Section State
+  const [petrol, setPetrol] = useState(false);
+  const [diesel, setDiesel] = useState(false);
+  const [petrolPrice, setPetrolPrice] = useState(80);
+  const [dieselPrice, setDieselPrice] = useState(75);
+  const [avgRating, setAvgRating] = useState(null);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [isStationOwner, setIsStationOwner] = useState(false);
+
+  useEffect(() => {
+    const fetchDataForStation = async () => {
+      try {
+        const statusRes = await fetch("/api/stations/me");
+        if (!statusRes.ok) return;
+        const data = await statusRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const currentStation = data[0];
+          setIsStationOwner(true);
+          setPetrol(!!currentStation.petrol);
+          setPetrolPrice(currentStation.petrolPrice ?? 80);
+          setDiesel(!!currentStation.diesel);
+          setDieselPrice(currentStation.dieselPrice ?? 75);
+          setAvgRating(currentStation.rating || null);
+          setRatingCount(currentStation.ratingCount || 0);
+        }
+      } catch {}
+    };
+    if (user) fetchDataForStation();
+  }, [user]);
+
+  const handleAction = (path) => {
+    if (user) {
+      router.push(isStationOwner ? path : "/dashboard");
+    } else {
+      const isReturning = localStorage.getItem("fuel_sync_returning_user") === "true";
+      if (isReturning) {
+        router.push("/auth/login");
+      } else {
+        router.push("/auth/register");
+      }
+    }
+  };
 
   const nextSlide = useCallback(() => {
     setActiveSlide((prev) => (prev + 1) % slides.length);
@@ -299,8 +256,6 @@ export default function Home() {
     </div>
   </div>
 </section>
-
-     {/* Discovery Timeline Narrative */}
 <section
   id="features"
   className="py-32 bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden"
@@ -385,6 +340,118 @@ export default function Home() {
   </div>
 </section>
 
+{/* Integrated Products Section */}
+<section className="py-32 bg-slate-50 relative overflow-hidden">
+  <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full" />
+    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/5 blur-[140px] rounded-full" />
+  </div>
+
+  <div className="max-w-7xl mx-auto px-6 relative z-10 space-y-16">
+    <div className="text-center space-y-4">
+      <h2 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tight">
+        Fuel <span className="text-indigo-600">Solutions</span>
+      </h2>
+      <p className="text-slate-500 max-w-2xl mx-auto text-lg font-medium leading-relaxed">
+        Real-time inventory tracking, digital queue management, and customer trust signals for Ethiopia`s modern energy grid.
+      </p>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Petrol Card */}
+      <article className="group p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+            <Fuel className="w-7 h-7" />
+          </div>
+          {user && isStationOwner && (
+            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${petrol ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+              {petrol ? "Available" : "Out of Stock"}
+            </span>
+          )}
+        </div>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Premium Petrol</h3>
+        <p className="mt-3 text-slate-500 font-medium leading-relaxed">
+          Real-time Benzene inventory management for station owners and live availability for private vehicle drivers.
+        </p>
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Market</span>
+            <span className="text-lg font-black text-slate-900">{isStationOwner ? petrolPrice : "80+" } ETB/L</span>
+          </div>
+          <button
+            onClick={() => handleAction("/dashboard/inventory")}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-4 text-xs font-black uppercase tracking-widest bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all"
+          >
+            {isStationOwner ? "Update Inventory" : "View Near Me"}
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </article>
+
+      {/* Diesel Card */}
+      <article className="w-100 h-130 group p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
+            <Truck className="w-7 h-7" />
+          </div>
+          {user && isStationOwner && (
+            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${diesel ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+              {diesel ? "Available" : "Out of Stock"}
+            </span>
+          )}
+        </div>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Heavy Diesel</h3>
+        <p className="mt-3 text-slate-500 font-medium leading-relaxed">
+          Efficient Nafta distribution tracking optimized for commercial fleets, logistics, and heavy transport.
+        </p>
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Market</span>
+            <span className="text-lg font-black text-slate-900">{isStationOwner ? dieselPrice : "75+" } ETB/L</span>
+          </div>
+          <button
+            onClick={() => handleAction("/dashboard/inventory")}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-4 text-xs font-black uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all"
+          >
+            {isStationOwner ? "Update Inventory" : "View Near Me"}
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </article>
+
+      {/* Reputation Card */}
+      <article className="group p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
+            <Star className="w-7 h-7" />
+          </div>
+          <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
+            Reputation
+          </span>
+        </div>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Customer Trust</h3>
+        <p className="mt-3 text-slate-500 font-medium leading-relaxed">
+          Transparent rating systems that help reliable stations stand out and drivers find the best service quality.
+        </p>
+        <div className="mt-8 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Average</p>
+            <p className="text-lg font-black text-slate-900">{isStationOwner && avgRating !== null ? avgRating.toFixed(1) : "4.8"} / 5.0</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Verified</p>
+            <p className="text-lg font-black text-slate-900">{isStationOwner ? ratingCount : "500+"}</p>
+          </div>
+        </div>
+        <p className="mt-6 text-xs text-slate-500 font-medium italic text-center">
+          Verified reviews help build community trust
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
       {/* Footer */}
       <footer className="py-20 bg-gradient-to-br from-slate-50 via-white to-indigo-50 border-t border-slate-200 pb-5">
 
@@ -450,28 +517,34 @@ export default function Home() {
       {[
   {
     Icon: Linkedin,
+    url: "https://www.linkedin.com/in/mitiku-etafa-a909803a8/",
     hover: "hover:bg-green-600 hover:text-white",
     active: "active:bg-blue-700 active:scale-95"
   },
   {
     Icon: Facebook,
+    url: "https://web.facebook.com/mitiku.etafa.865028",
     hover: "hover:bg-blue-600 hover:text-white",
     active: "active:bg-blue-700 active:scale-95"
   },
   {
     Icon: Instagram,
+    url: "https://www.instagram.com/mitihans22/",
     hover: "hover:bg-pink-600 hover:text-white",
     active: "active:bg-pink-700 active:scale-95"
   },
   {
     Icon: Github,
+    url: "https://github.com/mitihans-1",
     hover: "hover:bg-slate-900 hover:text-white",
     active: "active:bg-slate-800 active:scale-95"
   },
-].map(({ Icon, hover, active }, idx) => (
+].map(({ Icon, url, hover, active }, idx) => (
   <Link
     key={idx}
-    href="#"
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
     className={`
       w-11 h-11 rounded-full
       border border-slate-200

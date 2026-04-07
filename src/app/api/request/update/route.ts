@@ -1,11 +1,13 @@
 import { connectDB } from "@/lib/db";
 import FuelRequest from "@/models/FuelRequest";
 import Station from "@/models/Station";
+import Notification from "@/models/Notification";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import crypto from "crypto";
 
 interface IStation {
   petrol: boolean;
@@ -82,10 +84,42 @@ export async function PUT(req: Request) {
       }
     }
 
+    // Build update payload – include reservation timer + QR token when approving
+    const updatePayload: Record<string, unknown> = { status };
+    if (status === "APPROVED") {
+      updatePayload.reservationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      // assign a unique qrToken per request (handled per-doc below)
+    }
+
     const result = await FuelRequest.updateMany(
       { _id: { $in: targetIds } },
-      { $set: { status } }
+      { $set: updatePayload }
     );
+
+    // Per-request: generate qrToken on APPROVED & send notifications
+    if (status === "APPROVED" || status === "REJECTED") {
+      for (const req of requests) {
+        if (status === "APPROVED") {
+          const qrToken = crypto.randomBytes(16).toString("hex");
+          await FuelRequest.findByIdAndUpdate(req._id, { qrToken });
+        }
+        if (req.driverId) {
+          const stationDoc = await Station.findById(req.stationId).select("name").lean() as { name?: string } | null;
+          const stationName = stationDoc?.name ?? "the station";
+          const notifType = status === "APPROVED" ? "REQUEST_APPROVED" : "REQUEST_REJECTED";
+          const title = status === "APPROVED" ? "Fuel Request Approved ✓" : "Fuel Request Rejected";
+          const message = status === "APPROVED"
+            ? `Your ${req.fuelType} request at ${stationName} was approved. You have 15 minutes to collect your fuel.`
+            : `Your ${req.fuelType} request at ${stationName} was rejected.`;
+          await Notification.create({
+            userId: req.driverId,
+            type: notifType,
+            title,
+            message,
+          });
+        }
+      }
+    }
 
     await createAuditLog({
       actorUserId: actor.id,

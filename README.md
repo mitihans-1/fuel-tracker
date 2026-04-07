@@ -3,6 +3,7 @@
 FuelSync is a professional, real-time fuel management and queue optimization platform designed for the modern driver and fuel station owner. It solves the critical problem of fuel uncertainty and long wait times by providing a live, data-driven ecosystem.
 
 ## 🌟 Purpose
+
 The core mission of FuelSync is to eliminate wasted time and fuel by connecting drivers with real-time station data. It transforms the traditional "drive and hope" approach into a predictable, digital experience.
 
 ---
@@ -10,7 +11,9 @@ The core mission of FuelSync is to eliminate wasted time and fuel by connecting 
 ## 🖥️ Dashboards
 
 ### 🚗 Driver Dashboard
+
 Designed for agility and quick decision-making.
+
 - **Real-time Map**: Visual markers for all nearby stations using OpenStreetMap.
 - **Live Inventory**: Instantly see if a station has Petrol or Diesel in stock.
 - **Smart Checkout**: Select the exact amount of fuel needed, calculate prices automatically, and pay via Telebirr, CBE Birr, or Cash.
@@ -18,7 +21,9 @@ Designed for agility and quick decision-making.
 - **History Management**: Keep track of all previous fuel fulfillments and statuses, with the option to remove old records from history.
 
 ### ⛽ Station Dashboard (Console)
+
 A powerful management suite for station owners.
+
 - **Inventory Management**: Real-time control over fuel quantities (Litres) and prices (ETB).
 - **Live Status Toggle**: Instantly update the public status of Petrol/Diesel pumps.
 - **Queue Management**: Monitor and manage incoming driver requests in real-time.
@@ -27,37 +32,68 @@ A powerful management suite for station owners.
 
 ---
 
-## 🚀 Steps to Use
+## 🚀 Registration, Login, and Dashboard Access
 
-### 1. Registration & Setup
-1.  **Visit the App**: Navigate to [http://localhost:3000](http://localhost:3000).
-2.  **Sign Up**: Go to the [register](file:///c:/fuel-tracker/src/app/auth/register/page.tsx) page.
-3.  **Choose Your Role**: 
-    - **Driver**: For those looking for fuel.
-    - **Station Owner**: For those managing a fuel station (requires entering Station Name and Location).
-4.  **Automatic Geocoding**: For stations, our system automatically converts your address into map coordinates.
+### 1. Registration
 
-### 2. For Station Owners (Updating Stock)
-1.  Log in to your **Station Console**.
-2.  Go to **Inventory Management**.
-3.  Enter your current fuel quantities in Litres and set your prices.
-4.  Click **"Update Live Status"** to broadcast your stock to all drivers.
+1. Visit [http://localhost:3000](http://localhost:3000) and open `/auth/register`.
+2. Submit `name`, `email`, and password.
+3. Password must include:
 
-### 3. For Drivers (Ordering Fuel)
-1.  Log in to your **Driver Dashboard**.
-2.  Browse the list or the map to find a station with available stock.
-3.  Click **"Request Petrol"** or **"Request Diesel"**.
-4.  Enter the amount of litres you need and choose a payment method.
-5.  **Pay & Get Ticket**: Once confirmed, your digital ticket will appear.
+   - 8+ characters
+   - uppercase
+   - lowercase
+   - number
+   - symbol
 
-### 4. Fulfillment
-1.  Drive to the station.
-2.  Show your **Digital Ticket** (found in your Request History) to the station attendant.
-3.  The attendant verifies the ticket ID and fills your tank!
+4. New users are created as `DRIVER` by default.
+5. Optional bootstrap admins can be set with:
+
+   - `ADMIN_BOOTSTRAP_EMAILS=admin1@x.com,admin2@x.com`
+
+### 2. Verification
+
+1. Registration sends an email verification token.
+2. User must click the verification link (`/api/auth/verify?token=...`).
+3. Login is blocked until `isVerified = true`.
+
+### 3. Login
+
+1. Use `/auth/login` (email/password) or Google login.
+2. On success, JWT is stored in `token` cookie.
+3. App resolves user identity from `/api/auth/me` and routes to dashboards.
+
+### 4. Access Matrix (Role + Ownership)
+
+- **Driver**
+  - Default: `DriverDashboard`
+  - If user owns station(s): can open `StationDashboard` using `?view=station`
+- **Station**
+  - Default: `StationDashboard`
+  - Can switch to Driver view using `?view=driver`
+- **Admin**
+  - Default: `AdminDashboard`
+  - Can open Driver view (`?view=driver`)
+  - If admin owns station(s): can open Station view (`?view=station`)
+
+### 5. Becoming a Station Owner
+
+- Register a station from the station registration flow.
+- System creates a station with `ownerUserId = user.id`.
+- Ownership-based access is used by station APIs.
+- Station actions (inventory, station requests, analytics, price history) are authorized by ownership.
+
+### 6. Driver Order Flow
+
+1. Driver opens station list/map.
+2. Initiates payment and creates fuel request.
+3. After station approval/completion, request status and finance entries update.
+4. Driver can download a receipt from Fuel Logs.
 
 ---
 
 ## 🛠️ Tech Stack
+
 - **Framework**: Next.js 16 (Turbopack)
 - **Database**: MongoDB with Mongoose
 - **Mapping**: Leaflet & OpenStreetMap

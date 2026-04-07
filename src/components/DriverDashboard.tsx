@@ -6,9 +6,10 @@ import {
   MapPin, Fuel, Wallet, TrendingUp, Clock, CheckCircle,
   Star, Bell, CreditCard,
   AlertCircle, Navigation, Zap, Shield, Award,
-  Gauge,
-  TrendingDown, LayoutDashboard, History, Car, Settings, LogOut, Menu, Activity
+  Gauge, ArrowUpDown, MessageSquare,
+  TrendingDown, LayoutDashboard, History, Car, Settings, Activity, QrCode
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Station } from "./OSMMap";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -29,6 +30,38 @@ interface FuelRequest {
   paymentStatus?: string;
   refundStatus?: string;
   createdAt?: string;
+  reservationExpiresAt?: string;
+  qrToken?: string;
+}
+
+// Small countdown hook – returns seconds remaining (null if no expiry)
+function useCountdown(expiresAt?: string): number | null {
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!expiresAt) return null;
+  return Math.max(0, Math.floor((new Date(expiresAt).getTime() - now) / 1000));
+}
+
+function ReservationCountdown({ expiresAt }: { expiresAt?: string }) {
+  const secs = useCountdown(expiresAt);
+  if (secs === null) return null;
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+  const expired = secs === 0;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+      expired ? "bg-red-50 border-red-200 text-red-600" :
+      secs < 120 ? "bg-amber-50 border-amber-200 text-amber-700" :
+      "bg-emerald-50 border-emerald-200 text-emerald-700"
+    }`}>
+      <Clock className="w-3 h-3" />
+      {expired ? "Expired" : `${mins}:${String(s).padStart(2, "0")}`}
+    </span>
+  );
 }
 
 interface WalletTimelineItem {
@@ -162,12 +195,11 @@ interface StatCardProps {
   icon: React.ElementType;
   label: string;
   value: string | number;
-  color: string;
   trend?: "up" | "down";
   trendValue?: string;
 }
 
-const StatCard = ({ icon: Icon, label, value, color, trend, trendValue }: StatCardProps) => (
+const StatCard = ({ icon: Icon, label, value, trend, trendValue }: StatCardProps) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
     className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white backdrop-blur-xl rounded-2xl p-6 border border-slate-200/50 shadow-lg hover:shadow-xl transition-all"
@@ -205,7 +237,7 @@ export default function DriverDashboard() {
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingStations, setLoadingStations] = useState(true);
-  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [, setLoadingRequests] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Station | null>(null);
@@ -222,7 +254,10 @@ export default function DriverDashboard() {
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [ratingStationId, setRatingStationId] = useState<string | null>(null);
   const [ratingValue, setRatingValue] = useState<number>(5);
+  const [ratingComment, setRatingComment] = useState("");
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [showQrFor, setShowQrFor] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"default" | "cheapest-petrol" | "cheapest-diesel" | "shortest-queue">("default");
   const [ticketData, setTicketData] = useState<PendingTicket | null>(null);
   const [fuelAlertEnabled, setFuelAlertEnabled] = useState<{
     petrol: boolean;
@@ -282,8 +317,6 @@ export default function DriverDashboard() {
     params.set("tab", v);
     router.push(`${window.location.pathname}?${params.toString()}`);
   };
-
-  const sidebarOpen = false; // Sidebar removed, but keeping state-like variable if needed for logic
 
   const sidebarItems: { id: "dashboard" | "logs" | "vehicles" | "settings"; label: string; icon: React.ReactNode }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -640,8 +673,15 @@ export default function DriverDashboard() {
     (s) => (s.petrol || s.diesel) && (s.petrolQty ?? 0) + (s.dieselQty ?? 0) > 0
   ) ?? filteredStations[0];
 
-  const totalPages = Math.max(1, Math.ceil(filteredStations.length / PAGE_SIZE));
-  const paginatedStations = filteredStations.slice(
+  const sortedStations = [...filteredStations].sort((a, b) => {
+    if (sortBy === "cheapest-petrol") return (a.petrolPrice ?? 999) - (b.petrolPrice ?? 999);
+    if (sortBy === "cheapest-diesel") return (a.dieselPrice ?? 999) - (b.dieselPrice ?? 999);
+    if (sortBy === "shortest-queue") return (a.estimatedWaitMinutes ?? 999) - (b.estimatedWaitMinutes ?? 999);
+    return 0;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedStations.length / PAGE_SIZE));
+  const paginatedStations = sortedStations.slice(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE
   );
@@ -691,7 +731,7 @@ export default function DriverDashboard() {
             </div>
             <button
               onClick={() => setShowTopUp(true)}
-              className="mt-3 w-full px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition"
+              className="mt-3 w-full px-4 py-2 rounded-xl pro-btn-primary text-xs font-black uppercase tracking-widest transition"
             >
               Top Up
             </button>
@@ -706,7 +746,7 @@ export default function DriverDashboard() {
         {/* Soft gradient background */}
         <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/50 to-indigo-50/30 pointer-events-none" />
 
-        <div className="relative z-10 p-4 sm:p-10 space-y-10">
+        <div className="relative z-10 dashboard-content space-y-8">
           <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2">
             {sidebarItems.map((item) => (
               <button
@@ -802,7 +842,6 @@ export default function DriverDashboard() {
                   icon={Fuel}
                   label="Total Requests"
                   value={stats.totalRequests}
-                  color="indigo"
                   trend="up"
                   trendValue="+23%"
                 />
@@ -810,7 +849,6 @@ export default function DriverDashboard() {
                   icon={Clock}
                   label="Pending"
                   value={stats.pendingCount}
-                  color="amber"
                   trend="down"
                   trendValue="-5%"
                 />
@@ -818,7 +856,6 @@ export default function DriverDashboard() {
                   icon={CheckCircle}
                   label="Approved"
                   value={stats.approvedCount}
-                  color="emerald"
                   trend="up"
                   trendValue="+12%"
                 />
@@ -1041,6 +1078,31 @@ export default function DriverDashboard() {
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
             </div>
+          </div>
+
+          {/* Sort Controls */}
+          <div className="flex flex-wrap gap-2">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider self-center">
+              <ArrowUpDown className="w-3.5 h-3.5" /> Sort:
+            </span>
+            {([
+              { id: "default", label: "Default" },
+              { id: "cheapest-petrol", label: "💧 Cheapest Petrol" },
+              { id: "cheapest-diesel", label: "🛢 Cheapest Diesel" },
+              { id: "shortest-queue", label: "⚡ Shortest Queue" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => { setSortBy(opt.id); setPage(1); }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                  sortBy === opt.id
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
 
           {loadingStations ? (
@@ -1267,6 +1329,7 @@ export default function DriverDashboard() {
                             Fill Petrol
                           </button>
                           <button
+                          
                             disabled={!station.diesel}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1298,7 +1361,7 @@ export default function DriverDashboard() {
                   </button>
                   <div className="flex items-center gap-2">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
+                      let pageNum: number;
                       if (totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (page <= 3) {
@@ -1425,9 +1488,33 @@ export default function DriverDashboard() {
                                   />
                                </div>
                             </td>
-                            <td className="px-8 py-6 text-[10px] text-slate-500 font-medium uppercase tracking-widest">{formatDateTime(r.createdAt)}</td>
+                            <td className="px-8 py-6">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{formatDateTime(r.createdAt)}</span>
+                                {r.status === "APPROVED" && r.reservationExpiresAt && (
+                                  <ReservationCountdown expiresAt={r.reservationExpiresAt} />
+                                )}
+                              </div>
+                            </td>
                             <td className="px-8 py-6 text-right">
-                              {r.status === "PENDING" ? (
+                              {r.status === "APPROVED" && r.qrToken ? (
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => setShowQrFor(showQrFor === r._id ? null : r._id)}
+                                    className="px-4 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-200 transition-all border border-emerald-200 flex items-center gap-1.5"
+                                  >
+                                    <QrCode className="w-3.5 h-3.5" />
+                                    Show QR
+                                  </button>
+                                  <button
+                                    onClick={() => openCancelConfirm(r._id)}
+                                    disabled={mutatingId === r._id}
+                                    className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-200 transition-all border border-red-200"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : r.status === "PENDING" ? (
                                 <div className="flex justify-end gap-2">
                                   <button
                                     onClick={() => downloadReceipt(r._id)}
@@ -1662,6 +1749,60 @@ export default function DriverDashboard() {
         })()}
       </AnimatePresence>
 
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {showQrFor && (() => {
+          const req = requests.find(r => r._id === showQrFor);
+          if (!req?.qrToken) return null;
+          return (
+            <motion.div
+              key="qr-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1001] flex items-center justify-center p-4"
+            >
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowQrFor(null)} />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-5 text-center"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto">
+                  <QrCode className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Fuel Ticket QR</h3>
+                  <p className="text-xs text-slate-500 mt-1">Show this to the station attendant</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex justify-center">
+                  <QRCodeSVG value={req.qrToken} size={180} level="H" />
+                </div>
+                <div className="text-left bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1">
+                  <p className="text-xs text-slate-500">Station: <span className="font-bold text-slate-900">{req.stationId?.name}</span></p>
+                  <p className="text-xs text-slate-500">Fuel: <span className="font-bold text-slate-900 capitalize">{req.fuelType}</span></p>
+                  {req.amount && <p className="text-xs text-slate-500">Qty: <span className="font-bold text-slate-900">{req.amount}L</span></p>}
+                  {req.reservationExpiresAt && (
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200">
+                      <Clock className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-xs text-slate-500">Expires in: </span>
+                      <ReservationCountdown expiresAt={req.reservationExpiresAt} />
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowQrFor(null)}
+                  className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition"
+                >
+                  Close
+                </button>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
       {/* Rating Modal */}
       <AnimatePresence>
         {ratingStationId && (
@@ -1686,12 +1827,12 @@ export default function DriverDashboard() {
                 </p>
               </div>
 
-              <div className="flex justify-center gap-2 py-4">
+              <div className="flex justify-center gap-2 py-2">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     onClick={() => setRatingValue(n)}
-                    className={`text-3xl transition-all ${n <= ratingValue ? "text-yellow-400 scale-110" : "text-slate-600"
+                    className={`text-3xl transition-all ${n <= ratingValue ? "text-yellow-400 scale-110" : "text-slate-300"
                       }`}
                   >
                     ★
@@ -1699,10 +1840,26 @@ export default function DriverDashboard() {
                 ))}
               </div>
 
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-2">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Leave a comment (optional)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="How was your experience?"
+                  value={ratingComment}
+                  onChange={e => setRatingComment(e.target.value)}
+                  maxLength={500}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none transition"
+                />
+                <p className="text-[10px] text-slate-400 text-right mt-1">{ratingComment.length}/500</p>
+              </div>
+
               <div className="flex gap-3">
                 <button
                   disabled={submittingRating}
-                  onClick={() => setRatingStationId(null)}
+                  onClick={() => { setRatingStationId(null); setRatingComment(""); }}
                   className="flex-1 py-2.5 rounded-xl bg-slate-200 text-slate-700 font-medium hover:bg-slate-300 transition"
                 >
                   Cancel
@@ -1716,7 +1873,7 @@ export default function DriverDashboard() {
                       const res = await fetch(`/api/stations/${ratingStationId}/rate`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ score: ratingValue }),
+                        body: JSON.stringify({ score: ratingValue, comment: ratingComment }),
                       });
                       const data = await res.json();
                       if (!res.ok || data.error) {
@@ -1731,6 +1888,7 @@ export default function DriverDashboard() {
                           )
                         );
                         setRatingStationId(null);
+                        setRatingComment("");
                       }
                     } catch {
                       showToast("Failed to submit rating", "error");

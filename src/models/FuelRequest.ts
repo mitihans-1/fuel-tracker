@@ -81,7 +81,15 @@ const requestSchema = new mongoose.Schema({
   meta: {
     tx_ref: { type: String },
     paymentProvider: { type: String, default: "CHAPA" }
-  }
+  },
+  reservationExpiresAt: {
+    type: Date,
+    required: false,
+  },
+  qrToken: {
+    type: String,
+    required: false,
+  },
 }, { timestamps: true });
 
 export default mongoose.models.request ||

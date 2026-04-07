@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, FormEvent } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { Key, Mail, ArrowRight, CheckCircle2, Shield } from "lucide-react";
+import { Key, Mail, ArrowRight, CheckCircle2,  } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");

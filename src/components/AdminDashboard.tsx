@@ -5,15 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from "@/contexts/UserContext";
 import SettingsPage from "@/app/dashboard/settings/page"; // reuse your file
 import KpiCard from "@/components/ui/KpiCard";
 import SectionHeader from "@/components/ui/SectionHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DataTable from "@/components/ui/DataTable";
 import { 
-  Users, Fuel, MapPin, BarChart3, Settings, 
-  Trash2, UserPlus, Shield, CheckCircle, Search, 
-  DollarSign, Activity, Zap, ExternalLink,
+  Users, Fuel, MapPin, Settings, 
+  Trash2, UserPlus, Shield, Search, 
+  DollarSign, Activity,  ExternalLink,
   LayoutDashboard, Menu, LogOut, History, X
 } from "lucide-react";
 
@@ -66,7 +67,11 @@ interface AdminAnalytics {
 interface CreateStationForm {
   name: string;
   location: string;
-  ownerEmail: string;
+  zone: string;
+  woreda: string;
+  kebele: string;
+  email: string;
+  password: string;
 }
 
 type Tab = "users" | "stations" | "requests" | "analytics" | "payouts" | "audit" | "settings";
@@ -101,6 +106,7 @@ interface AuditLogItem {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { clear } = useUser();
   const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
@@ -110,13 +116,13 @@ export default function AdminDashboard() {
   const tab = (searchParams.get("tab") as Tab) || "analytics";
 
   const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: "payouts", label: "Payout Center", icon: <DollarSign className="w-5 h-5" /> },
-    { id: "audit", label: "Audit Logs", icon: <Shield className="w-5 h-5" /> },
-    { id: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
-    { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5" /> },
-    { id: "requests", label: "Requests", icon: <History className="w-5 h-5" /> },
-    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
+    { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 text-indigo-500" /> },
+    { id: "payouts", label: "Payout Center", icon: <DollarSign className="w-5 h-5 text-emerald-500" /> },
+    { id: "audit", label: "Audit Logs", icon: <Shield className="w-5 h-5 text-blue-500" /> },
+    { id: "users", label: "Users", icon: <Users className="w-5 h-5 text-amber-500" /> },
+    { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5 text-rose-500" /> },
+    { id: "requests", label: "Requests", icon: <History className="w-5 h-5 text-purple-500" /> },
+    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5 text-slate-500" /> },
   ];
   
   const [analyticsRange] = useState<"7d" | "30d">("30d");
@@ -128,7 +134,15 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [showCreateStation, setShowCreateStation] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateStationForm>({ name: "", location: "", ownerEmail: "" });
+  const [createForm, setCreateForm] = useState<CreateStationForm>({
+    name: "",
+    location: "",
+    zone: "",
+    woreda: "",
+    kebele: "",
+    email: "",
+    password: ""
+  });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -136,6 +150,16 @@ export default function AdminDashboard() {
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "DRIVER" });
   const [userLoading, setUserLoading] = useState(false);
   const [userError, setUserError] = useState("");
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      clear();
+      router.push("/auth/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
 
   const setTab = (t: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -152,7 +176,7 @@ export default function AdminDashboard() {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-  }, [searchParams]);
+  }, [searchParams, setTab]);
 
   const loadAnalytics = useCallback(async (range: "7d" | "30d") => {
     try {
@@ -290,8 +314,8 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) { setCreateError(data.error || "Failed to create station"); return; }
-      setStations(prev => [...prev, data]);
-      setCreateForm({ name: "", location: "", ownerEmail: "" });
+      setStations(prev => [...prev, data.station || data]);
+      setCreateForm({ name: "", location: "", zone: "", woreda: "", kebele: "", email: "", password: "" });
       setTimeout(() => { setShowCreateStation(false); }, 1800);
     } catch { setCreateError("Network error"); } finally { setCreateLoading(false); }
   };
@@ -358,9 +382,9 @@ export default function AdminDashboard() {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
         mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
-        <div className="p-6">
+        <div className="p-6 pt-24 h-full flex flex-col">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-xl font-semibold text-gray-900">FuelAdmin</h1>
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">FuelAdmin</h1>
             <button
             title="mobile"
               onClick={() => setMobileMenuOpen(false)}
@@ -370,28 +394,40 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="space-y-1 flex-1">
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
                onClick={() => setTab(item.id)}
-                className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-all ${
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${
                   tab === item.id
-                    ? "bg-indigo-50 text-indigo-600 font-medium"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
-                {item.icon}
+                <div className={`${tab === item.id ? "text-white" : ""}`}>
+                  {item.icon}
+                </div>
                 {item.label}
               </button>
             ))}
           </nav>
+
+          <div className="mt-auto pt-6 border-t border-slate-100">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
+            >
+              <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              Sign Out
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="lg:pl-64">
-        <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+      <main className="lg:pl-64 min-h-screen pt-16s pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="dashboard-content space-y-8">
           <AnimatePresence mode="wait">
             {tab === "users" && (
               <motion.div
@@ -972,59 +1008,113 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md bg-white rounded-xl shadow-xl p-6"
+              className="relative w-full max-w-md bg-white rounded-xl shadow-xl flex flex-col max-h-[90vh] overflow-y-auto"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Station</h3>
-              <p className="text-sm text-gray-500 mb-6">Register a new fuel station</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Station Name</label>
-                  <input
-                  title="name"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={createForm.name}
-                    onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
-                  />
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Add Station</h3>
+                <p className="text-sm text-gray-500">Register a new fuel station</p>
+              </div>
+
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Station Name</label>
+                    <input
+                      title="name"
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.name}
+                      onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Full Location (Address)</label>
+                    <input
+                      title="location"
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.location}
+                      onChange={e => setCreateForm({ ...createForm, location: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Zone</label>
+                    <input
+                      title="zone"
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.zone}
+                      onChange={e => setCreateForm({ ...createForm, zone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Woreda</label>
+                    <input
+                      title="woreda"
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.woreda}
+                      onChange={e => setCreateForm({ ...createForm, woreda: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Kebele</label>
+                    <input
+                      title="kebele"
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.kebele}
+                      onChange={e => setCreateForm({ ...createForm, kebele: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2 pt-2 border-t border-gray-100">
+                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Manager Credentials</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Email Address</label>
+                    <input
+                      title="email"
+                      type="email"
+                      required
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.email}
+                      onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Password</label>
+                    <input
+                      title="password"
+                      type="password"
+                      required
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={createForm.password}
+                      onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                  <input
-                  title="location"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={createForm.location}
-                    onChange={e => setCreateForm({ ...createForm, location: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Owner Email (Optional)</label>
-                  <input
-                  title="email"
-                    type="email"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={createForm.ownerEmail}
-                    onChange={e => setCreateForm({ ...createForm, ownerEmail: e.target.value })}
-                  />
-                </div>
-                {createError && (
-                  <p className="text-xs text-red-600 bg-red-50 p-2 rounded">{createError}</p>
-                )}
-                <div className="flex gap-3 pt-4">
+              </div>
+
+              <div className="p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
+                <div className="flex gap-3">
                   <button
+                    type="button"
                     onClick={() => setShowCreateStation(false)}
-                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCreateStation}
                     disabled={createLoading}
-                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                   >
-                    {createLoading ? "Adding..." : "Add Station"}
+                    {createLoading ? "Creating..." : "Create Station"}
                   </button>
                 </div>
+                {createError && <p className="mt-3 text-xs text-red-600 font-medium">{createError}</p>}
               </div>
             </motion.div>
           </div>
@@ -1043,7 +1133,7 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md bg-white rounded-xl shadow-xl p-6"
+              className="relative w-full max-w-md bg-white rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto"
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Add User</h3>
               <p className="text-sm text-gray-500 mb-6">Create a new platform user</p>

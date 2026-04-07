@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = verifyToken(token);
-    if (!user || user.role !== "STATION") {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

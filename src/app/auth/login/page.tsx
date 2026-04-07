@@ -29,6 +29,7 @@ export default function Login() {
       });
 
       if (res.ok) {
+        localStorage.setItem("fuel_sync_returning_user", "true");
         window.location.href = "/dashboard";
       } else {
         const data = await res.json();
@@ -166,6 +167,7 @@ export default function Login() {
               });
 
               if (authRes.ok) {
+                localStorage.setItem("fuel_sync_returning_user", "true");
                 window.location.href = "/dashboard";
               }
             }}

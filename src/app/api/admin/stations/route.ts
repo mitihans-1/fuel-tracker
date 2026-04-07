@@ -4,6 +4,7 @@ import Station from "@/models/Station";
 import User from "@/models/user";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
 async function requireAdmin() {
   const cookieStore = await cookies();
@@ -29,26 +30,28 @@ export async function POST(req: Request) {
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
     await connectDB();
-    const { name, location, ownerEmail } = await req.json();
+    const { name, location, zone, woreda, kebele, email, password } = await req.json();
 
-    if (!name || !location) {
-      return NextResponse.json({ error: "Name and location are required" }, { status: 400 });
+    if (!name || !location || !email || !password) {
+      return NextResponse.json({ error: "Name, location, email and password are required" }, { status: 400 });
     }
 
-    // Find the STATION-role user to assign as owner (optional)
-    let ownerUserId: string | undefined;
-    if (ownerEmail) {
-      const ownerUser = await User.findOne({ email: ownerEmail, role: "STATION" }).lean() as { _id: { toString(): string } } | null;
-      if (!ownerUser) {
-        return NextResponse.json(
-          { error: "No STATION-role user found with that email" },
-          { status: 404 }
-        );
-      }
-      ownerUserId = ownerUser._id.toString();
+    // 1. Create the station manager user
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
     }
 
-    // Geocode the location
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const stationManager = await User.create({
+      name: `${name} Manager`,
+      email,
+      password: hashedPassword,
+      role: "STATION",
+      isVerified: true,
+    });
+
+    // 2. Geocode the location
     let lat: number | undefined;
     let lon: number | undefined;
     try {
@@ -65,10 +68,14 @@ export async function POST(req: Request) {
       console.error("Geocoding failed:", err);
     }
 
+    // 3. Create the station
     const station = await Station.create({
       name,
       location,
-      ownerUserId,
+      zone,
+      woreda,
+      kebele,
+      ownerUserId: stationManager._id,
       latitude: lat,
       longitude: lon,
       petrol: false,
@@ -77,10 +84,10 @@ export async function POST(req: Request) {
       diesel: false,
       dieselQty: 0,
       dieselPrice: 75,
-      isSetupComplete: !!ownerUserId, // Setup complete if owner assigned
+      isSetupComplete: true,
     });
 
-    return NextResponse.json(station, { status: 201 });
+    return NextResponse.json({ station, user: { email, role: "STATION" } }, { status: 201 });
   } catch (err) {
     console.error("admin/stations POST error", err);
     return NextResponse.json({ error: "Failed to create station" }, { status: 500 });

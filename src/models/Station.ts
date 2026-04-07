@@ -14,6 +14,9 @@ export interface IStation extends Document {
   ratingCount: number;
   latitude?: number;
   longitude?: number;
+  zone?: string;
+  woreda?: string;
+  kebele?: string;
   updatedAt: Date;
   isSetupComplete: boolean;
 }
@@ -78,6 +81,19 @@ const StationSchema = new mongoose.Schema<IStation>({
 
   longitude: {
     type: Number,
+    required: false,
+  },
+
+  zone: {
+    type: String,
+    required: false,
+  },
+  woreda: {
+    type: String,
+    required: false,
+  },
+  kebele: {
+    type: String,
     required: false,
   },
 

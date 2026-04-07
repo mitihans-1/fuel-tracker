@@ -32,6 +32,23 @@ export default function Navbar() {
     "Account";
   const isDashboard = pathname?.startsWith("/dashboard");
   const userRole = isDashboard ? (user?.role ?? null) : null;
+  const isStationView = isDashboard && searchParams.get("view") === "station";
+  const currentQuery = searchParams.toString();
+
+  const isNavLinkActive = (linkPath: string) => {
+    if (!pathname) return false;
+    const [linkBasePath, linkQuery = ""] = linkPath.split("?");
+    if (pathname !== linkBasePath) return false;
+
+    // Exact route without query should only be active when current URL has no query.
+    if (!linkQuery) return currentQuery.length === 0;
+
+    const linkParams = new URLSearchParams(linkQuery);
+    for (const [key, value] of linkParams.entries()) {
+      if (searchParams.get(key) !== value) return false;
+    }
+    return true;
+  };
 
   // Notification bell state
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -122,7 +139,7 @@ export default function Navbar() {
   ];
 
   if (isDashboard && userRole === "STATION") {
-    coreLinks.push({ name: "Products", path: "/dashboard/products" });
+    coreLinks.push({ name: "Products", path: "/dashboard/inventory" });
     coreLinks.push({ name: "Register New Station", path: "/dashboard?action=register" });
   }
   if (isDashboard && userRole === "ADMIN") {
@@ -134,12 +151,15 @@ export default function Navbar() {
   
 
 
-  const marketingLinks: NavigationLink[] = [{ name: "How It Works", path: "/#features" }];
+  const marketingLinks: NavigationLink[] = [
+    { name: "Products", path: "/products" },
+    { name: "How It Works", path: "/#features" },
+  ];
   const authLinks: NavigationLink[] = [{ name: "Register", path: "/auth/register" }];
   const visibleLinks: NavigationLink[] = isDashboard ? coreLinks : [...coreLinks, ...marketingLinks];
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 w-full bg-slate-900/80 backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed top-0 inset-x-0 z-50 w-full bg-slate-900 border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex justify-between items-center">
 
         {/* Logo */}
@@ -162,7 +182,7 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={`transition-colors ${pathname === link.path ? "text-blue-400" : "text-white/60 hover:text-white"}`}
+                  className={`transition-colors ${isNavLinkActive(link.path) ? "text-blue-400" : "text-white/60 hover:text-white"}`}
                 >
                   {link.name}
                 </Link>
@@ -176,14 +196,14 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
           {/* Driver Dashboard Top Navigation (Text Style) */}
-{isDashboard && userRole === "DRIVER" && (
+{isDashboard && userRole === "DRIVER" && !isStationView && (
   <div className="flex items-center gap-2 mr-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-sm">
 
     {[
       // { name: "Dashboard", path: "/dashboard?tab=dashboard" },
       { name: "Fuel Logs", path: "/dashboard?tab=logs" },
       { name: "Vehicles", path: "/dashboard?tab=vehicles" },
-      ...(hasOwnedStation ? [{ name: "Station", path: "/dashboard?view=station" }] : []),
+      // ...(hasOwnedStation ? [{ name: "Station", path: "/dashboard?view=station" }] : []),
     ].map((link) => {
      const currentTab = searchParams.get("tab");
 
@@ -469,7 +489,7 @@ const isActive =
               href={link.path}
               onClick={() => setMenuOpen(false)}
               className={`block px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                pathname === link.path
+                isNavLinkActive(link.path)
                   ? "bg-primary/20 text-primary border border-primary/20"
                   : "text-text/70 hover:text-text hover:bg-white/5"
               }`}

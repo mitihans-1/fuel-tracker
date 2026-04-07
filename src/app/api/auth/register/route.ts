@@ -49,11 +49,18 @@ export async function POST(req: NextRequest) {
   const verificationToken = crypto.randomBytes(32).toString("hex");
   const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-  // AUTOMATIC BOOTSTRAP: Only a specific 'seed' email becomes admin.
-  // Everyone else defaults to DRIVER.
-  const finalRole = email === "mitikumitihans@gmail.com" ? "ADMIN" : "DRIVER";
+  // Optional bootstrap admins from env (comma-separated emails).
+  // Example: ADMIN_BOOTSTRAP_EMAILS="admin@company.com,owner@company.com"
+  const bootstrapList = (process.env.ADMIN_BOOTSTRAP_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  // Registration via this route can ONLY create DRIVER or ADMIN roles.
+  // STATION accounts are now managed exclusively by ADMINs.
+  const finalRole = bootstrapList.includes(email.toLowerCase()) ? "ADMIN" : "DRIVER";
 
-  const user = await UserModel.create({
+  await UserModel.create({
     name,
     email,
     password: hashedPassword,

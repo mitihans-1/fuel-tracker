@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["FUEL_AVAILABLE"],
+      enum: ["FUEL_AVAILABLE", "REQUEST_APPROVED", "REQUEST_REJECTED", "QUEUE_MOVING", "RESERVATION_EXPIRING"],
       required: true,
     },
     title: {

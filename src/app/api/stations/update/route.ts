@@ -27,7 +27,8 @@ export async function PUT(req: Request) {
       console.error("Failed to parse request JSON:", error);
       return NextResponse.json({ error: "Invalid request data" }, { status: 400 });
     }
-    const { id, petrol, petrolQty, petrolPrice, diesel, dieselQty, dieselPrice, name, location } = requestData;
+    const { id, stationId, petrol, petrolQty, petrolPrice, diesel, dieselQty, dieselPrice, name, location } = requestData;
+    const targetStationId = id || stationId;
 
   try {
     let lat: number | undefined;
@@ -49,8 +50,8 @@ export async function PUT(req: Request) {
       }
     }
 
-    if (id) {
-      const station = await Station.findOne({ _id: id, ownerUserId: user.id });
+    if (targetStationId) {
+      const station = await Station.findOne({ _id: targetStationId, ownerUserId: user.id });
       if (station) {
         station.petrol = petrol;
         station.petrolQty = petrolQty;
@@ -62,7 +63,7 @@ export async function PUT(req: Request) {
         if (location) station.location = location;
         if (lat !== undefined) station.latitude = lat;
         if (lon !== undefined) station.longitude = lon;
-        const previous = await Station.findById(id).lean<IStation>();
+        const previous = await Station.findById(targetStationId).lean<IStation>();
         await station.save();
 
         // Record price history on price change
