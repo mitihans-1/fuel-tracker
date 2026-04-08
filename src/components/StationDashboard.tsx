@@ -5,13 +5,8 @@ import { formatDateTime } from "@/lib/utils";
 import { Chart as ChartJS , CategoryScale, LinearScale, BarElement,ArcElement, Tooltip, Legend, Title,} from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  TrendingUp, TrendingDown, Fuel, DollarSign,
-  Clock, CheckCircle, XCircle, BarChart3,
-  Download, ChevronDown, Calendar, Menu, X, LogOut,
-  MapPin, Building2, Users, Activity, ScanLine, CheckCircle2,
-  LayoutDashboard
-} from "lucide-react";
+import {TrendingUp, TrendingDown, Fuel, DollarSign,Clock, CheckCircle, XCircle, BarChart3,Download, ChevronDown, Calendar, Menu, X, 
+  LogOut,MapPin, Building2, Users, Activity, ScanLine, CheckCircle2,LayoutDashboard} from "lucide-react";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import SectionHeader from "@/components/ui/SectionHeader";
 import ActionBar from "@/components/ui/ActionBar";
@@ -43,6 +38,8 @@ interface StationData {
 }
 
 // QR Scanner component using html5-qrcode
+import { QrCode, Camera, } from "lucide-react";
+
 function QRScannerPanel({
   onScan,
   scannerMounted,
@@ -54,33 +51,91 @@ function QRScannerPanel({
 }) {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const domId = "qr-reader-station";
+  const [status, setStatus] = useState<"scanning" | "success">("scanning");
 
   useEffect(() => {
     if (scannerMounted) return;
+
     setScannerMounted(true);
-    const scanner = new Html5QrcodeScanner(domId, { fps: 10, qrbox: 250 }, false);
+    const scanner = new Html5QrcodeScanner(
+      domId,
+      { fps: 10, qrbox: 250 },
+      false
+    );
+
     scannerRef.current = scanner;
+
     scanner.render(
       (decodedText) => {
-        scanner.clear().catch(() => {});
-        onScan(decodedText);
-        setScannerMounted(false);
+        setStatus("success");
+
+        setTimeout(() => {
+          scanner.clear().catch(() => {});
+          onScan(decodedText);
+          setScannerMounted(false);
+        }, 800);
       },
       () => {}
     );
+
     return () => {
       scanner.clear().catch(() => {});
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="bg-slate-50 border-2 border-dashed border-indigo-200 rounded-2xl p-4 overflow-hidden">
-        <div id={domId} />
+    <div className="bg-white shadow-xl rounded-3xl border border-slate-200 p-6 space-y-6 max-w-md mx-auto">
+
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+          <QrCode size={22} />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">
+            QR Code Scanner
+          </h2>
+          <p className="text-xs text-slate-500">
+            Scan driver ticket for verification
+          </p>
+        </div>
       </div>
-      <p className="text-xs text-center text-slate-500 font-medium">
-        Point the camera at the driver&apos;s QR code to verify their fuel ticket
+
+      {/* Scanner Box */}
+      <div className="relative">
+        <div className="bg-slate-50 border-2 border-dashed border-indigo-200 rounded-2xl p-4 overflow-hidden transition-all duration-300">
+
+          {/* Status Badge */}
+          <div className="absolute top-3 right-3">
+            {status === "scanning" ? (
+              <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-600 px-2 py-1 rounded-full">
+                <Camera size={14} /> Scanning
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full">
+                <CheckCircle size={14} /> Verified
+              </span>
+            )}
+          </div>
+
+          {/* Scanner DOM */}
+          <div id={domId} className="rounded-xl overflow-hidden" />
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-slate-600 space-y-1">
+        <p className="font-medium text-indigo-700">How to scan</p>
+        <ul className="list-disc list-inside text-xs space-y-1">
+          <li>Align the QR code within the frame</li>
+          <li>Hold steady for a few seconds</li>
+          <li>Ensure proper lighting</li>
+        </ul>
+      </div>
+
+      {/* Footer Hint */}
+      <p className="text-xs text-center text-slate-400">
+        Having trouble? Adjust camera or move closer to the QR code.
       </p>
     </div>
   );
@@ -671,62 +726,137 @@ export default function StationDashboard() {
         </div>
 
         {/* Station Selector Card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="pro-surface rounded-[1.25rem] p-6"
-        >
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-            <div className="flex items-center gap-5">
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
-              {myStations.length > 0 ? (
-                <div>
-                  <div className="relative group">
-                    <label htmlFor=""></label>
-                    <select
-                      title="Select Active Station"
-                      className="bg-transparent text-2xl font-black outline-none cursor-pointer appearance-none pr-10 text-slate-900 hover:text-indigo-600 transition-colors"
-                      value={activeStationId || ""}
-                      onChange={(e) => {
-                        setActiveStationId(e.target.value);
-                        setTimeout(() => refreshData(), 50);
-                      }}
-                    >
-                      {myStations.map((station) => (
-                        <option key={station._id} value={station._id} className="bg-white text-slate-900 text-base font-normal">
-                          {station.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 group-hover:scale-110 transition-transform pointer-events-none" />
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <p className="text-sm text-slate-500 font-bold tracking-tight">
-                      {myStations.find(s => s._id === activeStationId)?.location || "Global View"}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-slate-500">No stations registered.</p>
-              )}
+  
+<motion.div
+  initial={{ opacity: 0, scale: 0.96, y: 10 }}
+  animate={{ opacity: 1, scale: 1, y: 0 }}
+  transition={{ duration: 0.4, ease: "easeOut" }}
+  className="relative overflow-hidden rounded-[1.5rem] p-[1px] bg-gradient-to-br from-blue-600/40 via-cyan-500/30 to-blue-700/40"
+>
+  {/* Animated gradient border effect */}
+  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 opacity-40 animate-pulse blur-xl" />
+  
+  {/* Glass Surface with enhanced blue gradient background */}
+  <div className="rounded-[1.4rem] p-6 backdrop-blur-xl bg-gradient-to-br from-blue-50 via-blue-100/80 to-cyan-50/90 border border-blue-200/60 shadow-[0_20px_60px_rgba(37,99,235,0.3)]">
+
+    {/* Enhanced background glow effects */}
+    <div className="absolute -top-20 -right-20 w-56 h-56 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 blur-3xl rounded-full animate-pulse" />
+    <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 blur-3xl rounded-full animate-pulse" />
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-blue-400/10 to-cyan-400/10 blur-3xl rounded-full" />
+
+    <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+
+      {/* LEFT SECTION - Enhanced */}
+      <div className="flex items-center gap-6">
+
+        {/* Icon with enhanced blue gradient */}
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
+          <div className="relative p-4 rounded-2xl bg-blue-600 text-white duration-300">
+            <Building2 className="w-7 h-7 text-white" />
+          </div>
+        </div>
+
+        {/* Station Info with enhanced typography */}
+        {myStations.length > 0 ? (
+          <div>
+            <div className="relative group">
+              <select
+                title="Select Active Station"
+                className="
+                  bg-transparent text-3xl lg:text-4xl font-black outline-none cursor-pointer
+                  appearance-none pr-12 text-blue-900
+                  hover:text-blue-700
+                  transition-all duration-300 tracking-tight
+                "
+                value={activeStationId || ""}
+                onChange={(e) => {
+                  setActiveStationId(e.target.value);
+                  setTimeout(() => refreshData(), 50);
+                }}
+              >
+                {myStations.map((station) => (
+                  <option
+                    key={station._id}
+                    value={station._id}
+                    className="bg-blue-600 text-white text-base font-semibold"
+                  >
+                    {station.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Enhanced Chevron */}
+              <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 group-hover:text-blue-700 group-hover:rotate-180 transition-all duration-300 pointer-events-none" />
             </div>
-            
-            <div className="flex gap-4">
-               <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">System Online</span>
-               </div>
-               <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-3 text-slate-600">
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-xs font-bold">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-               </div>
+
+            {/* Location with enhanced styling */}
+            <div className="flex items-center gap-2 mt-2">
+              <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100">
+                <MapPin className="w-4 h-4 text-blue-600" />
+              </div>
+              <p className="text-base font-semibold text-blue-800 tracking-tight">
+                {myStations.find(s => s._id === activeStationId)?.location || "Global View"}
+              </p>
             </div>
           </div>
-        </motion.div>
+        ) : (
+          <p className="text-lg font-medium text-blue-600">
+            No stations registered.
+          </p>
+        )}
+      </div>
 
+      {/* RIGHT SECTION - Enhanced */}
+      <div className="flex gap-4">
+
+        {/* STATUS with blue-themed colors */}
+        <div className="relative group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.9)]" />
+              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-75" />
+            </div>
+            <span className="text-sm font-bold text-blue-800 uppercase tracking-wider">
+              System Online
+            </span>
+          </div>
+        </div>
+
+        {/* DATE with blue theme */}
+        <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center gap-3">
+            <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 group-hover:scale-110 transition-transform duration-300">
+              <Calendar className="w-4 h-4 text-blue-600" />
+            </div>
+            <span className="text-sm font-bold text-blue-800">
+              {new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </span>
+          </div>
+        </div>
+
+        {/* Time Display with blue theme */}
+        <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-spin-slow" />
+            <span className="text-sm font-bold text-blue-800">
+              {new Date().toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</motion.div>
         {/* Conditional Content rendering */}
         <AnimatePresence mode="wait">
           {activeTab === "overview" && (
@@ -737,71 +867,117 @@ export default function StationDashboard() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-8"
             >
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {[
-                  {
-                    icon: Clock,
-                    label: "Queue Size",
-                    value: throughput.queueSize,
-                    color: "from-indigo-500 to-purple-600",
-                    bgColor: "bg-indigo-50",
-                    iconColor: "text-indigo-600",
-                    trend: "+12%",
-                    trendUp: true
-                  },
-                  {
-                    icon: CheckCircle,
-                    label: "Fulfilled Today",
-                    value: throughput.todayApproved,
-                    color: "from-emerald-500 to-teal-600",
-                    bgColor: "bg-emerald-50",
-                    iconColor: "text-emerald-600",
-                    trend: "+8%",
-                    trendUp: true
-                  },
-                  {
-                    icon: XCircle,
-                    label: "Declined Today",
-                    value: throughput.todayRejected,
-                    color: "from-red-500 to-rose-600",
-                    bgColor: "bg-red-50",
-                    iconColor: "text-red-600",
-                    trend: "-3%",
-                    trendUp: false
-                  }
-                ].map((stat, idx) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="group relative pro-card p-6 transition-all"
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-[0.02] rounded-2xl transition-opacity`} />
-                    <div className="relative flex items-start justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{stat.label}</p>
-                        <p className="text-4xl font-black text-slate-900">{stat.value}</p>
-                        <div className="flex items-center gap-1 mt-2">
-                          {stat.trendUp ? (
-                            <TrendingUp className="w-3 h-3 text-emerald-600" />
-                          ) : (
-                            <TrendingDown className="w-3 h-3 text-red-600" />
-                          )}
-                          <span className={`text-xs font-bold ${stat.trendUp ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {stat.trend}
-                          </span>
-                          <span className="text-xs text-slate-400">vs yesterday</span>
-                        </div>
-                      </div>
-                      <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                        <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+             {/* Stats Grid - Vibrant Version */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+  {[
+    {
+      icon: Clock,
+      label: "Queue Size",
+      value: throughput.queueSize,
+      trend: "+12%",
+      trendUp: true,
+      // Vibrant gradient backgrounds
+      iconBg: "bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 shadow-lg shadow-blue-500/40",
+      iconColor: "text-white",
+      // Vibrant text colors
+      valueColor: "text-slate-800",
+      labelColor: "text-blue-600",
+      trendColor: "text-emerald-600",
+      cardGradient: "from-blue-50/40 to-transparent",
+      accentColor: "blue",
+    },
+    {
+      icon: CheckCircle,
+      label: "Fulfilled Today",
+      value: throughput.todayApproved,
+      trend: "+8%",
+      trendUp: true,
+      iconBg: "bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/40",
+      iconColor: "text-white",
+      valueColor: "text-slate-800",
+      labelColor: "text-emerald-600",
+      trendColor: "text-emerald-600",
+      cardGradient: "from-emerald-50/40 to-transparent",
+      accentColor: "emerald",
+    },
+    {
+      icon: XCircle,
+      label: "Declined Today",
+      value: throughput.todayRejected,
+      trend: "-3%",
+      trendUp: false,
+      iconBg: "bg-gradient-to-br from-rose-600 via-rose-500 to-red-500 shadow-lg shadow-rose-500/40",
+      iconColor: "text-white",
+      valueColor: "text-slate-800",
+      labelColor: "text-rose-600",
+      trendColor: "text-rose-600",
+      cardGradient: "from-rose-50/40 to-transparent",
+      accentColor: "rose",
+    },
+  ].map((stat, idx) => (
+    <motion.div
+      key={stat.label}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: idx * 0.08, duration: 0.35 }}
+      whileHover={{ y: -5 }}
+      className="group"
+    >
+      <div className={`relative rounded-2xl bg-white border border-${stat.accentColor}-100 shadow-lg hover:shadow-${stat.accentColor}-200/50 transition-all duration-300 p-6 overflow-hidden`}>
+        
+        {/* Gradient background overlay */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${stat.cardGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+        
+        {/* Animated shine */}
+        <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/30 to-transparent rotate-45 group-hover:translate-x-full transition-transform duration-1000" />
+
+        <div className="flex items-start justify-between relative">
+
+          <div className="flex-1">
+            <p className={`text-xs font-black uppercase tracking-widest ${stat.labelColor}`}>
+              {stat.label}
+            </p>
+            
+            <p className={`text-5xl font-black mt-3 tracking-tight ${stat.valueColor}`}>
+              {stat.value}
+            </p>
+
+            <div className="flex items-center gap-2 mt-4">
+              <div className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-r ${
+                stat.trendUp 
+                  ? "from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200" 
+                  : "from-rose-50 to-red-50 text-rose-700 border border-rose-200"
+              } shadow-sm`}>
+                {stat.trendUp ? (
+                  <TrendingUp className="w-3.5 h-3.5" />
+                ) : (
+                  <TrendingDown className="w-3.5 h-3.5" />
+                )}
+                <span className="font-bold">{stat.trend}</span>
               </div>
+              <span className="text-xs font-medium text-slate-400">vs yesterday</span>
+            </div>
+          </div>
+
+          {/* Beautiful icon container with pulse effect on hover */}
+          <div className="relative">
+            <div className={`absolute inset-0 ${stat.iconBg} rounded-2xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300`} />
+            <div className={`relative p-3.5 rounded-2xl transition-all duration-300 ${stat.iconBg} group-hover:scale-110 group-hover:rotate-6 shadow-md`}>
+              <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
+            </div>
+          </div>
+
+        </div>
+
+        {/* Decorative progress bar */}
+        <div className="mt-5 h-1 bg-slate-100 rounded-full overflow-hidden">
+          <div className={`h-full w-0 bg-gradient-to-r from-${stat.accentColor}-500 to-${stat.accentColor}-400 group-hover:w-full transition-all duration-1000 rounded-full`} />
+        </div>
+      </div>
+    </motion.div>
+  ))}
+</div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <motion.div

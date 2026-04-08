@@ -426,7 +426,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:pl-64 min-h-screen pt-16s pb-12 px-4 sm:px-6 lg:px-8">
+     <main className="lg:pl-64 min-h-screen pt-20 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="dashboard-content space-y-8">
           <AnimatePresence mode="wait">
             {tab === "users" && (
@@ -463,8 +463,9 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <DataTable>
-                    <table className="w-full">
+                <div className="pro-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px]">
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <th className="px-6 py-3">Name</th>
@@ -516,7 +517,8 @@ export default function AdminDashboard() {
                         ))}
                       </tbody>
                     </table>
-                </DataTable>
+                  </div>
+                </div>
               </motion.div>
             )}
 
@@ -542,7 +544,7 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {stations.map((s) => (
                     <div key={s._id} className="pro-card p-6 transition-shadow">
                       <div className="flex items-start justify-between mb-4">

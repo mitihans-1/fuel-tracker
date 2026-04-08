@@ -1175,7 +1175,7 @@ export default function DriverDashboard() {
               {/* Map */}
               <div
                 ref={mapSectionRef}
-                className="h-64 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-12 bg-white group relative"
+                className="h-64 sm:h-80 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-12 bg-white group relative"
               >
                 <div className="absolute top-6 right-6 z-[10] flex gap-2">
                    <div className="px-5 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-[10px] font-bold text-slate-700 uppercase tracking-widest shadow-lg flex items-center gap-2">
@@ -1213,7 +1213,7 @@ export default function DriverDashboard() {
                       <div className="p-8">
                         <div className="flex justify-between items-start mb-6">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-3xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
+                             <h3 className="font-bold text-2xl sm:text-3xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
                               {station.name}
                             </h3>
                             <div className="flex items-center gap-2 mt-2">

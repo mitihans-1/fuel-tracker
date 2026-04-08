@@ -153,7 +153,7 @@ export default function Home() {
                 </span>
               </motion.div>
 
-              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
+                   <h1 className="text-4xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
                 {slides[activeSlide].title.map((word, i) => (
                   <motion.span
                     key={i}
