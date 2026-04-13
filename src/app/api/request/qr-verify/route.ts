@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
       // Decrement stock
       const fuelField = fuelRequest.fuelType === "petrol" ? "petrolQty" : "dieselQty";
-      const currentQty: number = (ownedStation as Record<string, number>)[fuelField] || 0;
+      const currentQty: number = (ownedStation as unknown as Record<string, number>)[fuelField] || 0;
       const newQty = Math.max(0, currentQty - (fuelRequest.amount || 0));
       await Station.findByIdAndUpdate(ownedStation._id, {
         [fuelField]: newQty,
