@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 
 // ─── Shared styles ─────────────────────────────────────────────────────────────
 const labelClass =
-  "text-[13px] font-bold uppercase tracking-wider ml-4 mb-2 block text-slate-600";
+  "text-[10px] font-black uppercase tracking-[0.2em] ml-5 mb-2 block text-slate-500";
 const inputClass =
-  "w-full px-6 py-4 rounded-2xl bg-white text-slate-900 placeholder-slate-400 border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none disabled:opacity-40 shadow-sm";
+  "w-full px-6 py-4 rounded-2xl bg-white/80 backdrop-blur-md text-slate-900 placeholder-slate-400 border border-slate-200 focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all outline-none disabled:opacity-40 shadow-sm font-semibold";
 
 function Requirement({ met, text }: { met: boolean; text: string }) {
   return (
@@ -36,12 +36,15 @@ function StatusBanner({ status, message }: { status: "success" | "error" | null;
 // ─── Section card ──────────────────────────────────────────────────────────────
 function SectionCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 space-y-6">
-      <div className="flex items-center gap-4 pb-2 border-b border-slate-100">
-        <div className="w-11 h-11 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl flex items-center justify-center text-xl">
+    <div className="pro-card p-8 space-y-8 bg-white/50">
+      <div className="flex items-center gap-4 pb-4 border-b border-slate-200/50">
+        <div className="w-12 h-12 bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl flex items-center justify-center text-xl shadow-inner">
           {icon}
         </div>
-        <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+        <div>
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">{title}</h2>
+          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">Configuration Active</p>
+        </div>
       </div>
       {children}
     </div>
@@ -135,10 +138,10 @@ function ProfilePanel() {
             className={`cursor-pointer px-8 py-4 rounded-2xl font-bold text-sm uppercase tracking-wider transition-all duration-300 hover:-translate-y-0.5 ${
               saving || loading
                 ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg"
+                : "bg-slate-900 text-white hover:bg-slate-800 shadow-2xl shadow-slate-900/20"
             }`}
           >
-            {saving ? "Saving…" : "Save Profile"}
+            {saving ? "Processing…" : "Save Terminal Profile"}
           </button>
         </div>
       </form>
@@ -258,10 +261,10 @@ function PasswordPanel() {
             className={`cursor-pointer px-8 py-4 rounded-2xl font-bold text-sm uppercase tracking-wider transition-all duration-300 hover:-translate-y-0.5 ${
               saving
                 ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xl shadow-indigo-600/20"
             }`}
           >
-            {saving ? "Saving…" : "Change Password"}
+            {saving ? "Syncing…" : "Update Security Credentials"}
           </button>
         </div>
       </form>
@@ -290,29 +293,9 @@ export default function SettingsPage() {
     user?.role === "DRIVER" ? "Driver" : user?.role === "STATION" ? "Station Owner" : "Administrator";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 relative">
-      <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-20">
-        {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center text-2xl shadow-lg">
-              ⚙️
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Account Settings</h1>
-              <p className="text-slate-500 text-sm font-medium mt-0.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider">
-                  {roleLabel}
-                </span>
-              </p>
-            </div>
-          </div>
-          <p className="text-slate-500 text-sm mt-2">
-            Manage your name, email address, and password.
-          </p>
-        </div>
-
-        <div className="space-y-6">
+    <div className="relative">
+      <div className="relative z-10 max-w-4xl mx-auto pb-20">
+        <div className="space-y-8">
           <ProfilePanel />
           <PasswordPanel />
         </div>

@@ -7,7 +7,7 @@ import {
   Star, Bell, CreditCard,
   AlertCircle, Navigation, Zap, Shield, Award,
   Gauge, ArrowUpDown, MessageSquare,
-  TrendingDown, LayoutDashboard, History, Car, Settings, Activity, QrCode
+  TrendingDown, LayoutDashboard, History, Car, Settings, Activity, QrCode, LogOut
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,6 +17,7 @@ import { useUser } from "@/contexts/UserContext";
 
 const OSMMap = dynamic(() => import("@/components/OSMMap"), { ssr: false });
 
+import SectionHeader from "@/components/ui/SectionHeader";
 import { formatDateTime } from "@/lib/utils";
 import SettingsPage from "@/app/dashboard/settings/page";
 
@@ -53,11 +54,10 @@ function ReservationCountdown({ expiresAt }: { expiresAt?: string }) {
   const s = secs % 60;
   const expired = secs === 0;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-      expired ? "bg-red-50 border-red-200 text-red-600" :
-      secs < 120 ? "bg-amber-50 border-amber-200 text-amber-700" :
-      "bg-emerald-50 border-emerald-200 text-emerald-700"
-    }`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${expired ? "bg-red-50 border-red-200 text-red-600" :
+        secs < 120 ? "bg-amber-50 border-amber-200 text-amber-700" :
+          "bg-emerald-50 border-emerald-200 text-emerald-700"
+      }`}>
       <Clock className="w-3 h-3" />
       {expired ? "Expired" : `${mins}:${String(s).padStart(2, "0")}`}
     </span>
@@ -201,29 +201,26 @@ interface StatCardProps {
 
 const StatCard = ({ icon: Icon, label, value, trend, trendValue }: StatCardProps) => (
   <motion.div
-    whileHover={{ scale: 1.02 }}
-    className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white backdrop-blur-xl rounded-2xl p-6 border border-slate-200/50 shadow-lg hover:shadow-xl transition-all"
+    whileHover={{ scale: 1.02, translateY: -5 }}
+    className="group relative overflow-hidden pro-card rounded-[2.5rem] p-8 transition-all duration-300"
   >
-    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100/50 blur-[60px] rounded-full" />
-    <div className="relative flex items-start justify-between">
-      <div>
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">{label}</p>
-        <p className="text-3xl font-bold text-slate-900">{value}</p>
+    <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-colors" />
+    <div className="relative flex flex-col justify-between h-full">
+      <div className="flex items-center justify-between mb-6">
+        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 group-hover:scale-110 transition-transform">
+          <Icon className="w-6 h-6 text-indigo-600" />
+        </div>
         {trend && (
-          <div className="flex items-center gap-1 mt-2">
-            {trend === "up" ? (
-              <TrendingUp className="w-3 h-3 text-emerald-500" />
-            ) : (
-              <TrendingDown className="w-3 h-3 text-red-500" />
-            )}
-            <span className={`text-xs ${trend === "up" ? "text-emerald-600" : "text-red-600"}`}>
-              {trendValue}
-            </span>
+          <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${trend === "up" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"
+            }`}>
+            {trend === "up" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {trendValue}
           </div>
         )}
       </div>
-      <div className="p-3 rounded-xl bg-slate-100 border border-slate-200">
-        <Icon className="w-5 h-5 text-slate-600" />
+      <div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{label}</p>
+        <p className="text-4xl font-black text-slate-900 tracking-tight">{value}</p>
       </div>
     </div>
   </motion.div>
@@ -310,6 +307,7 @@ export default function DriverDashboard() {
     }
   };
 
+
   const view = (searchParams.get("tab") as "dashboard" | "logs" | "vehicles" | "settings") || "dashboard";
 
   const setView = (v: string) => {
@@ -318,19 +316,41 @@ export default function DriverDashboard() {
     router.push(`${window.location.pathname}?${params.toString()}`);
   };
 
-  const sidebarItems: { id: "dashboard" | "logs" | "vehicles" | "settings"; label: string; icon: React.ReactNode }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: "logs", label: "Fuel Logs", icon: <History className="w-5 h-5" /> },
-    { id: "vehicles", label: "My Vehicles", icon: <Car className="w-5 h-5" /> },
-    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
+  const pageHeadings = {
+    dashboard: {
+      title: "Driver Terminal",
+      subtitle: "Discover stations, manage fuel requests, and track your wallet.",
+    },
+    logs: {
+      title: "Mission Logs",
+      subtitle: "Comprehensive history of all fuel purchases and transactions.",
+    },
+    vehicles: {
+      title: "Fleet Management",
+      subtitle: "Connect and monitor your vehicles for streamlined refueling.",
+    },
+    settings: {
+      title: "Account Profile",
+      subtitle: "Update your driver credentials and application preferences.",
+    },
+  } as const;
+
+  const activePage = pageHeadings[view];
+  const driverName = user?.name?.split(" ")[0] || "Driver";
+
+  const sidebarItems: { id: "dashboard" | "logs" | "vehicles" | "settings"; label: string; icon: React.ReactNode; color: string }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500" },
+    { id: "logs", label: "Fuel Logs", icon: <History className="w-5 h-5" />, color: "text-purple-500" },
+    { id: "vehicles", label: "My Vehicles", icon: <Car className="w-5 h-5" />, color: "text-amber-500" },
+    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, color: "text-slate-500" },
   ];
   const toastId = useRef(0);
   const showToast = useCallback((msg: string | { error?: string; message?: string } | unknown, type: Toast["type"] = "info") => {
     const id = ++toastId.current;
-    const message = typeof msg === 'string' 
-      ? msg 
+    const message = typeof msg === 'string'
+      ? msg
       : ((msg as { error?: string })?.error || (msg as { message?: string })?.message || (typeof msg === 'object' ? JSON.stringify(msg) : String(msg)));
-    
+
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
@@ -589,6 +609,68 @@ export default function DriverDashboard() {
     }
   };
 
+  const handleWalletPayment = async () => {
+    if (!checkoutStation || !checkoutFuelType) return;
+
+    const pricePerLitre = checkoutFuelType === "petrol"
+      ? (checkoutStation.petrolPrice ?? 80)
+      : (checkoutStation.dieselPrice ?? 75);
+    const totalPrice = checkoutAmount * pricePerLitre;
+
+    if (walletBalance !== null && walletBalance < totalPrice) {
+      showToast("Insufficient wallet balance", "error");
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    try {
+      const res = await fetch("/api/payment/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: totalPrice,
+          fuelType: checkoutFuelType,
+          stationId: checkoutStation._id,
+          stationName: checkoutStation.name,
+          litres: checkoutAmount,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Wallet payment failed", "error");
+        return;
+      }
+
+      setWalletBalance(data.newBalance);
+      setCheckoutStation(null);
+
+      const locationText = typeof checkoutStation.location === "string"
+        ? checkoutStation.location
+        : checkoutStation.location?.text ?? "";
+
+      setTicketData({
+        stationName: checkoutStation.name,
+        stationLocation: locationText,
+        stationRating: checkoutStation.avgRating,
+        stationRatingCount: checkoutStation.ratingCount,
+        queueLength: checkoutStation.queueLength,
+        estimatedWait: checkoutStation.estimatedWaitMinutes,
+        fuelType: checkoutFuelType,
+        litres: checkoutAmount,
+        pricePerLitre,
+        total: totalPrice,
+      });
+
+      showToast("Payment successful using wallet!", "success");
+      loadRequests();
+    } catch {
+      showToast("Error processing wallet payment", "error");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   const openCancelConfirm = (id: string) => {
     setCancelId(id);
     setConfirmOpen(true);
@@ -688,80 +770,98 @@ export default function DriverDashboard() {
 
   return (
     <div className="dashboard-root dashboard-shell min-h-screen text-slate-900 overflow-hidden">
-      <aside className="hidden lg:block fixed inset-y-0 left-0 z-40 w-72 pro-surface border-r border-slate-200/60">
-        <div className="p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-blue-500/20">
+      {/* Gradient Accents matching Station Dashboard */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-40">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-200 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100 blur-[120px] rounded-full" />
+      </div>
+
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r border-slate-200/60 flex-col">
+        <div className="p-6 pt-8 h-full flex flex-col">
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-500/20 text-lg">
               ⛽
             </div>
             <div>
-              <p className="text-sm font-black text-slate-900 leading-tight">FuelSync</p>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Driver</p>
+              <p className="text-sm font-black text-slate-900 leading-tight uppercase tracking-tight">FuelSync</p>
+              <p className="text-[10px] uppercase tracking-widest text-indigo-500 font-bold">Driver Hub</p>
             </div>
           </div>
 
-          <div className="pro-card p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Signed in</p>
-            <p className="text-sm font-semibold text-slate-900 mt-1 truncate">{user?.name || "Driver"}</p>
-            <p className="text-[11px] text-slate-500 truncate">{user?.email || ""}</p>
-          </div>
 
-          <nav className="space-y-1">
+          {/* Nav */}
+          <nav className="space-y-1 flex-1">
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                  view === item.id
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${view === item.id
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
               >
-                {item.icon}
+                <div className={`${view === item.id ? "text-white" : item.color}`}>
+                  {item.icon}
+                </div>
                 {item.label}
               </button>
             ))}
           </nav>
 
-          <div className="pro-card p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wallet</p>
+          {/* Wallet */}
+          <div className="pro-card p-4 mt-4">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wallet Balance</p>
             <div className="flex items-baseline justify-between">
               <p className="text-xl font-black text-slate-900">{walletLoading ? "…" : (walletBalance ?? 0).toLocaleString()}</p>
               <p className="text-xs font-bold text-indigo-600">{walletCurrency}</p>
             </div>
             <button
               onClick={() => setShowTopUp(true)}
-              className="mt-3 w-full px-4 py-2 rounded-xl pro-btn-primary text-xs font-black uppercase tracking-widest transition"
+              className="mt-3 w-full px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg shadow-indigo-500/20"
             >
               Top Up
+            </button>
+          </div>
+
+          {/* Sign Out */}
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/auth/login"; }}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
+            >
+              <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              Sign Out
             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative lg:pl-72">
-        {/* Mobile Header Removed */}
-
-        {/* Soft gradient background */}
-        <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/50 to-indigo-50/30 pointer-events-none" />
-
-        <div className="relative z-10 dashboard-content space-y-8">
-          <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2">
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto relative lg:pl-64">
+        <div className="relative z-10 dashboard-content max-w-[1600px] mx-auto p-8 lg:p-12 space-y-12 pb-32">
+          {/* Mobile Tab Switcher */}
+          <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2 mb-8">
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-                  view === item.id
-                    ? "bg-indigo-600 text-white"
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${view === item.id
+                    ? "bg-indigo-600 text-white shadow-lg"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 {item.label}
               </button>
             ))}
           </div>
+
+          <SectionHeader
+            title={activePage.title}
+            subtitle={activePage.subtitle}
+            showGreeting={view === 'dashboard'}
+            managerName={driverName}
+          />
 
           <AnimatePresence mode="wait">
             {view === "dashboard" && (
@@ -770,637 +870,563 @@ export default function DriverDashboard() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-10"
+                className="space-y-12"
               >
-        <section className="relative overflow-hidden rounded-[2rem] p-1 pro-surface">
-          <div className="relative overflow-hidden rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-6 py-8 sm:px-8 sm:py-10 backdrop-blur-xl">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-sky-300/25 blur-3xl" />
-              <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-cyan-300/30 blur-3xl" />
-              <div className="absolute bottom-0 left-1/3 h-36 w-36 rounded-full bg-indigo-200/30 blur-3xl" />
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative flex flex-col gap-8"
-            >
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
-
-  {/* LEFT CONTENT */}
-  <div className="max-w-2xl">
-    <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[0.95] text-slate-900">
-      FuelSync{" "}
-      <span className="text-indigo-600 italic font-semibold">
-        Driver
-      </span>
-    </h1>
-
-    <p className="mt-5 max-w-xl text-base sm:text-lg leading-7 text-slate-600 font-medium">
-      Discover nearby stations, request fuel faster, and track every trip from one clean and powerful dashboard.
-    </p>
-  </div>
-
-  {/* RIGHT STATS */}
-  <div className="grid w-full max-w-sm grid-cols-2 gap-4">
-
-    {/* CARD 1 */}
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
-      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">
-        Network
-      </p>
-
-      <p className="mt-3 text-3xl font-extrabold text-slate-900 tracking-tight">
-        {safeStations.length}
-      </p>
-
-      <p className="text-sm font-medium text-slate-500">
-        stations nearby
-      </p>
-    </div>
-
-    {/* CARD 2 (ACCENT) */}
-    <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm hover:shadow-md transition-all">
-      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-indigo-400">
-        Ready Now
-      </p>
-
-      <p className="mt-3 text-3xl font-extrabold text-indigo-700 tracking-tight">
-        {filteredStations.filter((s) => s.petrol || s.diesel).length}
-      </p>
-
-      <p className="text-sm font-medium text-indigo-600">
-        stations live
-      </p>
-    </div>
-
-  </div>
-</div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard
-                  icon={Fuel}
-                  label="Total Requests"
-                  value={stats.totalRequests}
-                  trend="up"
-                  trendValue="+23%"
-                />
-                <StatCard
-                  icon={Clock}
-                  label="Pending"
-                  value={stats.pendingCount}
-                  trend="down"
-                  trendValue="-5%"
-                />
-                <StatCard
-                  icon={CheckCircle}
-                  label="Approved"
-                  value={stats.approvedCount}
-                  trend="up"
-                  trendValue="+12%"
-                />
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-
-        {/* Wallet & Insights Row */}
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Wallet Card */}
-          <motion.div
-            whileHover={{ scale: 1.02, translateY: -5 }}
-          className="group relative overflow-hidden pro-card rounded-[1.25rem] p-8 transition-all duration-300"
-          >
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-400/10 blur-[100px] rounded-full opacity-70 group-hover:opacity-100 transition" />
-            <div className="relative flex flex-col justify-between h-full">
-              <div className="flex items-start justify-between">
-                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 shadow-sm">
-                  <Wallet className="w-6 h-6 text-blue-600" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <StatCard
+                    icon={Fuel}
+                    label="Operations History"
+                    value={stats.totalRequests}
+                    trend="up"
+                    trendValue="+2.1%"
+                  />
+                  <StatCard
+                    icon={Clock}
+                    label="Current Operations"
+                    value={stats.pendingCount}
+                    trend="down"
+                    trendValue="-1.4%"
+                  />
+                  <StatCard
+                    icon={CheckCircle}
+                    label="Verified Tickets"
+                    value={stats.approvedCount}
+                    trend="up"
+                    trendValue="+5.8%"
+                  />
                 </div>
-                {walletBalance !== null && (
-                  <button
-                    onClick={() => setShowTopUp(true)}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all"
-                    title="Add Funds"
+
+
+                {/* Wallet & Insights Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Wallet Card */}
+                  <motion.div
+                    whileHover={{ scale: 1.02, translateY: -5 }}
+                    className="group relative overflow-hidden pro-card rounded-[1.25rem] p-8 transition-all duration-300"
                   >
-                    <TrendingUp className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-8">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em] mb-2">Available Balance</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-4xl font-black text-slate-900 tracking-tight">
-                    {walletLoading ? "..." : walletBalance === null ? "0.00" : walletBalance.toLocaleString()}
-                  </p>
-                  <p className="text-lg font-bold text-blue-600">{walletCurrency}</p>
-                </div>
-              </div>
-
-              {walletBalance === null ? (
-                <button className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
-                  Connect Wallet
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowTopUp(true)}
-                 className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
-                >
-                  Quick Top Up
-                </button>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Recommended Station */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300 cursor-pointer"
-            onClick={() => {
-              if (recommendedStation) {
-                const loc = recommendedStation.location;
-                if (typeof loc === "object" && loc !== null && "lat" in loc) {
-                  setSelected(recommendedStation);
-                  mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-              }
-            }}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-3">
-                <Award className="w-4 h-4 text-blue-500" />
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Recommended Station</p>
-              </div>
-              {recommendedStation ? (
-                <>
-                  <p className="text-lg font-bold text-slate-900">{recommendedStation.name}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <MapPin className="w-3 h-3 text-slate-500" />
-                    <p className="text-xs text-slate-600">
-                      {typeof recommendedStation.location === "string"
-                        ? recommendedStation.location
-                        : recommendedStation.location?.text}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 mt-3">
-                    {recommendedStation.petrol && (
-                      <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200">Petrol</span>
-                    )}
-                    {recommendedStation.diesel && (
-                      <span className="text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Diesel</span>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-slate-500">No stations available</p>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Alerts & Insights */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-purple-500" />
-                  <p className="text-xs font-medium text-purple-600 uppercase tracking-wider">Fuel Alerts</p>
-                </div>
-                <button
-                  onClick={() => setShowNotifications(true)}
-                  className="text-xs text-blue-600 hover:text-blue-700 underline underline-offset-2"
-                >
-                  {notifications.filter((n) => !n.read).length} new
-                </button>
-              </div>
-              <div className="flex gap-2">
-                {(["petrol", "diesel"] as const).map((ft) => (
-                  <button
-                    key={ft}
-                    onClick={async () => {
-                      const enabled = fuelAlertEnabled[ft];
-                      try {
-                        if (enabled) {
-                          const params = new URLSearchParams({ fuelType: ft });
-                          await fetch(`/api/alerts/subscriptions?${params.toString()}`, { method: "DELETE" });
-                        } else {
-                          await fetch("/api/alerts/subscriptions", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ fuelType: ft }),
-                          });
-                        }
-                        setFuelAlertEnabled((prev) => ({ ...prev, [ft]: !enabled }));
-                        showToast(`Alerts for ${ft} ${enabled ? "disabled" : "enabled"}.`, "success");
-                      } catch {
-                        showToast("Failed to update alerts", "error");
-                      }
-                    }}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${
-  fuelAlertEnabled[ft]
-    ? "bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-md"
-    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-}`}
-                  >
-                    {ft} {fuelAlertEnabled[ft] && "✓"}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-200">
-                <p className="text-xs text-slate-600">
-                  Approved tickets: <span className="text-slate-900 font-semibold">{spendingStats.totalTickets}</span>
-                </p>
-                <p className="text-xs text-slate-600 mt-1">
-                  Last fuel: <span className="text-slate-900 font-semibold capitalize">{spendingStats.lastTicketFuel ?? "—"}</span>
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        <section className="pro-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Wallet Timeline</h3>
-            <span className="text-xs text-slate-500 uppercase tracking-wider">Recent Activity</span>
-          </div>
-          {walletLoading ? (
-            <p className="text-sm text-slate-500">Loading wallet activity...</p>
-          ) : walletTimeline.length === 0 ? (
-            <p className="text-sm text-slate-500">No wallet transactions yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {walletTimeline.map((tx) => (
-                <div key={tx._id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3 bg-white">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {tx.type === "TOP_UP" ? "Wallet Top-Up" : tx.type === "DEBIT" ? "Fuel Payment" : "Refund Received"}
-                    </p>
-                    <p className="text-xs text-slate-500">{tx.description || "—"}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${tx.type === "DEBIT" ? "text-red-600" : "text-emerald-600"}`}>
-                      {tx.type === "DEBIT" ? "-" : "+"}
-                      {Number(tx.amount || 0).toLocaleString()} {walletCurrency}
-                    </p>
-                    <p className="text-[11px] text-slate-500">{formatDateTime(tx.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Search & Map Section */}
-        <section className="space-y-8 relative">
-          <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-200/30 blur-[120px] rounded-full" />
-          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-indigo-200/30 blur-[120px] rounded-full" />
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight flex items-center gap-3 text-slate-900">
-              <MapPin className="w-6 h-6 text-blue-500" />
-              Nearby Stations
-             <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-4 py-1.5 text-xs font-bold rounded-full border border-blue-200 shadow-sm">
-                {filteredStations.length}
-              </span>
-            </h2>
-            <div className="relative w-full sm:w-80">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search stations or locations..."
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-md focus:shadow-lg"
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              />
-            </div>
-          </div>
-
-          {/* Sort Controls */}
-          <div className="flex flex-wrap gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider self-center">
-              <ArrowUpDown className="w-3.5 h-3.5" /> Sort:
-            </span>
-            {([
-              { id: "default", label: "Default" },
-              { id: "cheapest-petrol", label: "💧 Cheapest Petrol" },
-              { id: "cheapest-diesel", label: "🛢 Cheapest Diesel" },
-              { id: "shortest-queue", label: "⚡ Shortest Queue" },
-            ] as const).map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => { setSortBy(opt.id); setPage(1); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-                  sortBy === opt.id
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {loadingStations ? (
-            <div className="relative bg-white/70 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-blue-200" />
-                <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-              </div>
-              <p className="text-xl font-bold text-blue-600 uppercase tracking-widest animate-pulse">Scanning Stations...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-20 bg-red-50 rounded-[2.5rem] border border-red-200">
-              <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-                <AlertCircle className="w-10 h-10 text-red-500" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-2 uppercase tracking-wide">Signal Interrupted</h3>
-              <p className="text-red-600 font-medium">{error}</p>
-            </div>
-          ) : (
-            <>
-              {/* Smart Insights Panel */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
-              >
-                {[
-                  { 
-                    label: "Apex Recommendation", 
-                    sub: "Peak efficiency node nearby",
-                    icon: Award, 
-                    color: "indigo",
-                    station: filteredStations.sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0)).find(s => s.petrol || s.diesel)
-                  },
-                  { 
-                    label: "Velocity Node", 
-                    sub: "Minimal queue detected",
-                    icon: Zap, 
-                    color: "emerald",
-                    station: filteredStations.filter(s => s.petrol || s.diesel).sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0))[0]
-                  }
-                ].map((insight, idx) => (
-                 <div
-                          key={idx}
-                          className="relative bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
-                        >
-                        <div
-                            className={`absolute -top-10 -right-10 w-40 h-40 bg-${insight.color}-300/30 blur-[80px] rounded-full opacity-70 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500`}
-                          />
-             <div className="relative z-10 flex items-center gap-6">
-                       <div
-                      className={`w-16 h-16 rounded-3xl bg-gradient-to-br from-${insight.color}-100 to-${insight.color}-50 border border-${insight.color}-200 flex items-center justify-center shadow-inner`}
-                    >
-                      <insight.icon className={`w-8 h-8 text-${insight.color}-600`} />
-                    </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">{insight.label}</p>
-                       <h3 className={`text-xl font-black text-slate-900 group-hover:text-${insight.color}-600 transition-colors tracking-tight`}>
-                          {insight.station?.name || "Locating Optimized Hub..."}
-                        </h3>
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
-                            {insight.sub}
-                          </p>
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-400/10 blur-[100px] rounded-full opacity-70 group-hover:opacity-100 transition" />
+                    <div className="relative flex flex-col justify-between h-full">
+                      <div className="flex items-start justify-between">
+                        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 shadow-sm">
+                          <Wallet className="w-6 h-6 text-blue-600" />
+                        </div>
+                        {walletBalance !== null && (
+                          <button
+                            onClick={() => setShowTopUp(true)}
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-all"
+                            title="Add Funds"
+                          >
+                            <TrendingUp className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
+
+                      <div className="mt-8">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em] mb-2">Available Balance</p>
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-4xl font-black text-slate-900 tracking-tight">
+                            {walletLoading ? "..." : walletBalance === null ? "0.00" : walletBalance.toLocaleString()}
+                          </p>
+                          <p className="text-lg font-bold text-blue-600">{walletCurrency}</p>
+                        </div>
+                      </div>
+
+                      {walletBalance === null ? (
+                        <button className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
+                          Connect Wallet
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowTopUp(true)}
+                          className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
+                        >
+                          Quick Top Up
+                        </button>
+                      )}
                     </div>
-                  </div>
-                ))}
-              </motion.div>
+                  </motion.div>
 
-              {/* Map */}
-              <div
-                ref={mapSectionRef}
-                className="h-64 sm:h-80 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-12 bg-white group relative"
-              >
-                <div className="absolute top-6 right-6 z-[10] flex gap-2">
-                   <div className="px-5 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-[10px] font-bold text-slate-700 uppercase tracking-widest shadow-lg flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                      Map Active
-                   </div>
-                </div>
-                <OSMMap
-                  stations={filteredStations}
-                  centerTo={selected && typeof selected.location === 'object' ? { lat: selected.location.lat, lng: selected.location.lng } : undefined}
-                />
-              </div>
-
-              {/* Station Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <AnimatePresence>
-                  {paginatedStations.map((station, idx) => (
-                    <motion.div
-                      key={station._id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05, duration: 0.5, ease: "easeOut" }}
-                      whileHover={{ scale: 1.02, translateY: -10 }}
-                      onClick={() => {
-                        const loc = station.location;
-                        if (typeof loc === "object" && loc !== null && "lat" in (loc as { lat: number })) {
-                          setSelected(station);
+                  {/* Recommended Station */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300 cursor-pointer"
+                    onClick={() => {
+                      if (recommendedStation) {
+                        const loc = recommendedStation.location;
+                        if (typeof loc === "object" && loc !== null && "lat" in loc) {
+                          setSelected(recommendedStation);
                           mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                         }
-                      }}
-                      className="group relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50 backdrop-blur-xl rounded-[2.5rem] border border-slate-200 hover:border-blue-300 transition-all duration-500 cursor-pointer shadow-lg hover:shadow-xl"
-                    >
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 blur-[60px] rounded-full group-hover:bg-blue-200/30 transition-all" />
-
-                      <div className="p-8">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="flex-1 min-w-0">
-                             <h3 className="font-bold text-2xl sm:text-3xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
-                              {station.name}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-2">
-                              <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                              <p className="text-sm text-slate-600 font-medium truncate uppercase tracking-tight">
-                                {typeof station.location === "string" ? station.location : station.location?.text}
-                              </p>
-                            </div>
-                          </div>
-                          <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                            station.petrol || station.diesel
-                            ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                            : "bg-red-100 border-red-300 text-red-700"
-                            }`}>
-                            {station.petrol || station.diesel ? "ACTIVE" : "CLOSED"}
-                          </div>
-                        </div>
-
-                        <div className="space-y-4 mb-8">
-                          <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-blue-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 rounded-2xl bg-blue-100 border border-blue-200">
-                                <Fuel className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Petrol</p>
-                                <span className={`text-lg font-bold ${station.petrol ? "text-slate-900" : "text-red-500"}`}>
-                                  {station.petrol ? `${station.petrolQty ?? 0}L` : "EMPTY"}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.2em] mb-1">Price/L</p>
-                                <p className="text-3xl font-bold text-blue-600 tracking-tight">{station.petrolPrice ?? 80}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-amber-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 rounded-2xl bg-amber-100 border border-amber-200">
-                                <Gauge className="w-5 h-5 text-amber-600" />
-                              </div>
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Diesel</p>
-                                <span className={`text-lg font-bold ${station.diesel ? "text-slate-900" : "text-red-500"}`}>
-                                  {station.diesel ? `${station.dieselQty ?? 0}L` : "EMPTY"}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Price/L</p>
-                                <p className="text-3xl font-bold text-amber-600 tracking-tight">{station.dieselPrice ?? 75}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-8">
-                           <div className={`flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden group/item transition-all hover:bg-slate-100 ${
-                             !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "border-emerald-300"
-                             : station.estimatedWaitMinutes < 25 ? "border-amber-300"
-                             : "border-red-300"
-                           }`}>
-                             <div className={`absolute top-0 left-0 w-1 h-full ${
-                               !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "bg-emerald-500"
-                               : station.estimatedWaitMinutes < 25 ? "bg-amber-500"
-                               : "bg-red-500"
-                             }`} />
-                             <div className="flex items-center gap-2 text-slate-600">
-                               <Clock className="w-3.5 h-3.5" />
-                               <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Queue</span>
-                             </div>
-                             <div>
-                               <p className="text-xl font-bold text-slate-900 leading-none">
-                                 {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m` : "No Queue"}
-                               </p>
-                               <span className={`text-[9px] font-semibold uppercase tracking-widest mt-1 block ${
-                                 !station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "text-emerald-600"
-                                 : station.estimatedWaitMinutes < 25 ? "text-amber-600"
-                                 : "text-red-600"
-                               }`}>
-                                 {(!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10) ? "Fast" : station.estimatedWaitMinutes < 25 ? "Moderate" : "Slow"}
-                               </span>
-                             </div>
-                           </div>
-                           <div className="flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden">
-                             <div className="flex items-center gap-2 text-slate-600">
-                               <Star className="w-3.5 h-3.5" />
-                               <span className="text-[10px] font-semibold uppercase tracking-widest">Rating</span>
-                             </div>
-                             <div>
-                               <p className="text-sm font-bold text-slate-900">{station.avgRating?.toFixed(1) ?? "New"}</p>
-                               <div className="flex gap-0.5 mt-1">
-                                 {[1, 2, 3, 4, 5].map(star => (
-                                   <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (station.avgRating ?? 0) ? "bg-yellow-500" : "bg-slate-200"}`} />
-                                 ))}
-                               </div>
-                             </div>
-                           </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                          <button
-                            disabled={!station.petrol}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startCheckout(station, "petrol");
-                            }}
-                            className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.petrol
-                              ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                              }`}
-                          >
-                            Fill Petrol
-                          </button>
-                          <button
-                          
-                            disabled={!station.diesel}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startCheckout(station, "diesel");
-                            }}
-                            className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.diesel
-                              ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                              }`}
-                          >
-                            Fill Diesel
-                          </button>
-                        </div>
+                      }
+                    }}
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
+                    <div className="relative">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="w-4 h-4 text-blue-500" />
+                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Recommended Station</p>
                       </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+                      {recommendedStation ? (
+                        <>
+                          <p className="text-lg font-bold text-slate-900">{recommendedStation.name}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <MapPin className="w-3 h-3 text-slate-500" />
+                            <p className="text-xs text-slate-600">
+                              {typeof recommendedStation.location === "string"
+                                ? recommendedStation.location
+                                : recommendedStation.location?.text}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 mt-3">
+                            {recommendedStation.petrol && (
+                              <span className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200">Petrol</span>
+                            )}
+                            {recommendedStation.diesel && (
+                              <span className="text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Diesel</span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-slate-500">No stations available</p>
+                      )}
+                    </div>
+                  </motion.div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-3 mt-8">
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
+                  {/* Alerts & Insights */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300"
                   >
-                    Previous
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum: number;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (page <= 3) {
-                        pageNum = i + 1;
-                      } else if (page >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = page - 2 + i;
-                      }
-                      if (pageNum > 0 && pageNum <= totalPages) {
-                        return (
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 blur-[80px] rounded-full opacity-70 group-hover:opacity-100 transition" />
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-purple-500" />
+                          <p className="text-xs font-medium text-purple-600 uppercase tracking-wider">Fuel Alerts</p>
+                        </div>
+                        <button
+                          onClick={() => setShowNotifications(true)}
+                          className="text-xs text-blue-600 hover:text-blue-700 underline underline-offset-2"
+                        >
+                          {notifications.filter((n) => !n.read).length} new
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        {(["petrol", "diesel"] as const).map((ft) => (
                           <button
-                            key={pageNum}
-                            onClick={() => setPage(pageNum)}
-                            className={`w-10 h-10 rounded-xl font-semibold transition-all ${page === pageNum
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                            key={ft}
+                            onClick={async () => {
+                              const enabled = fuelAlertEnabled[ft];
+                              try {
+                                if (enabled) {
+                                  const params = new URLSearchParams({ fuelType: ft });
+                                  await fetch(`/api/alerts/subscriptions?${params.toString()}`, { method: "DELETE" });
+                                } else {
+                                  await fetch("/api/alerts/subscriptions", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ fuelType: ft }),
+                                  });
+                                }
+                                setFuelAlertEnabled((prev) => ({ ...prev, [ft]: !enabled }));
+                                showToast(`Alerts for ${ft} ${enabled ? "disabled" : "enabled"}.`, "success");
+                              } catch {
+                                showToast("Failed to update alerts", "error");
+                              }
+                            }}
+                            className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${fuelAlertEnabled[ft]
+                                ? "bg-gradient-to-r from-emerald-500 to-emerald-400 text-white shadow-md"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                               }`}
                           >
-                            {pageNum}
+                            {ft} {fuelAlertEnabled[ft] && "✓"}
                           </button>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                  <button
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
-                  >
-                    Next
-                  </button>
+                        ))}
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-slate-200">
+                        <p className="text-xs text-slate-600">
+                          Approved tickets: <span className="text-slate-900 font-semibold">{spendingStats.totalTickets}</span>
+                        </p>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Last fuel: <span className="text-slate-900 font-semibold capitalize">{spendingStats.lastTicketFuel ?? "—"}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
-              )}
-            </>
-          )}
-        </section>
-                </motion.div>
+
+                <section className="pro-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-slate-900">Wallet Timeline</h3>
+                    <span className="text-xs text-slate-500 uppercase tracking-wider">Recent Activity</span>
+                  </div>
+                  {walletLoading ? (
+                    <p className="text-sm text-slate-500">Loading wallet activity...</p>
+                  ) : walletTimeline.length === 0 ? (
+                    <p className="text-sm text-slate-500">No wallet transactions yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {walletTimeline.map((tx) => (
+                        <div key={tx._id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3 bg-white">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {tx.type === "TOP_UP" ? "Wallet Top-Up" : tx.type === "DEBIT" ? "Fuel Payment" : "Refund Received"}
+                            </p>
+                            <p className="text-xs text-slate-500">{tx.description || "—"}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-bold ${tx.type === "DEBIT" ? "text-red-600" : "text-emerald-600"}`}>
+                              {tx.type === "DEBIT" ? "-" : "+"}
+                              {Number(tx.amount || 0).toLocaleString()} {walletCurrency}
+                            </p>
+                            <p className="text-[11px] text-slate-500">{formatDateTime(tx.createdAt)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {/* Search & Map Section */}
+                <section className="space-y-8 relative">
+                  <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-200/30 blur-[120px] rounded-full" />
+                  <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-indigo-200/30 blur-[120px] rounded-full" />
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h2 className="text-3xl md:text-4xl font-black tracking-tight flex items-center gap-3 text-slate-900">
+                      <MapPin className="w-6 h-6 text-blue-500" />
+                      Nearby Stations
+                      <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-4 py-1.5 text-xs font-bold rounded-full border border-blue-200 shadow-sm">
+                        {filteredStations.length}
+                      </span>
+                    </h2>
+                    <div className="relative w-full sm:w-80">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search stations or locations..."
+                        className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-md focus:shadow-lg"
+                        value={searchQuery}
+                        onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sort Controls */}
+                  <div className="flex flex-wrap gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider self-center">
+                      <ArrowUpDown className="w-3.5 h-3.5" /> Sort:
+                    </span>
+                    {([
+                      { id: "default", label: "Default" },
+                      { id: "cheapest-petrol", label: "💧 Cheapest Petrol" },
+                      { id: "cheapest-diesel", label: "🛢 Cheapest Diesel" },
+                      { id: "shortest-queue", label: "⚡ Shortest Queue" },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => { setSortBy(opt.id); setPage(1); }}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sortBy === opt.id
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                          }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {loadingStations ? (
+                    <div className="relative bg-white/70 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-blue-200" />
+                        <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                      </div>
+                      <p className="text-xl font-bold text-blue-600 uppercase tracking-widest animate-pulse">Scanning Stations...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center py-20 bg-red-50 rounded-[2.5rem] border border-red-200">
+                      <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
+                        <AlertCircle className="w-10 h-10 text-red-500" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-slate-900 mb-2 uppercase tracking-wide">Signal Interrupted</h3>
+                      <p className="text-red-600 font-medium">{error}</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Smart Insights Panel */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+                      >
+                        {[
+                          {
+                            label: "Apex Recommendation",
+                            sub: "Peak efficiency node nearby",
+                            icon: Award,
+                            color: "indigo",
+                            station: filteredStations.sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0)).find(s => s.petrol || s.diesel)
+                          },
+                          {
+                            label: "Velocity Node",
+                            sub: "Minimal queue detected",
+                            icon: Zap,
+                            color: "emerald",
+                            station: filteredStations.filter(s => s.petrol || s.diesel).sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0))[0]
+                          }
+                        ].map((insight, idx) => (
+                          <div
+                            key={idx}
+                            className="relative bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+                          >
+                            <div
+                              className={`absolute -top-10 -right-10 w-40 h-40 bg-${insight.color}-300/30 blur-[80px] rounded-full opacity-70 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500`}
+                            />
+                            <div className="relative z-10 flex items-center gap-6">
+                              <div
+                                className={`w-16 h-16 rounded-3xl bg-gradient-to-br from-${insight.color}-100 to-${insight.color}-50 border border-${insight.color}-200 flex items-center justify-center shadow-inner`}
+                              >
+                                <insight.icon className={`w-8 h-8 text-${insight.color}-600`} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">{insight.label}</p>
+                                <h3 className={`text-xl font-black text-slate-900 group-hover:text-${insight.color}-600 transition-colors tracking-tight`}>
+                                  {insight.station?.name || "Locating Optimized Hub..."}
+                                </h3>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
+                                  {insight.sub}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </motion.div>
+
+                      {/* Map */}
+                      <div
+                        ref={mapSectionRef}
+                        className="h-64 sm:h-80 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-12 bg-white group relative"
+                      >
+                        <div className="absolute top-6 right-6 z-[10] flex gap-2">
+                          <div className="px-5 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-[10px] font-bold text-slate-700 uppercase tracking-widest shadow-lg flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                            Map Active
+                          </div>
+                        </div>
+                        <OSMMap
+                          stations={filteredStations}
+                          centerTo={selected && typeof selected.location === 'object' ? { lat: selected.location.lat, lng: selected.location.lng } : undefined}
+                        />
+                      </div>
+
+                      {/* Station Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        <AnimatePresence>
+                          {paginatedStations.map((station, idx) => (
+                            <motion.div
+                              key={station._id}
+                              initial={{ opacity: 0, y: 30 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.05, duration: 0.5, ease: "easeOut" }}
+                              whileHover={{ scale: 1.02, translateY: -10 }}
+                              onClick={() => {
+                                const loc = station.location;
+                                if (typeof loc === "object" && loc !== null && "lat" in (loc as { lat: number })) {
+                                  setSelected(station);
+                                  mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }
+                              }}
+                              className="group relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50 backdrop-blur-xl rounded-[2.5rem] border border-slate-200 hover:border-blue-300 transition-all duration-500 cursor-pointer shadow-lg hover:shadow-xl"
+                            >
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 blur-[60px] rounded-full group-hover:bg-blue-200/30 transition-all" />
+
+                              <div className="p-8">
+                                <div className="flex justify-between items-start mb-6">
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-2xl sm:text-3xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
+                                      {station.name}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                                      <p className="text-sm text-slate-600 font-medium truncate uppercase tracking-tight">
+                                        {typeof station.location === "string" ? station.location : station.location?.text}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${station.petrol || station.diesel
+                                      ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                      : "bg-red-100 border-red-300 text-red-700"
+                                    }`}>
+                                    {station.petrol || station.diesel ? "ACTIVE" : "CLOSED"}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-4 mb-8">
+                                  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-blue-50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2.5 rounded-2xl bg-blue-100 border border-blue-200">
+                                        <Fuel className="w-5 h-5 text-blue-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Petrol</p>
+                                        <span className={`text-lg font-bold ${station.petrol ? "text-slate-900" : "text-red-500"}`}>
+                                          {station.petrol ? `${station.petrolQty ?? 0}L` : "EMPTY"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.2em] mb-1">Price/L</p>
+                                      <p className="text-3xl font-bold text-blue-600 tracking-tight">{station.petrolPrice ?? 80}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-amber-50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                      <div className="p-2.5 rounded-2xl bg-amber-100 border border-amber-200">
+                                        <Gauge className="w-5 h-5 text-amber-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Diesel</p>
+                                        <span className={`text-lg font-bold ${station.diesel ? "text-slate-900" : "text-red-500"}`}>
+                                          {station.diesel ? `${station.dieselQty ?? 0}L` : "EMPTY"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Price/L</p>
+                                      <p className="text-3xl font-bold text-amber-600 tracking-tight">{station.dieselPrice ?? 75}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                  <div className={`flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden group/item transition-all hover:bg-slate-100 ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "border-emerald-300"
+                                      : station.estimatedWaitMinutes < 25 ? "border-amber-300"
+                                        : "border-red-300"
+                                    }`}>
+                                    <div className={`absolute top-0 left-0 w-1 h-full ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "bg-emerald-500"
+                                        : station.estimatedWaitMinutes < 25 ? "bg-amber-500"
+                                          : "bg-red-500"
+                                      }`} />
+                                    <div className="flex items-center gap-2 text-slate-600">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Queue</span>
+                                    </div>
+                                    <div>
+                                      <p className="text-xl font-bold text-slate-900 leading-none">
+                                        {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m` : "No Queue"}
+                                      </p>
+                                      <span className={`text-[9px] font-semibold uppercase tracking-widest mt-1 block ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "text-emerald-600"
+                                          : station.estimatedWaitMinutes < 25 ? "text-amber-600"
+                                            : "text-red-600"
+                                        }`}>
+                                        {(!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10) ? "Fast" : station.estimatedWaitMinutes < 25 ? "Moderate" : "Slow"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden">
+                                    <div className="flex items-center gap-2 text-slate-600">
+                                      <Star className="w-3.5 h-3.5" />
+                                      <span className="text-[10px] font-semibold uppercase tracking-widest">Rating</span>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-slate-900">{station.avgRating?.toFixed(1) ?? "New"}</p>
+                                      <div className="flex gap-0.5 mt-1">
+                                        {[1, 2, 3, 4, 5].map(star => (
+                                          <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (station.avgRating ?? 0) ? "bg-yellow-500" : "bg-slate-200"}`} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-4">
+                                  <button
+                                    disabled={!station.petrol}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startCheckout(station, "petrol");
+                                    }}
+                                    className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.petrol
+                                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                      }`}
+                                  >
+                                    Fill Petrol
+                                  </button>
+                                  <button
+
+                                    disabled={!station.diesel}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startCheckout(station, "diesel");
+                                    }}
+                                    className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.diesel
+                                      ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                      }`}
+                                  >
+                                    Fill Diesel
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center gap-3 mt-8">
+                          <button
+                            disabled={page === 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
+                          >
+                            Previous
+                          </button>
+                          <div className="flex items-center gap-2">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum: number;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (page <= 3) {
+                                pageNum = i + 1;
+                              } else if (page >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = page - 2 + i;
+                              }
+                              if (pageNum > 0 && pageNum <= totalPages) {
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => setPage(pageNum)}
+                                    className={`w-10 h-10 rounded-xl font-semibold transition-all ${page === pageNum
+                                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                                      }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })}
+                          </div>
+                          <button
+                            disabled={page === totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                            className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </section>
+              </motion.div>
             )}
 
             {view === "logs" && (
@@ -1412,15 +1438,9 @@ export default function DriverDashboard() {
                 className="space-y-8"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h2 className="text-4xl font-bold text-slate-900 uppercase tracking-tight">Fuel <span className="text-blue-600">Logs</span></h2>
-                    <p className="text-slate-600 font-medium mt-1 uppercase tracking-widest text-xs">Complete Fuel Request History</p>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="px-5 py-3 rounded-2xl bg-slate-100 border border-slate-200 flex items-center gap-3">
-                       <Activity className="w-5 h-5 text-blue-600" />
-                       <span className="text-sm font-bold text-slate-900">{requests.length} Total Logs</span>
-                    </div>
+                  <div className="px-6 py-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center gap-3">
+                    <Activity className="w-5 h-5 text-indigo-600" />
+                    <span className="text-sm font-black text-slate-900 uppercase tracking-tighter">{requests.length} Operations Archived</span>
                   </div>
                 </div>
 
@@ -1449,10 +1469,10 @@ export default function DriverDashboard() {
                             className="group hover:bg-slate-50 transition-all duration-300"
                           >
                             <td className="px-8 py-6">
-                               <div className="flex flex-col">
-                                  <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{r.stationId?.name ?? "Unknown Station"}</span>
-                                  <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mt-1">{r.stationId?.location ?? "—"}</span>
-                               </div>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{r.stationId?.name ?? "Unknown Station"}</span>
+                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mt-1">{r.stationId?.location ?? "—"}</span>
+                              </div>
                             </td>
                             <td className="px-8 py-6">
                               <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${r.fuelType === "petrol"
@@ -1472,21 +1492,21 @@ export default function DriverDashboard() {
                               />
                             </td>
                             <td className="px-8 py-6">
-                               <div className="flex justify-center">
-                                  <StatusBadge
-                                    label={r.status}
-                                    tone={
-                                      r.status === "PENDING"
-                                        ? "warning"
-                                        : r.status === "APPROVED"
+                              <div className="flex justify-center">
+                                <StatusBadge
+                                  label={r.status}
+                                  tone={
+                                    r.status === "PENDING"
+                                      ? "warning"
+                                      : r.status === "APPROVED"
                                         ? "success"
                                         : r.status === "CANCELED"
-                                        ? "neutral"
-                                        : "danger"
-                                    }
-                                    className="px-4 py-1.5 text-[9px]"
-                                  />
-                               </div>
+                                          ? "neutral"
+                                          : "danger"
+                                  }
+                                  className="px-4 py-1.5 text-[9px]"
+                                />
+                              </div>
                             </td>
                             <td className="px-8 py-6">
                               <div className="flex flex-col gap-1">
@@ -1572,16 +1592,16 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="flex flex-col items-center justify-center py-40 space-y-8 text-center"
               >
-                <div className="w-32 h-32 rounded-[3rem] bg-slate-100 border border-slate-200 flex items-center justify-center shadow-lg relative group">
-                  <div className="absolute inset-0 bg-blue-100 blur-[40px] rounded-full group-hover:scale-125 transition-transform" />
-                  <Car className="w-16 h-16 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                <div className="w-32 h-32 rounded-[3.5rem] bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-xl relative group">
+                  <div className="absolute inset-0 bg-indigo-400/20 blur-[40px] rounded-full group-hover:scale-125 transition-transform" />
+                  <Car className="w-16 h-16 text-indigo-400 group-hover:text-indigo-600 transition-colors relative z-10" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">Vehicle Management</h2>
-                  <p className="text-slate-600 font-medium mt-2 uppercase tracking-widest text-xs">Vehicle Integration Coming Soon</p>
+                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Fleet Integration Offline</h2>
+                  <p className="text-slate-500 font-bold mt-2 uppercase tracking-[0.3em] text-[10px]">Development in Progress • v0.9.4</p>
                 </div>
-                <button className="px-8 py-4 bg-slate-100 border border-slate-200 rounded-2xl text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all cursor-not-allowed">
-                   Coming Soon
+                <button className="px-10 py-5 bg-slate-100 border border-slate-200 rounded-3xl text-slate-400 font-black uppercase tracking-[0.25em] text-[10px] hover:bg-slate-200 transition-all cursor-not-allowed">
+                  Protocol Loading
                 </button>
               </motion.div>
             )}
@@ -1726,23 +1746,40 @@ export default function DriverDashboard() {
                   <span>Secure payment via Chapa · TeleBirr, CBEBirr & more</span>
                 </div>
 
-                <button
-                  disabled={isProcessingPayment || checkoutAmount <= 0}
-                  onClick={handlePayment}
-                  className="w-full py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-xl transition-all disabled:opacity-50 disabled:from-slate-400 disabled:to-slate-500 flex items-center justify-center gap-2"
-                >
-                  {isProcessingPayment ? (
-                    <>
+                <div className="space-y-3">
+                  <button
+                    disabled={isProcessingPayment || checkoutAmount <= 0}
+                    onClick={handleWalletPayment}
+                    className="w-full py-4 rounded-2xl font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isProcessingPayment ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4" />
-                      Pay {total.toLocaleString()} ETB with Chapa
-                    </>
-                  )}
-                </button>
+                    ) : (
+                      <>
+                        <Wallet className="w-4 h-4" />
+                        Pay with Wallet ({total.toLocaleString()} ETB)
+                      </>
+                    )}
+                  </button>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-slate-500">Or pay externally</span>
+                    </div>
+                  </div>
+
+                  <button
+                    disabled={isProcessingPayment || checkoutAmount <= 0}
+                    onClick={handlePayment}
+                    className="w-full py-4 rounded-2xl font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    TeleBirr / CBEBirr / Card
+                  </button>
+                </div>
               </motion.div>
             </motion.div>
           );

@@ -152,11 +152,11 @@ export default function StationDashboard() {
   const [stationRegisterLoading, setStationRegisterLoading] = useState(false);
 
   const [petrol, setPetrol] = useState(true);
-  const [petrolQty, setPetrolQty] = useState(0);
-  const [petrolPrice, setPetrolPrice] = useState(80);
+  const [petrolQty, setPetrolQty] = useState<number | string>(0);
+  const [petrolPrice, setPetrolPrice] = useState<number | string>(80);
   const [diesel, setDiesel] = useState(true);
-  const [dieselQty, setDieselQty] = useState(0);
-  const [dieselPrice, setDieselPrice] = useState(75);
+  const [dieselQty, setDieselQty] = useState<number | string>(0);
+  const [dieselPrice, setDieselPrice] = useState<number | string>(75);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "pending" | "history" | "analytics" | "scanner" | "settings" | "products">("overview");
   const [loadingStations, setLoadingStations] = useState(true);
@@ -222,7 +222,7 @@ export default function StationDashboard() {
   const [stockModal, setStockModal] = useState<{
     open: boolean;
     fuelType: "petrol" | "diesel";
-    amount: number;
+    amount: number | string;
   }>({ open: false, fuelType: "petrol", amount: 1000 });
   const [stockSaving, setStockSaving] = useState(false);
   const searchParams = useSearchParams();
@@ -469,11 +469,15 @@ export default function StationDashboard() {
   };
 
   const submitStockAdd = async () => {
-    if (!activeStationId || stockModal.amount <= 0) return;
+    const amountNum = Number(stockModal.amount);
+    if (!activeStationId || isNaN(amountNum) || amountNum <= 0) {
+      showToast("Please enter a valid positive quantity", "error");
+      return;
+    }
     try {
       setStockSaving(true);
       if (stockModal.fuelType === "petrol") {
-        const newQty = petrolQty + stockModal.amount;
+        const newQty = Number(petrolQty) + amountNum;
         setPetrolQty(newQty);
         await fetch("/api/stations/update", {
           method: "PUT",
@@ -481,7 +485,7 @@ export default function StationDashboard() {
           body: JSON.stringify({ stationId: activeStationId, petrolQty: newQty }),
         });
       } else {
-        const newQty = dieselQty + stockModal.amount;
+        const newQty = Number(dieselQty) + amountNum;
         setDieselQty(newQty);
         await fetch("/api/stations/update", {
           method: "PUT",
@@ -489,7 +493,7 @@ export default function StationDashboard() {
           body: JSON.stringify({ stationId: activeStationId, dieselQty: newQty }),
         });
       }
-      showToast(`Added ${stockModal.amount}L of ${stockModal.fuelType}`, "success");
+      showToast(`Added ${amountNum}L of ${stockModal.fuelType}`, "success");
       setStockModal((prev) => ({ ...prev, open: false }));
     } catch {
       showToast("Failed to add stock", "error");
@@ -727,136 +731,139 @@ export default function StationDashboard() {
 
         {/* Station Selector Card */}
   
-<motion.div
-  initial={{ opacity: 0, scale: 0.96, y: 10 }}
-  animate={{ opacity: 1, scale: 1, y: 0 }}
-  transition={{ duration: 0.4, ease: "easeOut" }}
-  className="relative overflow-hidden rounded-[1.5rem] p-[1px] bg-gradient-to-br from-blue-600/40 via-cyan-500/30 to-blue-700/40"
->
-  {/* Animated gradient border effect */}
-  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 opacity-40 animate-pulse blur-xl" />
-  
-  {/* Glass Surface with enhanced blue gradient background */}
-  <div className="rounded-[1.4rem] p-6 backdrop-blur-xl bg-gradient-to-br from-blue-50 via-blue-100/80 to-cyan-50/90 border border-blue-200/60 shadow-[0_20px_60px_rgba(37,99,235,0.3)]">
+        {/* Station Selector Card - Only on Overview */}
+        {activeTab === "overview" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="relative overflow-hidden rounded-[1.5rem] p-[1px] bg-gradient-to-br from-blue-600/40 via-cyan-500/30 to-blue-700/40"
+          >
+            {/* Animated gradient border effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 opacity-40 animate-pulse blur-xl" />
+            
+            {/* Glass Surface with enhanced blue gradient background */}
+            <div className="rounded-[1.4rem] p-6 backdrop-blur-xl bg-gradient-to-br from-blue-50 via-blue-100/80 to-cyan-50/90 border border-blue-200/60 shadow-[0_20px_60px_rgba(37,99,235,0.3)]">
 
-    {/* Enhanced background glow effects */}
-    <div className="absolute -top-20 -right-20 w-56 h-56 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 blur-3xl rounded-full animate-pulse" />
-    <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 blur-3xl rounded-full animate-pulse" />
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-blue-400/10 to-cyan-400/10 blur-3xl rounded-full" />
+              {/* Enhanced background glow effects */}
+              <div className="absolute -top-20 -right-20 w-56 h-56 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 blur-3xl rounded-full animate-pulse" />
+              <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 blur-3xl rounded-full animate-pulse" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-blue-400/10 to-cyan-400/10 blur-3xl rounded-full" />
 
-    <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+              <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
 
-      {/* LEFT SECTION - Enhanced */}
-      <div className="flex items-center gap-6">
+                {/* LEFT SECTION - Enhanced */}
+                <div className="flex items-center gap-6">
 
-        {/* Icon with enhanced blue gradient */}
-        <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
-          <div className="relative p-4 rounded-2xl bg-blue-600 text-white duration-300">
-            <Building2 className="w-7 h-7 text-white" />
-          </div>
-        </div>
+                  {/* Icon with enhanced blue gradient */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
+                    <div className="relative p-4 rounded-2xl bg-blue-600 text-white duration-300">
+                      <Building2 className="w-7 h-7 text-white" />
+                    </div>
+                  </div>
 
-        {/* Station Info with enhanced typography */}
-        {myStations.length > 0 ? (
-          <div>
-            <div className="relative group">
-              <select
-                title="Select Active Station"
-                className="
-                  bg-transparent text-3xl lg:text-4xl font-black outline-none cursor-pointer
-                  appearance-none pr-12 text-blue-900
-                  hover:text-blue-700
-                  transition-all duration-300 tracking-tight
-                "
-                value={activeStationId || ""}
-                onChange={(e) => {
-                  setActiveStationId(e.target.value);
-                  setTimeout(() => refreshData(), 50);
-                }}
-              >
-                {myStations.map((station) => (
-                  <option
-                    key={station._id}
-                    value={station._id}
-                    className="bg-blue-600 text-white text-base font-semibold"
-                  >
-                    {station.name}
-                  </option>
-                ))}
-              </select>
+                  {/* Station Info with enhanced typography */}
+                  {myStations.length > 0 ? (
+                    <div>
+                      <div className="relative group">
+                        <select
+                          title="Select Active Station"
+                          className="
+                            bg-transparent text-3xl lg:text-4xl font-black outline-none cursor-pointer
+                            appearance-none pr-12 text-blue-900
+                            hover:text-blue-700
+                            transition-all duration-300 tracking-tight
+                          "
+                          value={activeStationId || ""}
+                          onChange={(e) => {
+                            setActiveStationId(e.target.value);
+                            setTimeout(() => refreshData(), 50);
+                          }}
+                        >
+                          {myStations.map((station) => (
+                            <option
+                              key={station._id}
+                              value={station._id}
+                              className="bg-blue-600 text-white text-base font-semibold"
+                            >
+                              {station.name}
+                            </option>
+                          ))}
+                        </select>
 
-              {/* Enhanced Chevron */}
-              <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 group-hover:text-blue-700 group-hover:rotate-180 transition-all duration-300 pointer-events-none" />
-            </div>
+                        {/* Enhanced Chevron */}
+                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 group-hover:text-blue-700 group-hover:rotate-180 transition-all duration-300 pointer-events-none" />
+                      </div>
 
-            {/* Location with enhanced styling */}
-            <div className="flex items-center gap-2 mt-2">
-              <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100">
-                <MapPin className="w-4 h-4 text-blue-600" />
+                      {/* Location with enhanced styling */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100">
+                          <MapPin className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <p className="text-base font-semibold text-blue-800 tracking-tight">
+                          {myStations.find(s => s._id === activeStationId)?.location || "Global View"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-medium text-blue-600">
+                      No stations registered.
+                    </p>
+                  )}
+                </div>
+
+                {/* RIGHT SECTION - Enhanced */}
+                <div className="flex gap-4">
+
+                  {/* STATUS with blue-themed colors */}
+                  <div className="relative group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.9)]" />
+                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                      </div>
+                      <span className="text-sm font-bold text-blue-800 uppercase tracking-wider">
+                        System Online
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* DATE with blue theme */}
+                  <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 group-hover:scale-110 transition-transform duration-300">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-bold text-blue-800">
+                        {new Date().toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Time Display with blue theme */}
+                  <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-spin-slow" />
+                      <span className="text-sm font-bold text-blue-800">
+                        {new Date().toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
               </div>
-              <p className="text-base font-semibold text-blue-800 tracking-tight">
-                {myStations.find(s => s._id === activeStationId)?.location || "Global View"}
-              </p>
             </div>
-          </div>
-        ) : (
-          <p className="text-lg font-medium text-blue-600">
-            No stations registered.
-          </p>
+          </motion.div>
         )}
-      </div>
-
-      {/* RIGHT SECTION - Enhanced */}
-      <div className="flex gap-4">
-
-        {/* STATUS with blue-themed colors */}
-        <div className="relative group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.9)]" />
-              <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-75" />
-            </div>
-            <span className="text-sm font-bold text-blue-800 uppercase tracking-wider">
-              System Online
-            </span>
-          </div>
-        </div>
-
-        {/* DATE with blue theme */}
-        <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center gap-3">
-            <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 group-hover:scale-110 transition-transform duration-300">
-              <Calendar className="w-4 h-4 text-blue-600" />
-            </div>
-            <span className="text-sm font-bold text-blue-800">
-              {new Date().toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              })}
-            </span>
-          </div>
-        </div>
-
-        {/* Time Display with blue theme */}
-        <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-spin-slow" />
-            <span className="text-sm font-bold text-blue-800">
-              {new Date().toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </span>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</motion.div>
         {/* Conditional Content rendering */}
         <AnimatePresence mode="wait">
           {activeTab === "overview" && (
@@ -1128,13 +1135,15 @@ export default function StationDashboard() {
                                 title="Petrol Price"
                                 type="number"
                                 value={petrolPrice}
-                                onChange={(e) => setPetrolPrice(Number(e.target.value))}
+                                onChange={(e) => setPetrolPrice(e.target.value)}
                                 onBlur={async () => {
+                                  const price = Number(petrolPrice) || 0;
                                   await fetch("/api/stations/update", {
                                     method: "PUT",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ stationId: activeStationId, petrolPrice })
+                                    body: JSON.stringify({ stationId: activeStationId, petrolPrice: price })
                                   });
+                                  setPetrolPrice(price);
                                   showToast("Petrol price updated", "success");
                                 }}
                                 className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
@@ -1145,7 +1154,23 @@ export default function StationDashboard() {
                           <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
                             <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Stock Level</p>
                             <div className="flex items-center gap-2">
-                              <p className="text-2xl font-black text-slate-900">{petrolQty.toLocaleString()}</p>
+                              <input 
+                                title="Petrol Stock"
+                                type="number"
+                                value={petrolQty}
+                                onChange={(e) => setPetrolQty(e.target.value)}
+                                onBlur={async () => {
+                                  const qty = Number(petrolQty) || 0;
+                                  await fetch("/api/stations/update", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ stationId: activeStationId, petrolQty: qty })
+                                  });
+                                  setPetrolQty(qty); // Ensure it's a number after blur
+                                  showToast("Petrol stock updated", "success");
+                                }}
+                                className="bg-transparent text-2xl font-black text-slate-900 w-full outline-none"
+                              />
                               <span className="text-sm font-bold text-indigo-600">Litres</span>
                             </div>
                           </div>
@@ -1207,13 +1232,15 @@ export default function StationDashboard() {
                                 title="Diesel Price"
                                 type="number"
                                 value={dieselPrice}
-                                onChange={(e) => setDieselPrice(Number(e.target.value))}
+                                onChange={(e) => setDieselPrice(e.target.value)}
                                 onBlur={async () => {
+                                  const price = Number(dieselPrice) || 0;
                                   await fetch("/api/stations/update", {
                                     method: "PUT",
                                     headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ stationId: activeStationId, dieselPrice })
+                                    body: JSON.stringify({ stationId: activeStationId, dieselPrice: price })
                                   });
+                                  setDieselPrice(price);
                                   showToast("Diesel price updated", "success");
                                 }}
                                 className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
@@ -1224,7 +1251,23 @@ export default function StationDashboard() {
                           <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
                             <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Stock Level</p>
                             <div className="flex items-center gap-2">
-                              <p className="text-2xl font-black text-slate-900">{dieselQty.toLocaleString()}</p>
+                              <input 
+                                title="Diesel Stock"
+                                type="number"
+                                value={dieselQty}
+                                onChange={(e) => setDieselQty(e.target.value)}
+                                onBlur={async () => {
+                                  const qty = Number(dieselQty) || 0;
+                                  await fetch("/api/stations/update", {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ stationId: activeStationId, dieselQty: qty })
+                                  });
+                                  setDieselQty(qty); // Ensure it's a number after blur
+                                  showToast("Diesel stock updated", "success");
+                                }}
+                                className="bg-transparent text-2xl font-black text-slate-900 w-full outline-none"
+                              />
                               <span className="text-sm font-bold text-amber-600">Litres</span>
                             </div>
                           </div>
@@ -1875,7 +1918,7 @@ export default function StationDashboard() {
                     onChange={(e) =>
                       setStockModal((prev) => ({
                         ...prev,
-                        amount: Math.max(1, Number(e.target.value) || 1),
+                        amount: e.target.value,
                       }))
                     }
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
@@ -1883,7 +1926,7 @@ export default function StationDashboard() {
                 </div>
                 <button
                   onClick={submitStockAdd}
-                  disabled={stockSaving || stockModal.amount <= 0}
+                  disabled={stockSaving || !stockModal.amount || Number(stockModal.amount) <= 0}
                   className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all disabled:opacity-50 active:scale-95"
                 >
                   {stockSaving ? "Saving..." : "Update Stock"}
