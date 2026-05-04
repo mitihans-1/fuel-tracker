@@ -1,31 +1,46 @@
+"use client";
+
 import { ReactNode } from "react";
+import ClientNavbar from "./ClientNavbar";
+import { motion } from "framer-motion";
+
 type PageLayoutProps = {
-title: string;
-subtitle: string;
-children: ReactNode;
+  title: string;
+  subtitle: string;
+  children: ReactNode;
 };
+
 export default function PageLayout({ title, subtitle, children }: PageLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-slate-900 px-6 py-20 relative overflow-hidden">
-      {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-      
-      {/* Background Glows */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-400/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-400/10 blur-[120px] rounded-full pointer-events-none" />
-
-      <div className="max-w-5xl mx-auto text-center mb-20 relative z-10">
-        <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tight text-slate-900 leading-tight">
-          {title}
-        </h1>
-        <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-          {subtitle}
-        </p>
+    <main className="min-h-screen text-slate-900 bg-white selection:bg-indigo-500/30">
+      {/* Background Decor */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 blur-[140px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-500/5 blur-[160px] rounded-full" />
       </div>
 
-      <div className="max-w-5xl mx-auto relative z-10">
-        {children}
+      <ClientNavbar />
+
+      <div className="relative z-10 pt-28 pb-24 max-w-6xl mx-auto px-6 space-y-24">
+        {/* HERO */}
+        <section className="text-center space-y-8">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-7xl font-black text-slate-900 leading-tight tracking-tight"
+          >
+            {title}
+          </motion.h1>
+
+          <p className="max-w-2xl mx-auto text-slate-600 text-lg leading-relaxed font-medium">
+            {subtitle}
+          </p>
+        </section>
+
+        <div className="relative z-10">
+          {children}
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

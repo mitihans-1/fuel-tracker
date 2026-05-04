@@ -16,7 +16,7 @@ export default function ApiKeysPage() {
            </div>
            <div className="flex-1">
               <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Tactical Node Key</h3>
-              <p className="text-slate-500 font-semibold text-lg leading-relaxed">Use this key to authenticate your local station telemetry hardware with the central synchronization hub.</p>
+              <p className="text-slate-800 font-bold text-lg leading-relaxed">Use this key to authenticate your local station telemetry hardware with the central synchronization hub.</p>
            </div>
            <div className="bg-slate-950 rounded-2xl px-6 py-4 flex items-center gap-6 group/key shadow-2xl">
               <code className="text-sm text-indigo-400 font-mono font-bold tracking-wider">fs_grid_test_48a92e...</code>
@@ -53,13 +53,31 @@ export default function ApiKeysPage() {
                  </div>
                  <h4 className="text-xl font-black text-slate-900 tracking-tight">Security Protocol</h4>
               </div>
-              <p className="text-slate-500 text-lg font-semibold leading-relaxed">
+              <p className="text-slate-800 text-lg font-bold leading-relaxed">
                  API keys provide full access to your station&apos;s resource telemetry. Never share these keys in client-side code or public repositories.
               </p>
               <button className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-all pt-4">
                  <RefreshCcw className="w-5 h-5" />
                  <span>Regenerate Master Key</span>
               </button>
+           </div>
+        </div>
+
+        {/* Best Practices */}
+        <div className="p-12 rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl">
+           <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 blur-[100px] rounded-full" />
+           <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-10">
+              {[
+                { title: "Environment Isolation", desc: "Use different keys for development, staging, and production environments." },
+                { title: "Key Rotation", desc: "Rotate your tactical keys every 90 days to maintain maximum security integrity." },
+                { title: "Least Privilege", desc: "Restrict API key permissions to only the necessary telemetry operations." }
+              ].map((p, i) => (
+                <div key={i} className="space-y-4">
+                  <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-black">{i + 1}</div>
+                  <h5 className="text-lg font-bold">{p.title}</h5>
+                  <p className="text-slate-400 text-sm leading-relaxed">{p.desc}</p>
+                </div>
+              ))}
            </div>
         </div>
 

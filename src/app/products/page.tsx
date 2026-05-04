@@ -1,226 +1,245 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@/contexts/UserContext";
+import React from "react";
 import ClientNavbar from "@/components/ClientNavbar";
-import { Fuel, Truck, Star, ShieldCheck, Clock3, BadgeDollarSign, ArrowRight } from "lucide-react";
+import { 
+  Fuel, 
+  Truck, 
+  Smartphone, 
+  CreditCard, 
+  ShieldCheck, 
+  BarChart3,
+  ArrowRight,
+  Zap,
+  Globe
+} from "lucide-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 
-export default function ProductsPage() {
-  const router = useRouter();
-  const { user } = useUser();
-  const [petrol, setPetrol] = useState(false);
-  const [diesel, setDiesel] = useState(false);
-  const [petrolPrice, setPetrolPrice] = useState(80);
-  const [dieselPrice, setDieselPrice] = useState(75);
-  const [avgRating, setAvgRating] = useState<number | null>(null);
-  const [ratingCount, setRatingCount] = useState(0);
-  const [isStationOwner, setIsStationOwner] = useState(false);
-
-  useEffect(() => {
-    const fetchDataForStation = async () => {
-      try {
-        const statusRes = await fetch("/api/stations/me");
-        if (!statusRes.ok) return;
-
-        const data = await statusRes.json();
-
-        if (Array.isArray(data) && data.length > 0) {
-          const currentStation = data[0];
-          setIsStationOwner(true);
-          setPetrol(!!currentStation.petrol);
-          setPetrolPrice(currentStation.petrolPrice ?? 80);
-          setDiesel(!!currentStation.diesel);
-          setDieselPrice(currentStation.dieselPrice ?? 75);
-          setAvgRating(currentStation.rating || null);
-          setRatingCount(currentStation.ratingCount || 0);
-        }
-      } catch {}
-    };
-
-    if (user) {
-      fetchDataForStation();
+export default function ProductsCatalogPage() {
+  const petrolProducts = [
+    {
+      id: "p1",
+      name: "Super Premium 98",
+      price: "85.50",
+      image: "https://images.pexels.com/photos/38271/pumping-gas-gas-station-gas-pump-fuel-38271.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Highest octane rating for maximum engine performance and cleaner combustion.",
+      features: ["Octane 98", "Engine Cleaning", "Anti-Knock"]
+    },
+    {
+      id: "p2",
+      name: "Premium Unleaded 95",
+      price: "82.20",
+      image: "https://images.pexels.com/photos/1703312/pexels-photo-1703312.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Optimal balance of power and efficiency for modern passenger vehicles.",
+      features: ["Octane 95", "Fuel Economy", "Standard Grade"]
+    },
+    {
+      id: "p3",
+      name: "Eco-Plus Petrol",
+      price: "81.50",
+      image: "https://images.pexels.com/photos/257850/pexels-photo-257850.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Reduced emission formula optimized for hybrid and small-engine urban cars.",
+      features: ["Low Carbon", "High MPG", "Hybrid Ready"]
+    },
+    {
+      id: "p4",
+      name: "Standard Petrol",
+      price: "79.80",
+      image: "https://images.pexels.com/photos/979602/pexels-photo-979602.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Reliable, high-quality fuel for daily commuting and older vehicle models.",
+      features: ["Octane 91", "Cost Effective", "Pure Distillate"]
     }
-  }, [user]);
+  ];
 
-  const handleAction = (path: string) => {
-    if (user) {
-      // Logged in user goes to dashboard or specific management path
-      router.push(isStationOwner ? path : "/dashboard");
-    } else {
-      // Check if user has been here before
-      const isReturning = localStorage.getItem("fuel_sync_returning_user") === "true";
-      if (isReturning) {
-        router.push("/auth/login");
-      } else {
-        router.push("/auth/register");
-      }
+  const dieselProducts = [
+    {
+      id: "d1",
+      name: "Euro 6 Ultra Diesel",
+      price: "78.90",
+      image: "https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Ultra-low sulfur formula designed for the latest heavy-duty Euro 6 engines.",
+      features: ["Ultra Low Sulfur", "Particulate Filter Safe", "High Torque"]
+    },
+    {
+      id: "d2",
+      name: "High-Performance Diesel",
+      price: "76.50",
+      image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Enhanced cetane rating for better ignition and power in commercial trucks.",
+      features: ["High Cetane", "Cold Start Optimized", "Heavy Load"]
+    },
+    {
+      id: "d3",
+      name: "Bio-Diesel Blend",
+      price: "75.20",
+      image: "https://images.pexels.com/photos/163726/belgium-antwerp-gas-station-fuel-163726.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Sustainable energy blend reducing reliance on traditional fossil distillates.",
+      features: ["Eco-Friendly", "Renewable Source", "Clean Exhaust"]
+    },
+    {
+      id: "d4",
+      name: "Standard Nafta",
+      price: "73.80",
+      image: "https://images.pexels.com/photos/2101137/pexels-photo-2101137.jpeg?auto=compress&cs=tinysrgb&w=800",
+      desc: "Standard commercial diesel for transport logistics and industrial machinery.",
+      features: ["Standard Grade", "High Volume", "Reliable"]
     }
-  };
+  ];
 
   return (
-    <main className="dashboard-root dashboard-shell min-h-screen text-slate-900 bg-slate-50">
+    <main className="min-h-screen text-slate-900 bg-white selection:bg-indigo-500/30">
+      {/* Subtle Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/5 blur-[140px] rounded-full" />
+        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-blue-500/5 blur-[140px] rounded-full" />
       </div>
 
       <ClientNavbar />
 
-      <div className="max-w-7xl mx-auto relative z-10 pt-32 pb-20 px-4 sm:px-6 space-y-12">
-        <section className="text-center space-y-6">
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-[1.1]">
-            Fuel Solutions for the <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">Modern Infrastructure</span>
-          </h1>
-          <p className="mt-4 text-slate-500 max-w-2xl mx-auto text-lg font-medium leading-relaxed">
-            FuelSync connects station owners with thousands of drivers, providing real-time inventory tracking, digital queue management, and customer trust signals.
+      <div className="relative z-10 pt-32 pb-24 px-4 sm:px-6 max-w-7xl mx-auto space-y-24">
+        
+        {/* Header */}
+        <section className="text-center space-y-6 max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-block px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-4"
+          >
+            Digital Fuel Inventory
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-5xl md:text-7xl font-black text-slate-900 tracking-tight leading-[0.9]"
+          >
+            Fuel <span className="text-indigo-600">Solutions</span> Catalog
+          </motion.h1>
+          <p className="text-lg text-slate-500 font-medium leading-relaxed">
+            Explore our professionally tracked fuel categories. From premium performance 
+            to sustainable energy, we ensure digital transparency for every refill.
           </p>
-          
-          {!user && (
-            <div className="flex justify-center pt-4">
-              <Link href="/auth/register" className="px-10 py-4 rounded-2xl bg-indigo-600 text-white font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20">
-                Start Free Trial
-              </Link>
-            </div>
-          )}
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <article className="group pro-surface rounded-[2.5rem] p-8 border border-slate-200/60 hover:border-indigo-500 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-            <div className="flex items-center justify-between mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                <Fuel className="w-7 h-7" />
-              </div>
-              {user && isStationOwner && (
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${petrol ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
-                  {petrol ? "Available ✓" : "Out of Stock ✕"}
-                </span>
-              )}
+        {/* Petrol Section */}
+        <section className="space-y-12">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Fuel className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Premium Petrol</h2>
-            <p className="mt-3 text-slate-500 font-medium leading-relaxed">
-              Real-time Benzene inventory management for station owners and live availability for private vehicle drivers.
-            </p>
-            
-            <div className="mt-8 space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Market</span>
-                <span className="text-lg font-black text-slate-900">{isStationOwner ? petrolPrice : "80+"} ETB/L</span>
-              </div>
-              <button
-                onClick={() => handleAction("/dashboard/inventory")}
-                className="w-full flex items-center justify-center gap-2 rounded-xl py-4 text-xs font-black uppercase tracking-widest bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all"
-              >
-                {isStationOwner ? "Update Inventory" : "View Near Me"}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </article>
-
-          <article className="group pro-surface rounded-[2.5rem] p-8 border border-slate-200/60 hover:border-blue-500 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-            <div className="flex items-center justify-between mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-                <Truck className="w-7 h-7" />
-              </div>
-              {user && isStationOwner && (
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${diesel ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
-                  {diesel ? "Available ✓" : "Out of Stock ✕"}
-                </span>
-              )}
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Heavy Diesel</h2>
-            <p className="mt-3 text-slate-500 font-medium leading-relaxed">
-              Efficient Nafta distribution tracking optimized for commercial fleets, logistics, and heavy transport.
-            </p>
-            
-            <div className="mt-8 space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Market</span>
-                <span className="text-lg font-black text-slate-900">{isStationOwner ? dieselPrice : "75+"} ETB/L</span>
-              </div>
-              <button
-                onClick={() => handleAction("/dashboard/inventory")}
-                className="w-full flex items-center justify-center gap-2 rounded-xl py-4 text-xs font-black uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all"
-              >
-                {isStationOwner ? "Update Inventory" : "View Near Me"}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </article>
-
-          <article className="group pro-surface rounded-[2.5rem] p-8 border border-slate-200/60 hover:border-amber-500 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-            <div className="flex items-center justify-between mb-8">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
-                <Star className="w-7 h-7" />
-              </div>
-              <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
-                Reputation
-              </span>
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Customer Trust</h2>
-            <p className="mt-3 text-slate-500 font-medium leading-relaxed">
-              Transparent rating systems that help reliable stations stand out and drivers find the best service quality.
-            </p>
-            
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Average</p>
-                <p className="text-lg font-black text-slate-900">{isStationOwner && avgRating !== null ? avgRating.toFixed(1) : "4.8"} / 5.0</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Verified</p>
-                <p className="text-lg font-black text-slate-900">{isStationOwner ? ratingCount : "500+"}</p>
-              </div>
-            </div>
-            <p className="mt-6 text-xs text-slate-500 font-medium italic text-center">
-              Verified reviews help build community trust
-            </p>
-          </article>
-        </section>
-
-        <section className="pro-surface rounded-[3rem] p-10 md:p-16 border border-slate-200/60 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2" />
-          <div className="relative grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <h3 className="text-3xl font-black text-slate-900 leading-tight">Why Choose FuelSync Platform?</h3>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                We provide the digital backbone for Ethiopia&apos;s fuel distribution. Our platform ensures that fuel availability is no longer a guessing game.
-              </p>
-              <div className="space-y-4">
-                {[
-                  { icon: ShieldCheck, title: "Secure Transactions", desc: "Digital verification for every fuel request." },
-                  { icon: Clock3, title: "Real-time Signals", desc: "Live updates from stations every minute." },
-                  { icon: BadgeDollarSign, title: "Transparent Pricing", desc: "Market-accurate pricing across all regions." }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex gap-4 p-4 rounded-2xl bg-white/50 border border-slate-100">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                      <item.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">{item.title}</p>
-                      <p className="text-xs text-slate-500 font-medium">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="relative aspect-square max-w-md mx-auto">
-               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2.5rem] rotate-3 opacity-10" />
-               <div className="absolute inset-0 bg-white border border-slate-200 rounded-[2.5rem] flex items-center justify-center p-12 text-center">
-                  <div className="space-y-4">
-                    <div className="text-6xl mb-4">🌍</div>
-                    <p className="text-4xl font-black text-slate-900 tracking-tighter">10,000+</p>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">Active Drivers</p>
-                    <div className="h-px w-12 bg-slate-200 mx-auto" />
-                    <p className="text-4xl font-black text-slate-900 tracking-tighter">150+</p>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">Partner Stations</p>
-                  </div>
-               </div>
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Petrol (Benzene)</h2>
+              <p className="text-sm text-slate-500 font-medium italic">Premium spark-ignition solutions</p>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {petrolProducts.map((product) => (
+              <motion.div
+                key={product.id}
+                whileHover={{ y: -8 }}
+                className="group flex flex-col bg-white rounded-[2rem] border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-500"
+              >
+                <div className="relative h-56 overflow-hidden">
+                  <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-white/20 text-indigo-600 font-black text-sm shadow-sm">
+                    {product.price} <span className="text-[10px]">ETB/L</span>
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col space-y-4">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">{product.name}</h3>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed flex-1">
+                    {product.desc}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {product.features.map((f) => (
+                      <span key={f} className="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-wider">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                  <Link 
+                    href="/dashboard"
+                    className="w-full py-3.5 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/10 group-hover:shadow-indigo-500/30"
+                  >
+                    Order Now <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </section>
+
+        {/* Diesel Section */}
+        <section className="space-y-12">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Truck className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Diesel (Nafta)</h2>
+              <p className="text-sm text-slate-500 font-medium italic">High-torque compression solutions</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {dieselProducts.map((product) => (
+              <motion.div
+                key={product.id}
+                whileHover={{ y: -8 }}
+                className="group flex flex-col bg-white rounded-[2rem] border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-500"
+              >
+                <div className="relative h-56 overflow-hidden">
+                  <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-white/20 text-blue-600 font-black text-sm shadow-sm">
+                    {product.price} <span className="text-[10px]">ETB/L</span>
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col space-y-4">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">{product.name}</h3>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed flex-1">
+                    {product.desc}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {product.features.map((f) => (
+                      <span key={f} className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-wider">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                  <Link 
+                    href="/dashboard"
+                    className="w-full py-3.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/10 group-hover:shadow-blue-500/30"
+                  >
+                    Order Now <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* Bottom CTA */}
+        <section className="rounded-[3rem] p-12 md:p-20 bg-slate-900 text-white relative overflow-hidden text-center">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2" />
+          <div className="relative z-10 space-y-8">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
+              Fueling the Future of <br /> 
+              <span className="text-indigo-400">Digital Logistics</span>
+            </h2>
+            <p className="text-slate-400 font-medium max-w-2xl mx-auto">
+              Our platform ensures that you have access to the highest quality fuel 
+              with the convenience of digital tracking and secure payments.
+            </p>
+            <Link 
+              href="/auth/register" 
+              className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl bg-indigo-600 text-white font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20"
+            >
+              Start Free Trial <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </section>
+
       </div>
     </main>
   );

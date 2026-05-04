@@ -152,8 +152,10 @@ export default function Navbar() {
 
 
   const marketingLinks: NavigationLink[] = [
+    { name: "About", path: "/about" },
     { name: "Products", path: "/products" },
     { name: "How It Works", path: "/#features" },
+    { name: "Contact", path: "/contact" },
   ];
   const authLinks: NavigationLink[] = [{ name: "Register", path: "/auth/register" }];
   const visibleLinks: NavigationLink[] = isDashboard ? coreLinks : [...coreLinks, ...marketingLinks];

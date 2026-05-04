@@ -11,10 +11,10 @@ import KpiCard from "@/components/ui/KpiCard";
 import SectionHeader from "@/components/ui/SectionHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DataTable from "@/components/ui/DataTable";
-import { 
-  Users, Fuel, MapPin, Settings, 
-  Trash2, UserPlus, Shield, Search, 
-  DollarSign, Activity,  ExternalLink,
+import {
+  Users, Fuel, MapPin, Settings,
+  Trash2, UserPlus, Shield, Search,
+  DollarSign, Activity, ExternalLink,
   LayoutDashboard, Menu, LogOut, History, X
 } from "lucide-react";
 
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
     { id: "requests", label: "Requests", icon: <History className="w-5 h-5 text-purple-500" /> },
     { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5 text-slate-500" /> },
   ];
-  
+
   const [analyticsRange] = useState<"7d" | "30d">("30d");
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
@@ -333,7 +333,7 @@ export default function AdminDashboard() {
 
   const handleCreateUser = async () => {
     setUserError("");
-    if(!userForm.email || !userForm.password || !userForm.name) { setUserError("All fields are required"); return; }
+    if (!userForm.email || !userForm.password || !userForm.name) { setUserError("All fields are required"); return; }
     setUserLoading(true);
     try {
       const res = await fetch("/api/admin/users", {
@@ -370,7 +370,7 @@ export default function AdminDashboard() {
       {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
-        title="mobile"
+          title="mobile"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 bg-white rounded-lg shadow-sm border border-gray-200"
         >
@@ -379,14 +379,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      }`}>
-        <div className="p-6 pt-24 h-full flex flex-col">
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}>
+        <div className="p-6 pt-8 h-full flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">FuelAdmin</h1>
             <button
-            title="mobile"
+              title="mobile"
               onClick={() => setMobileMenuOpen(false)}
               className="lg:hidden p-1 hover:bg-gray-100 rounded-lg"
             >
@@ -398,12 +397,11 @@ export default function AdminDashboard() {
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
-               onClick={() => setTab(item.id)}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${
-                  tab === item.id
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
+                onClick={() => setTab(item.id)}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${tab === item.id
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
               >
                 <div className={`${tab === item.id ? "text-white" : ""}`}>
                   {item.icon}
@@ -426,7 +424,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-     <main className="lg:pl-64 min-h-screen pt-20 pb-12 px-4 sm:px-6 lg:px-8">
+      <main className="lg:pl-64 min-h-screen pt-16 lg:pt-8 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="dashboard-content space-y-8">
           <AnimatePresence mode="wait">
             {tab === "users" && (
@@ -488,16 +486,15 @@ export default function AdminDashboard() {
                             <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
                             <td className="px-6 py-4">
                               <select
-                              title="update"
+                                title="update"
                                 value={u.role}
                                 onChange={(e) => updateUserRole(u._id, e.target.value)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                                  u.role === "ADMIN"
-                                    ? "border-purple-200 bg-purple-50 text-purple-700"
-                                    : u.role === "STATION"
+                                className={`px-3 py-1 rounded-full text-xs font-medium border ${u.role === "ADMIN"
+                                  ? "border-purple-200 bg-purple-50 text-purple-700"
+                                  : u.role === "STATION"
                                     ? "border-amber-200 bg-amber-50 text-amber-700"
                                     : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                }`}
+                                  }`}
                               >
                                 <option value="DRIVER">Driver</option>
                                 <option value="STATION">Station</option>
@@ -506,7 +503,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button
-                              title="delete"
+                                title="delete"
                                 onClick={() => deleteUser(u._id)}
                                 className="p-1 text-gray-400 hover:text-red-600 transition-colors"
                               >
@@ -544,7 +541,7 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {stations.map((s) => (
                     <div key={s._id} className="pro-card p-6 transition-shadow">
                       <div className="flex items-start justify-between mb-4">
@@ -555,11 +552,10 @@ export default function AdminDashboard() {
                             <p className="text-xs text-gray-500">{s.location}</p>
                           </div>
                         </div>
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          s.petrol || s.diesel
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}>
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${s.petrol || s.diesel
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-gray-100 text-gray-500"
+                          }`}>
                           {s.petrol || s.diesel ? "Active" : "Inactive"}
                         </div>
                       </div>
@@ -630,12 +626,10 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">{r.stationId?.name || "N/A"}</td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-                                r.fuelType === "petrol" ? "text-indigo-600" : "text-amber-600"
-                              }`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${
-                                  r.fuelType === "petrol" ? "bg-indigo-500" : "bg-amber-500"
-                                }`} />
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium ${r.fuelType === "petrol" ? "text-indigo-600" : "text-amber-600"
+                                }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${r.fuelType === "petrol" ? "bg-indigo-500" : "bg-amber-500"
+                                  }`} />
                                 {r.fuelType}
                               </span>
                             </td>
@@ -647,13 +641,12 @@ export default function AdminDashboard() {
                               />
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                r.paymentStatus === "REFUNDED"
-                                  ? "bg-red-50 text-red-700"
-                                  : r.paymentStatus === "PAID"
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${r.paymentStatus === "REFUNDED"
+                                ? "bg-red-50 text-red-700"
+                                : r.paymentStatus === "PAID"
                                   ? "bg-emerald-50 text-emerald-700"
                                   : "bg-slate-100 text-slate-600"
-                              }`}>
+                                }`}>
                                 {r.paymentStatus || "PENDING"}
                               </span>
                             </td>
@@ -1143,7 +1136,7 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
                   <input
-                  title="name"
+                    title="name"
                     type="text"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={userForm.name}
@@ -1153,7 +1146,7 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
                   <input
-                  title="email"
+                    title="email"
                     type="email"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={userForm.email}
@@ -1163,7 +1156,7 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Password</label>
                   <input
-                  title="password"
+                    title="password"
                     type="password"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={userForm.password}
@@ -1177,11 +1170,10 @@ export default function AdminDashboard() {
                       <button
                         key={r}
                         onClick={() => setUserForm({ ...userForm, role: r })}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          userForm.role === r
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${userForm.role === r
+                          ? "bg-indigo-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
                       >
                         {r}
                       </button>
