@@ -243,8 +243,24 @@ export default function Home() {
   const [avgRating, setAvgRating] = useState(null);
   const [ratingCount, setRatingCount] = useState(0);
   const [isStationOwner, setIsStationOwner] = useState(false);
+  const [products, setProducts] = useState([]);
 
   // Data fetching & Synchronization
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("/api/products");
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   useEffect(() => {
     const fetchDataForStation = async () => {
       try {
@@ -288,6 +304,9 @@ export default function Home() {
   const nextSlide = useCallback(() => {
     setActiveSlide((prev) => (prev + 1) % slides.length);
   }, []);
+
+  const petrolProducts = products.filter(p => p.category === "petrol");
+  const dieselProducts = products.filter(p => p.category === "diesel");
 
   useEffect(() => {
     const timer = setInterval(nextSlide, SLIDE_INTERVAL);
@@ -596,6 +615,111 @@ export default function Home() {
               </p>
             </article>
           </div>
+        </div>
+      </section>
+
+      {/* Featured Product Grids */}
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 space-y-24 relative z-10">
+          
+          {/* Petrol Grid */}
+          <div className="space-y-12">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <Fuel className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Petrol Solutions</h2>
+                <p className="text-sm text-slate-500 font-medium italic">Premium spark-ignition fuels</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {petrolProducts.map((product) => (
+                <motion.div
+                  key={product._id}
+                  whileHover={{ y: -8 }}
+                  className="group flex flex-col bg-white rounded-[2rem] border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-500"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-white/20 text-indigo-600 font-black text-sm shadow-sm">
+                      {product.price} <span className="text-[10px]">ETB/L</span>
+                    </div>
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col space-y-4">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">{product.name}</h3>
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed flex-1">
+                      {product.desc}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {product.features.map((f) => (
+                        <span key={f} className="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase tracking-wider">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                    <Link 
+                      href="/dashboard"
+                      className="w-full py-3 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/10 group-hover:shadow-indigo-500/30"
+                    >
+                      Order Now <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Diesel Grid */}
+          <div className="space-y-12">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Diesel Solutions</h2>
+                <p className="text-sm text-slate-500 font-medium italic">High-performance compression fuels</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {dieselProducts.map((product) => (
+                <motion.div
+                  key={product._id}
+                  whileHover={{ y: -8 }}
+                  className="group flex flex-col bg-white rounded-[2rem] border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-500"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-md border border-white/20 text-blue-600 font-black text-sm shadow-sm">
+                      {product.price} <span className="text-[10px]">ETB/L</span>
+                    </div>
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col space-y-4">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">{product.name}</h3>
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed flex-1">
+                      {product.desc}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {product.features.map((f) => (
+                        <span key={f} className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-wider">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                    <Link 
+                      href="/dashboard"
+                      className="w-full py-3 rounded-xl bg-blue-600 text-white text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/10 group-hover:shadow-blue-500/30"
+                    >
+                      Order Now <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </section>
 

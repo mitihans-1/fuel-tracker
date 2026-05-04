@@ -5,87 +5,53 @@ import ClientNavbar from "@/components/ClientNavbar";
 import { 
   Fuel, 
   Truck, 
-  Smartphone, 
-  CreditCard, 
-  ShieldCheck, 
-  BarChart3,
-  ArrowRight,
-  Zap,
-  Globe
+  ArrowRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-export default function ProductsCatalogPage() {
-  const petrolProducts = [
-    {
-      id: "p1",
-      name: "Super Premium 98",
-      price: "85.50",
-      image: "https://images.pexels.com/photos/38271/pumping-gas-gas-station-gas-pump-fuel-38271.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Highest octane rating for maximum engine performance and cleaner combustion.",
-      features: ["Octane 98", "Engine Cleaning", "Anti-Knock"]
-    },
-    {
-      id: "p2",
-      name: "Premium Unleaded 95",
-      price: "82.20",
-      image: "https://images.pexels.com/photos/1703312/pexels-photo-1703312.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Optimal balance of power and efficiency for modern passenger vehicles.",
-      features: ["Octane 95", "Fuel Economy", "Standard Grade"]
-    },
-    {
-      id: "p3",
-      name: "Eco-Plus Petrol",
-      price: "81.50",
-      image: "https://images.pexels.com/photos/257850/pexels-photo-257850.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Reduced emission formula optimized for hybrid and small-engine urban cars.",
-      features: ["Low Carbon", "High MPG", "Hybrid Ready"]
-    },
-    {
-      id: "p4",
-      name: "Standard Petrol",
-      price: "79.80",
-      image: "https://images.pexels.com/photos/979602/pexels-photo-979602.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Reliable, high-quality fuel for daily commuting and older vehicle models.",
-      features: ["Octane 91", "Cost Effective", "Pure Distillate"]
-    }
-  ];
+interface Product {
+  _id: string;
+  name: string;
+  category: "petrol" | "diesel";
+  price: string;
+  image: string;
+  desc: string;
+  features: string[];
+  order: number;
+}
 
-  const dieselProducts = [
-    {
-      id: "d1",
-      name: "Euro 6 Ultra Diesel",
-      price: "78.90",
-      image: "https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Ultra-low sulfur formula designed for the latest heavy-duty Euro 6 engines.",
-      features: ["Ultra Low Sulfur", "Particulate Filter Safe", "High Torque"]
-    },
-    {
-      id: "d2",
-      name: "High-Performance Diesel",
-      price: "76.50",
-      image: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Enhanced cetane rating for better ignition and power in commercial trucks.",
-      features: ["High Cetane", "Cold Start Optimized", "Heavy Load"]
-    },
-    {
-      id: "d3",
-      name: "Bio-Diesel Blend",
-      price: "75.20",
-      image: "https://images.pexels.com/photos/163726/belgium-antwerp-gas-station-fuel-163726.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Sustainable energy blend reducing reliance on traditional fossil distillates.",
-      features: ["Eco-Friendly", "Renewable Source", "Clean Exhaust"]
-    },
-    {
-      id: "d4",
-      name: "Standard Nafta",
-      price: "73.80",
-      image: "https://images.pexels.com/photos/2101137/pexels-photo-2101137.jpeg?auto=compress&cs=tinysrgb&w=800",
-      desc: "Standard commercial diesel for transport logistics and industrial machinery.",
-      features: ["Standard Grade", "High Volume", "Reliable"]
-    }
-  ];
+export default function ProductsCatalogPage() {
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("/api/products");
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const petrolProducts = products.filter((p: Product) => p.category === "petrol");
+  const dieselProducts = products.filter((p: Product) => p.category === "diesel");
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen text-slate-900 bg-white selection:bg-indigo-500/30">
@@ -101,13 +67,6 @@ export default function ProductsCatalogPage() {
         
         {/* Header */}
         <section className="text-center space-y-6 max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-block px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-4"
-          >
-            Digital Fuel Inventory
-          </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -136,7 +95,7 @@ export default function ProductsCatalogPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {petrolProducts.map((product) => (
               <motion.div
-                key={product.id}
+                key={product._id}
                 whileHover={{ y: -8 }}
                 className="group flex flex-col bg-white rounded-[2rem] border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-500"
               >
@@ -152,7 +111,7 @@ export default function ProductsCatalogPage() {
                     {product.desc}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {product.features.map((f) => (
+                    {product.features.map((f: string) => (
                       <span key={f} className="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-wider">
                         {f}
                       </span>
@@ -185,7 +144,7 @@ export default function ProductsCatalogPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {dieselProducts.map((product) => (
               <motion.div
-                key={product.id}
+                key={product._id}
                 whileHover={{ y: -8 }}
                 className="group flex flex-col bg-white rounded-[2rem] border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-500"
               >
@@ -201,7 +160,7 @@ export default function ProductsCatalogPage() {
                     {product.desc}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {product.features.map((f) => (
+                    {product.features.map((f: string) => (
                       <span key={f} className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-wider">
                         {f}
                       </span>

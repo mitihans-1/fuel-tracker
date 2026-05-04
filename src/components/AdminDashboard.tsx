@@ -10,12 +10,11 @@ import SettingsPage from "@/app/dashboard/settings/page"; // reuse your file
 import KpiCard from "@/components/ui/KpiCard";
 import SectionHeader from "@/components/ui/SectionHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
-import DataTable from "@/components/ui/DataTable";
 import {
   Users, Fuel, MapPin, Settings,
   Trash2, UserPlus, Shield, Search,
   DollarSign, Activity, ExternalLink,
-  LayoutDashboard, Menu, LogOut, History, X
+  LayoutDashboard, Menu, LogOut, History, X, Upload
 } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler);
@@ -74,7 +73,7 @@ interface CreateStationForm {
   password: string;
 }
 
-type Tab = "users" | "stations" | "requests" | "analytics" | "payouts" | "audit" | "settings";
+type Tab = "users" | "stations" | "requests" | "analytics" | "payouts" | "audit" | "settings" | "products";
 
 interface PayoutStationSummary {
   stationId: string;
@@ -104,6 +103,17 @@ interface AuditLogItem {
   createdAt?: string;
 }
 
+interface Product {
+  _id?: string;
+  name: string;
+  category: "petrol" | "diesel";
+  price: string;
+  image: string;
+  desc: string;
+  features: string[];
+  order: number;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { clear } = useUser();
@@ -122,6 +132,7 @@ export default function AdminDashboard() {
     { id: "users", label: "Users", icon: <Users className="w-5 h-5 text-amber-500" /> },
     { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5 text-rose-500" /> },
     { id: "requests", label: "Requests", icon: <History className="w-5 h-5 text-purple-500" /> },
+    { id: "products", label: "Products", icon: <Fuel className="w-5 h-5 text-indigo-500" /> },
     { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5 text-slate-500" /> },
   ];
 
@@ -151,6 +162,23 @@ export default function AdminDashboard() {
   const [userLoading, setUserLoading] = useState(false);
   const [userError, setUserError] = useState("");
 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<Product>({
+    name: "",
+    category: "petrol",
+    price: "",
+    image: "",
+    desc: "",
+    features: [],
+    order: 0
+  });
+  const [productLoading, setProductLoading] = useState(false);
+  const [productError, setProductError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -161,12 +189,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const setTab = (t: string) => {
+  const setTab = useCallback((t: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", t);
     router.push(`${window.location.pathname}?${params.toString()}`);
     setMobileMenuOpen(false);
-  };
+  }, [router, searchParams]);
 
   useEffect(() => {
     const action = searchParams.get("action");
@@ -210,6 +238,19 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoadingProducts(true);
+      const res = await fetch("/api/admin/products");
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data);
+      }
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -235,7 +276,8 @@ export default function AdminDashboard() {
     if (tab === "analytics") loadAnalytics(analyticsRange);
     if (tab === "payouts") loadPayouts();
     if (tab === "audit") loadAuditLogs();
-  }, [tab, analyticsRange, loadAnalytics, loadPayouts, loadAuditLogs]);
+    if (tab === "products") loadProducts();
+  }, [tab, analyticsRange, loadAnalytics, loadPayouts, loadAuditLogs, loadProducts]);
 
   const settleStationPayout = async (stationId: string) => {
     try {
@@ -347,6 +389,72 @@ export default function AdminDashboard() {
       setUserForm({ name: "", email: "", password: "", role: "DRIVER" });
       setTimeout(() => { setShowCreateUser(false); }, 1500);
     } catch { setUserError("Network error"); } finally { setUserLoading(false); }
+  };
+
+  const handleSaveProduct = async () => {
+    setProductError("");
+    if (!productForm.name || !productForm.price || !productForm.image) {
+      setProductError("Name, price and image are required");
+      return;
+    }
+    setProductLoading(true);
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingProduct ? { ...productForm, _id: editingProduct._id } : productForm),
+      });
+      if (res.ok) {
+        await loadProducts();
+        setShowProductModal(false);
+        setEditingProduct(null);
+        setProductForm({ name: "", category: "petrol", price: "", image: "", desc: "", features: [], order: 0 });
+      } else {
+        const data = await res.json();
+        setProductError(data.error || "Failed to save product");
+      }
+    } catch {
+      setProductError("Network error");
+    } finally {
+      setProductLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setProductError("");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProductForm({ ...productForm, image: data.url });
+      } else {
+        setProductError(data.details ? `${data.error}: ${data.details}` : (data.error || "Upload failed"));
+      }
+    } catch (err) {
+      setProductError("Upload network error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    if (!confirm("Delete this product?")) return;
+    try {
+      const res = await fetch(`/api/admin/products?id=${id}`, { method: "DELETE" });
+      if (res.ok) setProducts(prev => prev.filter(p => p._id !== id));
+    } catch (err) {
+      console.error("Delete product failed:", err);
+    }
   };
 
   const buildRequestsOverTime = () => {
@@ -794,10 +902,13 @@ export default function AdminDashboard() {
                     <div>
                       <p className="text-3xl font-semibold text-gray-900">{platformSignals.approvalRate}%</p>
                       <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-600 rounded-full transition-all"
-                          style={{ width: `${platformSignals.approvalRate}%` }}
-                        />
+                        <progress
+                          className="block w-full h-full appearance-none border-none bg-transparent [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-indigo-600 [&::-moz-progress-bar]:bg-indigo-600"
+                          value={platformSignals.approvalRate}
+                          max="100"
+                        >
+                          {platformSignals.approvalRate}%
+                        </progress>
                       </div>
                     </div>
                   </div>
@@ -969,6 +1080,95 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {tab === "products" && (
+              <motion.div
+                key="products"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-gray-900">Products</h2>
+                    <p className="text-sm text-gray-500 mt-1">Manage products shown on the home page</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingProduct(null);
+                      setProductForm({ name: "", category: "petrol", price: "", image: "", desc: "", features: [], order: 0 });
+                      setShowProductModal(true);
+                    }}
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Add Product
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {loadingProducts ? (
+                    <div className="col-span-full py-12 text-center text-gray-500">Loading products...</div>
+                  ) : products.length === 0 ? (
+                    <div className="col-span-full py-12 text-center text-gray-500">No products found.</div>
+                  ) : (
+                    products.map((p) => (
+                      <div key={p._id} className="pro-card overflow-hidden transition-shadow group">
+                        <div className="relative h-40 overflow-hidden">
+                          <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <div className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-white/90 backdrop-blur-sm text-indigo-600 font-bold text-xs shadow-sm">
+                            {p.price} ETB/L
+                          </div>
+                          <div className={`absolute top-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                            p.category === "petrol" ? "bg-indigo-600 text-white" : "bg-blue-600 text-white"
+                          }`}>
+                            {p.category}
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <h3 className="font-bold text-gray-900 truncate">{p.name}</h3>
+                          <p className="text-xs text-gray-500 line-clamp-2">{p.desc}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {p.features.slice(0, 3).map((f, i) => (
+                              <span key={i} className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[9px] font-medium">
+                                {f}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                            <span className="text-[10px] text-gray-400 font-medium">Order: {p.order}</span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                title="Edit Product"
+                                onClick={() => {
+                                  setEditingProduct(p);
+                                  setProductForm({ ...p });
+                                  setShowProductModal(true);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors"
+                              >
+                                <Settings className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete Product"
+                                onClick={() => deleteProduct(p._id!)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1196,6 +1396,192 @@ export default function AdminDashboard() {
                     className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
                   >
                     {userLoading ? "Adding..." : "Add User"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showProductModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowProductModal(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
+                    {editingProduct ? "Edit Product" : "Add New Product"}
+                  </h3>
+                  <button
+                    title="close"
+                    onClick={() => setShowProductModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                  {productError && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-medium">
+                      {productError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="productName" className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Name</label>
+                      <input
+                        id="productName"
+                        type="text"
+                        placeholder="Super Premium 98"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                        value={productForm.name}
+                        onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="productCategory" className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Category</label>
+                      <select
+                        id="productCategory"
+                        title="category"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm cursor-pointer"
+                        value={productForm.category}
+                        onChange={e => setProductForm({ ...productForm, category: e.target.value as "petrol" | "diesel" })}
+                      >
+                        <option value="petrol">Petrol</option>
+                        <option value="diesel">Diesel</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="productPrice" className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Price (ETB/L)</label>
+                      <input
+                        id="productPrice"
+                        type="text"
+                        placeholder="85.50"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                        value={productForm.price}
+                        onChange={e => setProductForm({ ...productForm, price: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="productOrder" className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Display Order</label>
+                      <input
+                        id="productOrder"
+                        type="number"
+                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                        value={productForm.order}
+                        onChange={e => setProductForm({ ...productForm, order: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Product Image</label>
+                    <div className="flex flex-col gap-4">
+                      {productForm.image && (
+                        <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-gray-100">
+                          <img src={productForm.image} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            title="Remove Image"
+                            onClick={() => setProductForm({ ...productForm, image: "" })}
+                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all cursor-pointer group">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                          />
+                          {uploading ? (
+                            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-gray-400 group-hover:text-indigo-600 mb-2 transition-colors" />
+                              <span className="text-xs font-medium text-gray-500 group-hover:text-indigo-600 transition-colors">
+                                {productForm.image ? "Change Image" : "Upload Image"}
+                              </span>
+                            </>
+                          )}
+                        </label>
+                        <div className="flex-[2] space-y-2">
+                          <label htmlFor="productImage" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Or Image URL</label>
+                          <input
+                            id="productImage"
+                            type="text"
+                            placeholder="https://images.pexels.com/..."
+                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                            value={productForm.image}
+                            onChange={e => setProductForm({ ...productForm, image: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="productDesc" className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Description</label>
+                    <textarea
+                      id="productDesc"
+                      placeholder="Highest octane rating for maximum engine performance..."
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm min-h-[100px]"
+                      value={productForm.desc}
+                      onChange={e => setProductForm({ ...productForm, desc: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="productFeatures" className="text-xs font-black text-gray-700 uppercase tracking-widest ml-1 drop-shadow-sm">Features (comma separated)</label>
+                    <input
+                      id="productFeatures"
+                      type="text"
+                      placeholder="Octane 98, Engine Cleaning, Anti-Knock"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
+                      value={productForm.features.join(", ")}
+                      onChange={e => setProductForm({ ...productForm, features: e.target.value.split(",").map(f => f.trim()).filter(f => f !== "") })}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-10 flex gap-3">
+                  <button
+                    onClick={() => setShowProductModal(false)}
+                    className="flex-1 px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveProduct}
+                    disabled={productLoading}
+                    className="flex-1 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                  >
+                    {productLoading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      editingProduct ? "Update Product" : "Create Product"
+                    )}
                   </button>
                 </div>
               </div>

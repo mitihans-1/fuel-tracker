@@ -66,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }}
 />
       </head>
-      <body className={`${inter.className} text-gray-900 antialiased`}>
+      <body className={`${inter.className} text-gray-900 antialiased`} suppressHydrationWarning>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
           <ThemeProvider>
             <UserProvider>

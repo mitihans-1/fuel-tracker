@@ -8,7 +8,6 @@ import {
   Zap,
   Globe,
   ArrowRight,
-  Sparkles,
   BarChart3,
   HeartHandshake,
 } from "lucide-react";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
-import {  Bell,  User as UserIcon,  LogOut,  Settings,  ChevronDown,   Activity,LayoutDashboard,History, Car } from "lucide-react";
+import {  Bell,  LogOut,  ChevronDown } from "lucide-react";
 import ThemeSwitcher from "./ThemeSwitcher";
 
 interface Notification {

@@ -8,7 +8,7 @@ if (!MONGODB_URI) {
 
 export async function connectDB() {
   if (mongoose.connection.readyState >= 1) {
-    return;
+    return mongoose.connection;
   }
 
   try {
@@ -20,8 +20,9 @@ export async function connectDB() {
       socketTimeoutMS: 45000,
     };
 
-    await mongoose.connect(MONGODB_URI, options);
+    const conn = await mongoose.connect(MONGODB_URI, options);
     console.log("✅ Database connected successfully");
+    return conn;
   } catch (err) {
     console.error("❌ Database connection error:", err);
     // Log more specific error info if available
@@ -32,3 +33,5 @@ export async function connectDB() {
     throw err;
   }
 }
+
+export default connectDB;
