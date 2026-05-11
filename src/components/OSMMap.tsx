@@ -57,7 +57,15 @@ const Centerer = ({ center }: { center?: [number, number] }) => {
   return null;
 };
 
-export default function OSMMap({ stations, centerTo }: { stations: Station[]; centerTo?: { lat: number; lng: number } }) {
+export default function OSMMap({
+  stations,
+  centerTo,
+  selectedStationId,
+}: {
+  stations: Station[];
+  centerTo?: { lat: number; lng: number };
+  selectedStationId?: string | null;
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -116,16 +124,21 @@ export default function OSMMap({ stations, centerTo }: { stations: Station[]; ce
           if (typeof p.lat !== "number" || typeof p.lng !== "number") return null;
           
           const isOperational = s.petrol || s.diesel;
+          const isSelected = selectedStationId === s._id;
           const markerColor = s.petrol ? "#6366f1" : s.diesel ? "#f59e0b" : "#475569";
           
           const customIcon = L.divIcon({
             className: "custom-tactical-marker",
             html: `
               <div class="relative w-8 h-8 flex items-center justify-center">
-                <div class="absolute inset-0 rounded-full animate-pulsate opacity-40 shadow-[0_0_15px_rgba(0,0,0,0.5)]" style="background-color: ${markerColor}"></div>
-                <div class="w-2.5 h-2.5 rounded-full z-10 border-2 border-white/40 shadow-[0_0_8px_rgba(255,255,255,0.5)]" style="background-color: ${markerColor}"></div>
-                ${isOperational ? `<div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900 animate-pulse"></div>` : ''}
+                <div class="w-3 h-3 rounded-full z-10 border-2 border-white shadow-sm" style="background-color: ${markerColor}"></div>
+                ${isOperational ? `<div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-white"></div>` : ""}
               </div>
+              ${isSelected ? `
+                <div class="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-semibold shadow-md border border-emerald-400">
+                  ✓ ${s.name}
+                </div>
+              ` : ""}
             `,
             iconSize: [32, 32],
             iconAnchor: [16, 16],

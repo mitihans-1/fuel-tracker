@@ -53,12 +53,12 @@ export async function PUT(req: Request) {
     if (targetStationId) {
       const station = await Station.findOne({ _id: targetStationId, ownerUserId: user.id });
       if (station) {
-        station.petrol = petrol;
-        station.petrolQty = petrolQty;
-        station.petrolPrice = petrolPrice;
-        station.diesel = diesel;
-        station.dieselQty = dieselQty;
-        station.dieselPrice = dieselPrice;
+        if (petrol !== undefined) station.petrol = petrol;
+        if (petrolQty !== undefined) station.petrolQty = petrolQty;
+        if (petrolPrice !== undefined) station.petrolPrice = petrolPrice;
+        if (diesel !== undefined) station.diesel = diesel;
+        if (dieselQty !== undefined) station.dieselQty = dieselQty;
+        if (dieselPrice !== undefined) station.dieselPrice = dieselPrice;
         if (name) station.name = name;
         if (location) station.location = location;
         if (lat !== undefined) station.latitude = lat;
@@ -77,12 +77,12 @@ export async function PUT(req: Request) {
     } else {
         const station = await Station.findOne({ ownerUserId: user.id });
       if (station) {
-        station.petrol = petrol;
-        station.petrolQty = petrolQty;
-        station.petrolPrice = petrolPrice;
-        station.diesel = diesel;
-        station.dieselQty = dieselQty;
-        station.dieselPrice = dieselPrice;
+        if (petrol !== undefined) station.petrol = petrol;
+        if (petrolQty !== undefined) station.petrolQty = petrolQty;
+        if (petrolPrice !== undefined) station.petrolPrice = petrolPrice;
+        if (diesel !== undefined) station.diesel = diesel;
+        if (dieselQty !== undefined) station.dieselQty = dieselQty;
+        if (dieselPrice !== undefined) station.dieselPrice = dieselPrice;
         const previous = await Station.findById(station._id).lean<IStation>();
         await station.save();
         await recordPriceHistory(station, previous, user.id);

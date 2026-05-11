@@ -23,6 +23,7 @@ function DashboardContent() {
 
   useEffect(() => {
     let mounted = true;
+    if (!role) return;
     const checkOwned = async () => {
       try {
         const res = await fetch("/api/stations/owned");

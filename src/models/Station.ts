@@ -19,6 +19,8 @@ export interface IStation extends Document {
   kebele?: string;
   updatedAt: Date;
   isSetupComplete: boolean;
+  verificationDoc?: string;
+  verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 const StationSchema = new mongoose.Schema<IStation>({
@@ -104,6 +106,15 @@ const StationSchema = new mongoose.Schema<IStation>({
   isSetupComplete: {
     type: Boolean,
     default: false,
+  },
+  verificationDoc: {
+    type: String,
+    required: false,
+  },
+  verificationStatus: {
+    type: String,
+    enum: ["PENDING", "APPROVED", "REJECTED"],
+    default: "PENDING",
   },
 });
 

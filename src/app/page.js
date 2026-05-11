@@ -443,6 +443,81 @@ export default function Home() {
         </div>
       </section>
 
+      {/* National Grid Intelligence Section */}
+      <section className="py-32 bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05)_0%,transparent_70%)]" />
+        
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em]">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                Regional Intelligence
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter leading-none">
+                National Grid <br />
+                <span className="text-indigo-600">Visualization</span>
+              </h2>
+              <p className="text-slate-600 text-lg font-medium leading-relaxed max-w-lg">
+                Our neural network tracks every fuel terminal across the country in real-time. Gain access to sub-meter queue telemetry and predictive stock analytics.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-6 pt-4">
+                <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
+                  <p className="text-2xl font-black text-slate-900 mb-1">98.4%</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Uptime Precision</p>
+                </div>
+                <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
+                  <p className="text-2xl font-black text-slate-900 mb-1">0.4s</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sync Latency</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-indigo-500/10 blur-3xl rounded-full opacity-50 group-hover:opacity-80 transition-opacity" />
+              <div className="relative aspect-square rounded-[3rem] bg-white border border-slate-200 shadow-xl overflow-hidden flex items-center justify-center p-8">
+                {/* Stylized Ethiopia Map */}
+                <svg viewBox="0 0 200 200" className="w-full h-full text-indigo-100 fill-current">
+                  <path d="M100 20 L120 40 L140 30 L160 50 L155 80 L170 110 L150 140 L120 160 L100 175 L80 160 L50 140 L30 110 L45 80 L40 50 L60 30 L80 40 Z" />
+                  {/* Pulse Points */}
+                  {[
+                    { x: 100, y: 100, delay: 0 },
+                    { x: 130, y: 70, delay: 0.5 },
+                    { x: 70, y: 120, delay: 1 },
+                    { x: 85, y: 60, delay: 1.5 },
+                    { x: 140, y: 115, delay: 2 },
+                  ].map((pt, i) => (
+                    <g key={i}>
+                      <circle cx={pt.x} cy={pt.y} r="2" className="text-indigo-500 fill-current" />
+                      <circle cx={pt.x} cy={pt.y} r="4" className="text-indigo-500 stroke-current fill-none">
+                        <animate attributeName="r" from="2" to="12" dur="3s" begin={`${pt.delay}s`} repeatCount="indefinite" />
+                        <animate attributeName="opacity" from="0.8" to="0" dur="3s" begin={`${pt.delay}s`} repeatCount="indefinite" />
+                      </circle>
+                    </g>
+                  ))}
+                </svg>
+                <div className="absolute bottom-6 left-6 right-6 p-4 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200 shadow-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Live Traffic: Addis Ababa</span>
+                    <span className="text-[8px] font-black text-emerald-600">OPTIMIZED</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: "0%" }}
+                      animate={{ width: "75%" }}
+                      transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                      className="h-full bg-indigo-600" 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       <section
         id="features"
         className="py-32 bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden"
@@ -464,44 +539,53 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-10">
-            {[
-              {
-                title: "Monitor Intelligence",
-                desc: "Analyze real-time fuel grid telemetry with advanced tracking.",
-                color: "blue",
-              },
-              {
-                title: "Strategic Deployment",
-                desc: "Secure your queue position with smart automation.",
-                color: "indigo",
-              },
-              {
-                title: "Resource Acquisition",
-                desc: "Execute fast, secure and seamless transactions.",
-                color: "emerald",
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="group relative p-8 rounded-3xl bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
-              >
-                <div className={`absolute -top-10 -right-10 w-40 h-40 bg-${item.color}-400/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition`} />
-                <div className="flex justify-between items-center mb-6">
-                  <span className="text-xs font-black text-slate-400 tracking-widest">
-                    0{i + 1}
-                  </span>
-                  <div className={`w-2 h-2 rounded-full bg-${item.color}-500 animate-pulse`} />
+          <div className="relative">
+            {/* Connection Line */}
+            <div className="absolute top-1/2 left-0 w-full h-px bg-slate-200 hidden md:block -translate-y-1/2 z-0" />
+            
+            <div className="grid md:grid-cols-3 gap-10 relative z-10">
+              {[
+                {
+                  title: "Monitor Intelligence",
+                  desc: "Analyze real-time fuel grid telemetry with advanced tracking.",
+                  color: "blue",
+                  icon: <Star className="w-5 h-5 text-blue-500" />,
+                },
+                {
+                  title: "Strategic Deployment",
+                  desc: "Secure your queue position with smart automation.",
+                  color: "indigo",
+                  icon: <Zap className="w-5 h-5 text-indigo-500" />,
+                },
+                {
+                  title: "Resource Acquisition",
+                  desc: "Execute fast, secure and seamless transactions.",
+                  color: "emerald",
+                  icon: <Award className="w-5 h-5 text-emerald-500" />,
+                },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="group relative p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+                >
+                  <div className={`absolute -top-10 -right-10 w-40 h-40 bg-${item.color}-400/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition`} />
+                  <div className="flex justify-between items-center mb-8">
+                    <div className={`w-12 h-12 rounded-2xl bg-${item.color}-50 flex items-center justify-center`}>
+                      {item.icon}
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 tracking-widest">
+                      PHASE 0{i + 1}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 mb-3 group-hover:text-indigo-600 transition">
+                    {item.title}
+                  </h3>
+                  <p className="text-slate-600 text-sm font-medium leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-indigo-600 transition">
-                  {item.title}
-                </h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {item.desc}
-                </p>
-                <div className="mt-8 h-[2px] w-10 bg-slate-200 group-hover:w-20 group-hover:bg-indigo-500 transition-all duration-300" />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -723,8 +807,43 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Supported Ecosystem Marquee */}
+      <section className="py-24 bg-white border-t border-slate-100 overflow-hidden relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.03)_0%,transparent_70%)]" />
+        
+        <div className="max-w-7xl mx-auto px-6 mb-12 text-center relative z-10">
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Secure Payment Protocol Partners</p>
+        </div>
+
+        <div className="flex items-center gap-32 animate-marquee whitespace-nowrap relative z-10">
+          {[1,2].map(i => (
+            <div key={i} className="flex items-center gap-32 min-w-max flex-shrink-0 px-16">
+
+              {[
+                { name: 'CHAPA', color: 'from-blue-600 to-indigo-600' },
+                { name: 'TELEBIRR', color: 'from-cyan-500 to-blue-500' },
+                { name: 'CBEBIRR', color: 'from-purple-600 to-indigo-600' },
+                { name: 'E-BIRR', color: 'from-emerald-600 to-teal-500' },
+                { name: 'DASHEN BANK', color: 'from-amber-500 to-orange-500' },
+                { name: 'COOP BANK', color: 'from-orange-600 to-red-500' },
+              ].map(brand => (
+                <div key={brand.name} className="flex items-center gap-4 group">
+                  <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${brand.color} shadow-[0_0_12px_rgba(0,0,0,0.1)] group-hover:scale-125 transition-transform`} />
+                  <span className={`text-4xl font-black bg-gradient-to-r ${brand.color} bg-clip-text text-transparent transition-all duration-500 cursor-default select-none group-hover:scale-105 transform`}>
+                    {brand.name}
+                  </span>
+                </div>
+
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+
       {/* Footer */}
       <footer className="py-20 bg-gradient-to-br from-slate-50 via-white to-indigo-50 border-t border-slate-200 pb-5">
+
         <div className="max-w-7xl mx-auto px-6 ">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 md:col-span-2 space-y-6">

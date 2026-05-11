@@ -14,7 +14,7 @@ import {
   Users, Fuel, MapPin, Settings,
   Trash2, UserPlus, Shield, Search,
   DollarSign, Activity, ExternalLink,
-  LayoutDashboard, Menu, LogOut, History, X, Upload
+  LayoutDashboard, Menu, LogOut, History, X, Upload, XCircle
 } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, Title, Filler);
@@ -33,6 +33,8 @@ interface Station {
   petrol: boolean;
   diesel: boolean;
   ownerUserId?: string;
+  verificationDoc?: string;
+  verificationStatus?: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 interface FuelRequest {
@@ -125,20 +127,22 @@ export default function AdminDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const tab = (searchParams.get("tab") as Tab) || "analytics";
 
-  const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 text-indigo-500" /> },
-    { id: "payouts", label: "Payout Center", icon: <DollarSign className="w-5 h-5 text-emerald-500" /> },
-    { id: "audit", label: "Audit Logs", icon: <Shield className="w-5 h-5 text-blue-500" /> },
-    { id: "users", label: "Users", icon: <Users className="w-5 h-5 text-amber-500" /> },
-    { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5 text-rose-500" /> },
-    { id: "requests", label: "Requests", icon: <History className="w-5 h-5 text-purple-500" /> },
-    { id: "products", label: "Products", icon: <Fuel className="w-5 h-5 text-indigo-500" /> },
-    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5 text-slate-500" /> },
+  const sidebarItems: { id: Tab; label: string; icon: React.ReactNode; color: string; activeBg: string; activeBorder: string; gradientText: string }[] = [
+    { id: "analytics", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500", activeBg: "bg-indigo-50/80", activeBorder: "border-indigo-200/60", gradientText: "from-indigo-600 via-purple-600 to-indigo-600" },
+    { id: "payouts", label: "Payout Center", icon: <DollarSign className="w-5 h-5" />, color: "text-emerald-500", activeBg: "bg-emerald-50/80", activeBorder: "border-emerald-200/60", gradientText: "from-emerald-600 to-teal-600" },
+    { id: "audit", label: "Audit Logs", icon: <Shield className="w-5 h-5" />, color: "text-blue-500", activeBg: "bg-blue-50/80", activeBorder: "border-blue-200/60", gradientText: "from-blue-600 to-cyan-600" },
+    { id: "users", label: "Users", icon: <Users className="w-5 h-5" />, color: "text-amber-500", activeBg: "bg-amber-50/80", activeBorder: "border-amber-200/60", gradientText: "from-amber-600 to-orange-600" },
+    { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5" />, color: "text-rose-500", activeBg: "bg-rose-50/80", activeBorder: "border-rose-200/60", gradientText: "from-rose-500 to-red-600" },
+    { id: "requests", label: "Requests", icon: <History className="w-5 h-5" />, color: "text-purple-500", activeBg: "bg-purple-50/80", activeBorder: "border-purple-200/60", gradientText: "from-purple-600 to-pink-600" },
+    { id: "products", label: "Products", icon: <Fuel className="w-5 h-5" />, color: "text-indigo-500", activeBg: "bg-indigo-50/80", activeBorder: "border-indigo-200/60", gradientText: "from-indigo-600 via-purple-600 to-indigo-600" },
+    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, color: "text-slate-500", activeBg: "bg-slate-100/80", activeBorder: "border-slate-300/60", gradientText: "from-slate-600 to-slate-800" },
   ];
 
   const [analyticsRange] = useState<"7d" | "30d">("30d");
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [stationFilter, setStationFilter] = useState<"APPROVED" | "PENDING">("APPROVED");
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [payouts, setPayouts] = useState<PayoutSummaryResponse | null>(null);
   const [loadingPayouts, setLoadingPayouts] = useState(false);
   const [settlingStationId, setSettlingStationId] = useState<string | null>(null);
@@ -179,14 +183,10 @@ export default function AdminDashboard() {
   const [productError, setProductError] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      clear();
-      router.push("/auth/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
+  const handleLogout = () => {
+    clear();
+    fetch("/api/auth/logout", { method: "POST", keepalive: true }).catch(console.error);
+    router.replace("/auth/login");
   };
 
   const setTab = useCallback((t: string) => {
@@ -447,6 +447,39 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleVerifyStation = async (id: string, status: "APPROVED" | "REJECTED") => {
+    try {
+      setVerifyingId(id);
+      const res = await fetch("/api/admin/verify-station", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stationId: id, status }),
+      });
+      if (res.ok) {
+        setStations(prev => prev.map(s => s._id === id ? { ...s, verificationStatus: status } : s));
+      }
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const handleDeleteStation = async (id: string) => {
+    if (!confirm("Are you sure? This will permanently delete the station and all related history.")) return;
+    try {
+      setVerifyingId(id);
+      const res = await fetch("/api/stations/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stationId: id }),
+      });
+      if (res.ok) {
+        setStations(prev => prev.filter(s => s._id !== id));
+      }
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
   const deleteProduct = async (id: string) => {
     if (!confirm("Delete this product?")) return;
     try {
@@ -473,10 +506,12 @@ export default function AdminDashboard() {
 
   const requestsOverTime = buildRequestsOverTime();
 
+  const analyticsPage = sidebarItems.find(i => i.id === "analytics")!;
+
   return (
     <div className="dashboard-root dashboard-shell min-h-screen">
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 right-4 z-50">
         <button
           title="mobile"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -501,22 +536,34 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <nav className="space-y-1 flex-1">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setTab(item.id)}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${tab === item.id
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          <nav className="space-y-2 flex-1">
+            {sidebarItems.map((item) => {
+              const isActive = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setTab(item.id)}
+                  className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                    isActive
+                      ? `${item.activeBg} shadow-sm border ${item.activeBorder}`
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
                   }`}
-              >
-                <div className={`${tab === item.id ? "text-white" : ""}`}>
-                  {item.icon}
-                </div>
-                {item.label}
-              </button>
-            ))}
+                >
+                  <div className={`transition-transform duration-300 ${isActive ? "scale-110" : ""}`}>
+                    <div className={item.color}>
+                      {item.icon}
+                    </div>
+                  </div>
+                  <span className={`font-bold tracking-wide ${
+                    isActive 
+                      ? `bg-clip-text text-transparent bg-gradient-to-r ${item.gradientText}` 
+                      : "text-slate-600 font-medium"
+                  }`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-100">
@@ -544,10 +591,11 @@ export default function AdminDashboard() {
                 className="space-y-6"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">Users</h2>
-                    <p className="text-sm text-gray-500 mt-1">Manage platform users and their roles</p>
-                  </div>
+                  <SectionHeader
+                    title="Users"
+                    subtitle="Manage platform users and their roles"
+                    gradientClass={sidebarItems.find(i => i.id === tab)?.gradientText}
+                  />
                   <div className="flex gap-3">
                     <div className="relative flex-1 sm:w-80">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -635,10 +683,30 @@ export default function AdminDashboard() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-6"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">Stations</h2>
-                    <p className="text-sm text-gray-500 mt-1">Manage fuel stations and their status</p>
+                    <SectionHeader
+                      title="Stations"
+                      subtitle="Manage fuel stations and their status"
+                      gradientClass={sidebarItems.find(i => i.id === tab)?.gradientText}
+                    />
+                    <div className="flex gap-2 mt-4">
+                      <button 
+                        onClick={() => setStationFilter("APPROVED")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${stationFilter === "APPROVED" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                      >
+                        Approved Stations
+                      </button>
+                      <button 
+                        onClick={() => setStationFilter("PENDING")}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${stationFilter === "PENDING" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                      >
+                        Verification Queue
+                        {stations.filter(s => s.verificationStatus === "PENDING").length > 0 && (
+                          <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{stations.filter(s => s.verificationStatus === "PENDING").length}</span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <button
                     onClick={() => setShowCreateStation(true)}
@@ -650,8 +718,8 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {stations.map((s) => (
-                    <div key={s._id} className="pro-card p-6 transition-shadow">
+                  {stations.filter(s => stationFilter === "PENDING" ? s.verificationStatus === "PENDING" : (s.verificationStatus === "APPROVED" || !s.verificationStatus)).map((s) => (
+                    <div key={s._id} className="pro-card p-6 transition-shadow group">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-gray-900">{s.name}</h3>
@@ -660,41 +728,96 @@ export default function AdminDashboard() {
                             <p className="text-xs text-gray-500">{s.location}</p>
                           </div>
                         </div>
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${s.petrol || s.diesel
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${s.verificationStatus === "PENDING" 
+                          ? "bg-amber-50 text-amber-600 border border-amber-100"
+                          : s.petrol || s.diesel
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
                           }`}>
-                          {s.petrol || s.diesel ? "Active" : "Inactive"}
+                          {s.verificationStatus === "PENDING" ? "Awaiting Review" : (s.petrol || s.diesel ? "Active" : "Inactive")}
                         </div>
                       </div>
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-xs text-gray-500">Petrol</span>
-                          <span className={`text-xs font-medium ${s.petrol ? "text-emerald-600" : "text-gray-400"}`}>
-                            {s.petrol ? "Available" : "Unavailable"}
-                          </span>
+
+                      {s.verificationStatus === "PENDING" ? (
+                        <div className="space-y-4 pt-4 border-t border-slate-100">
+                          <div className="bg-slate-50 rounded-xl p-4">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Government Document</p>
+                            <a 
+                              href={s.verificationDoc} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                <ExternalLink className="w-4 h-4" />
+                              </div>
+                              View Submitted Permit
+                            </a>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleVerifyStation(s._id, "APPROVED")}
+                              disabled={!!verifyingId}
+                              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                            >
+                              {verifyingId === s._id ? "Processing..." : "Approve"}
+                            </button>
+                            <button
+                              onClick={() => handleVerifyStation(s._id, "REJECTED")}
+                              disabled={!!verifyingId}
+                              className="flex-1 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-xs text-gray-500">Diesel</span>
-                          <span className={`text-xs font-medium ${s.diesel ? "text-emerald-600" : "text-gray-400"}`}>
-                            {s.diesel ? "Available" : "Unavailable"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-xs text-gray-500">
-                            {s.ownerUserId ? "Verified" : "Unverified"}
-                          </span>
-                        </div>
-                        <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                          Configure
-                          <ExternalLink className="w-3 h-3" />
-                        </button>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="space-y-2 mb-4">
+                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                              <span className="text-xs text-gray-500">Petrol</span>
+                              <span className={`text-xs font-medium ${s.petrol ? "text-emerald-600" : "text-gray-400"}`}>
+                                {s.petrol ? "Available" : "Unavailable"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center py-2">
+                              <span className="text-xs text-gray-500">Diesel</span>
+                              <span className={`text-xs font-medium ${s.diesel ? "text-emerald-600" : "text-gray-400"}`}>
+                                {s.diesel ? "Available" : "Unavailable"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleDeleteStation(s._id)}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Station Permanently"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleVerifyStation(s._id, "REJECTED")}
+                                className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
+                                title="Deactivate (Suspend) Station"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                              Configure
+                              <ExternalLink className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
+                  {stations.filter(s => stationFilter === "PENDING" ? s.verificationStatus === "PENDING" : (s.verificationStatus === "APPROVED" || !s.verificationStatus)).length === 0 && (
+                    <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                      <p className="text-slate-400 font-medium italic">No {stationFilter.toLowerCase()} stations found.</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -710,6 +833,7 @@ export default function AdminDashboard() {
                 <SectionHeader
                   title="Fuel Requests"
                   subtitle="Monitor and manage fuel requests"
+                  gradientClass={sidebarItems.find(i => i.id === tab)?.gradientText}
                 />
 
                 <div className="pro-card overflow-hidden">
@@ -793,6 +917,7 @@ export default function AdminDashboard() {
                 <SectionHeader
                   title="Payout Center"
                   subtitle="Settle completed request balances for stations."
+                  gradientClass={sidebarItems.find(i => i.id === tab)?.gradientText}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -856,10 +981,25 @@ export default function AdminDashboard() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Analytics Overview</h2>
-                  <p className="text-sm text-gray-500 mt-1">Platform performance metrics and insights</p>
+                {/* Hero Section / Purpose */}
+                <div className="relative w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-xl border border-indigo-500/20 bg-slate-900">
+                  <img src="/images/dashboard-illustration.png" className="absolute inset-0 w-full h-full object-cover opacity-50" alt="Platform Control" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-indigo-900/60 to-transparent" />
+                  <div className="relative h-full flex flex-col justify-center p-8 sm:p-10">
+                    <h2 className="text-2xl sm:text-4xl font-black text-white mb-2 tracking-tight">Executive Command Center</h2>
+                    <p className="text-sm sm:text-base text-indigo-100 font-medium max-w-lg leading-relaxed">
+                      Oversee the entire fuel ecosystem. Manage user access, monitor station health, and analyze nationwide fuel distribution trends in real-time.
+                    </p>
+                  </div>
                 </div>
+
+                <SectionHeader
+                  title="Overview & Analytics"
+                  subtitle="Platform-wide performance and distribution insights"
+                  gradientClass={analyticsPage.gradientText}
+                />
+
+
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1035,6 +1175,7 @@ export default function AdminDashboard() {
                 <SectionHeader
                   title="Audit Logs"
                   subtitle="Track sensitive actions for security and accountability."
+                  gradientClass={sidebarItems.find(i => i.id === tab)?.gradientText}
                 />
 
                 <div className="pro-card overflow-hidden">
@@ -1093,10 +1234,11 @@ export default function AdminDashboard() {
                 className="space-y-6"
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-900">Products</h2>
-                    <p className="text-sm text-gray-500 mt-1">Manage products shown on the home page</p>
-                  </div>
+                  <SectionHeader
+                    title="Products"
+                    subtitle="Manage products shown on the home page"
+                    gradientClass={sidebarItems.find(i => i.id === tab)?.gradientText}
+                  />
                   <button
                     type="button"
                     onClick={() => {

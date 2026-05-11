@@ -1,12 +1,9 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
-import Navbar from "@/components/Navbar";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { Suspense } from "react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { UserProvider } from "@/contexts/UserContext";
-import ClientNavbar from "@/components/ClientNavbar";
-import Loading from "./loading";
+import LayoutShell from "@/components/LayoutShell";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "700", "900"] });
 
@@ -70,10 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
           <ThemeProvider>
             <UserProvider>
-              <Suspense fallback={<Loading />}>
-               <ClientNavbar />
-              </Suspense>
-              <main className="flex flex-col pt-16 sm:pt-20">{children}</main>
+              <LayoutShell>{children}</LayoutShell>
             </UserProvider>
           </ThemeProvider>
         </GoogleOAuthProvider>

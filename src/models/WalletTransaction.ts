@@ -24,6 +24,13 @@ const walletTransactionSchema = new mongoose.Schema(
       ref: "request",
       required: false,
     },
+    txRef: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
   },
   {
     timestamps: true,

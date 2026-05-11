@@ -35,6 +35,9 @@ interface StationData {
   diesel: boolean;
   dieselQty?: number;
   dieselPrice?: number;
+  ownerUserId?: string;
+  verificationDoc?: string;
+  verificationStatus?: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 // QR Scanner component using html5-qrcode
@@ -81,7 +84,7 @@ function QRScannerPanel({
     return () => {
       scanner.clear().catch(() => {});
     };
-  }, []);
+  }, [onScan, scannerMounted, setScannerMounted]);
 
   return (
     <div className="bg-white shadow-xl rounded-3xl border border-slate-200 p-6 space-y-6 max-w-md mx-auto">
@@ -148,8 +151,9 @@ export default function StationDashboard() {
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAddStation, setShowAddStation] = useState(false);
-  const [stationForm, setStationForm] = useState({ name: '', location: '' });
+  const [stationForm, setStationForm] = useState({ name: '', location: '', verificationDoc: '' });
   const [stationRegisterLoading, setStationRegisterLoading] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   const [petrol, setPetrol] = useState(true);
   const [petrolQty, setPetrolQty] = useState<number | string>(0);
@@ -217,6 +221,15 @@ export default function StationDashboard() {
   const [priceHistory, setPriceHistory] = useState<{ _id: string; fuelType: string; price: number; createdAt: string }[]>([]);
   const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    stationName: "",
+    location: "",
+    contactPhone: "",
+    openingHours: "06:00 - 22:00",
+    acceptsWallet: true,
+    acceptsCash: true,
+  });
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [stockModal, setStockModal] = useState<{
@@ -268,22 +281,119 @@ export default function StationDashboard() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
+  useEffect(() => {
+    const activeStation = myStations.find((s) => s._id === activeStationId);
+    if (!activeStation) return;
+    setProfileForm((prev) => ({
+      ...prev,
+      stationName: activeStation.name || "",
+      location: activeStation.location || "",
+    }));
+  }, [activeStationId, myStations]);
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStationForm(prev => ({ ...prev, verificationDoc: data.url }));
+        showToast("Verification document uploaded", "success");
+      } else {
+        showToast(data.error || "Upload failed", "error");
+      }
+    } catch {
+      showToast("Upload failed", "error");
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
   const handleRegisterStation = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!stationForm.verificationDoc) {
+      showToast("Please upload the required government document", "error");
+      return;
+    }
     setStationRegisterLoading(true);
     try {
       const res = await fetch("/api/stations/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stationName: stationForm.name, stationLocation: stationForm.location })
+        body: JSON.stringify({ 
+          stationName: stationForm.name, 
+          stationLocation: stationForm.location,
+          verificationDoc: stationForm.verificationDoc 
+        })
       });
       if (!res.ok) throw new Error(await res.text());
-      showToast("Station registered! Reloading dashboard...", "success");
+      showToast("Station registered! Awaiting admin approval...", "success");
       setTimeout(() => window.location.reload(), 1500);
     } catch {
       showToast("Failed to register station", "error");
     } finally {
       setStationRegisterLoading(false);
+    }
+  };
+
+  const saveStationProfile = async () => {
+    if (!activeStationId) return;
+    setProfileSaving(true);
+    try {
+      const res = await fetch("/api/stations/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stationId: activeStationId,
+          name: profileForm.stationName.trim(),
+          location: profileForm.location.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        showToast("Failed to save station profile", "error");
+        return;
+      }
+      await refreshData();
+      showToast("Station profile updated", "success");
+    } catch {
+      showToast("Failed to save station profile", "error");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleDeleteStation = async () => {
+    if (!activeStationId) return;
+    if (!confirm("Are you absolutely sure? This will permanently delete this station and all its history.")) return;
+    
+    try {
+      setProfileSaving(true);
+      const res = await fetch("/api/stations/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stationId: activeStationId }),
+      });
+      if (res.ok) {
+        showToast("Station deleted successfully", "success");
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Failed to delete station", "error");
+      }
+    } catch {
+      showToast("Failed to delete station", "error");
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -478,21 +588,23 @@ export default function StationDashboard() {
       setStockSaving(true);
       if (stockModal.fuelType === "petrol") {
         const newQty = Number(petrolQty) + amountNum;
-        setPetrolQty(newQty);
-        await fetch("/api/stations/update", {
+        const res = await fetch("/api/stations/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stationId: activeStationId, petrolQty: newQty }),
         });
+        if (!res.ok) throw new Error("Failed to update petrol stock");
       } else {
         const newQty = Number(dieselQty) + amountNum;
-        setDieselQty(newQty);
-        await fetch("/api/stations/update", {
+        const res = await fetch("/api/stations/update", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stationId: activeStationId, dieselQty: newQty }),
         });
+        if (!res.ok) throw new Error("Failed to update diesel stock");
       }
+      
+      await refreshData();
       showToast(`Added ${amountNum}L of ${stockModal.fuelType}`, "success");
       setStockModal((prev) => ({ ...prev, open: false }));
     } catch {
@@ -547,31 +659,19 @@ export default function StationDashboard() {
     todayRejected: stats.rejectedToday,
     queueSize: stats.pending,
   };
- const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      clear();
-      router.push("/auth/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
+  const handleLogout = () => {
+    clear();
+    fetch("/api/auth/logout", { method: "POST", keepalive: true }).catch(console.error);
+    router.replace("/auth/login");
   };
-  const sidebarTabs: { id: "overview" | "pending" | "analytics" | "history" | "scanner" | "settings" | "products"; label: string; icon: React.ReactNode; color: string }[] = [
-    { id: "overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500" },
-    { id: "pending", label: "Operations Queue", icon: <Clock className="w-5 h-5" />, color: "text-indigo-500" },
-    { id: "products", label: "Manage Products", icon: <Fuel className="w-5 h-5" />, color: "text-amber-500" },
-    { id: "analytics", label: "Business Insights", icon: <BarChart3 className="w-5 h-5" />, color: "text-emerald-500" },
-    { id: "history", label: "Transaction Logs", icon: <CheckCircle className="w-5 h-5" />, color: "text-purple-500" },
-    { id: "scanner", label: "QR Verify", icon: <ScanLine className="w-5 h-5" />, color: "text-blue-500" },
-    { id: "settings", label: "Station Profile", icon: <Building2 className="w-5 h-5" />, color: "text-slate-500" },
-  ];
-
-  const navGroups = [
-    { label: "Main", ids: ["overview"] },
-    { label: "Operations", ids: ["pending", "scanner"] },
-    { label: "Inventory",  ids: ["products"] },
-    { label: "Reporting",  ids: ["analytics", "history"] },
-    { label: "Station",    ids: ["settings"] },
+  const sidebarTabs: { id: "overview" | "pending" | "analytics" | "history" | "scanner" | "settings" | "products"; label: string; icon: React.ReactNode; color: string; activeBg: string; activeBorder: string; gradientText: string }[] = [
+    { id: "overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500", activeBg: "bg-indigo-50/80", activeBorder: "border-indigo-200/60", gradientText: "from-indigo-600 via-purple-600 to-indigo-600" },
+    { id: "pending", label: "Operations Queue", icon: <Clock className="w-5 h-5" />, color: "text-blue-500", activeBg: "bg-blue-50/80", activeBorder: "border-blue-200/60", gradientText: "from-blue-600 to-cyan-600" },
+    { id: "products", label: "Manage Products", icon: <Fuel className="w-5 h-5" />, color: "text-amber-500", activeBg: "bg-amber-50/80", activeBorder: "border-amber-200/60", gradientText: "from-amber-600 to-orange-600" },
+    { id: "analytics", label: "Business Insights", icon: <BarChart3 className="w-5 h-5" />, color: "text-emerald-500", activeBg: "bg-emerald-50/80", activeBorder: "border-emerald-200/60", gradientText: "from-emerald-600 to-teal-600" },
+    { id: "history", label: "Transaction Logs", icon: <CheckCircle className="w-5 h-5" />, color: "text-purple-500", activeBg: "bg-purple-50/80", activeBorder: "border-purple-200/60", gradientText: "from-purple-600 to-pink-600" },
+    { id: "scanner", label: "QR Verify", icon: <ScanLine className="w-5 h-5" />, color: "text-sky-500", activeBg: "bg-sky-50/80", activeBorder: "border-sky-200/60", gradientText: "from-sky-500 to-blue-600" },
+    { id: "settings", label: "Station Profile", icon: <Building2 className="w-5 h-5" />, color: "text-slate-500", activeBg: "bg-slate-100/80", activeBorder: "border-slate-300/60", gradientText: "from-slate-600 to-slate-800" },
   ];
 
   const getTabBadge = (id: string): { value: string | number; color: string } | null => {
@@ -606,19 +706,27 @@ export default function StationDashboard() {
   if (!loadingStations && myStations.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center text-3xl mb-6 shadow-xl shadow-red-500/10">
-          ⚠️
+        <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center text-3xl mb-8 shadow-2xl shadow-indigo-500/10 border border-slate-100">
+          <Building2 className="w-12 h-12 text-indigo-600" />
         </div>
-        <h1 className="text-3xl font-black text-slate-900 mb-2">Access Denied</h1>
-        <p className="text-slate-500 max-w-md mb-8 font-medium">
-          You are not currently assigned to any fuel station. If you are a station manager, please contact the system administrator to register your station and account.
+        <h1 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">No Active Stations</h1>
+        <p className="text-slate-500 max-w-md mb-10 font-medium leading-relaxed">
+          You haven&apos;t registered any fuel stations yet. Start your journey by submitting your station details for government verification.
         </p>
-        <button 
-          onClick={() => window.location.href = "/"}
-          className="px-8 py-4 rounded-xl bg-slate-900 text-white font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg"
-        >
-          Return Home
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button 
+            onClick={() => setShowAddStation(true)}
+            className="px-8 py-4 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+          >
+            Register My First Station
+          </button>
+          <button 
+            onClick={() => window.location.href = "/"}
+            className="px-8 py-4 rounded-2xl bg-white text-slate-600 font-black uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 active:scale-95"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -637,7 +745,7 @@ export default function StationDashboard() {
   return (
     <div className="dashboard-root dashboard-shell min-h-screen">
       {/* Mobile Menu Button - to match AdminDashboard behavior */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 right-4 z-50">
         <button
           title="mobile"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -662,23 +770,40 @@ export default function StationDashboard() {
             </button>
           </div>
 
-          <nav className="space-y-1 flex-1">
-            {sidebarTabs.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${
-                  activeTab === item.id
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                <div className={`${activeTab === item.id ? "text-white" : item.color}`}>
-                  {item.icon}
-                </div>
-                {item.label}
-              </button>
-            ))}
+          <nav className="space-y-2 flex-1">
+            {sidebarTabs.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                  className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                    isActive
+                      ? `${item.activeBg} shadow-sm border ${item.activeBorder}`
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
+                  }`}
+                >
+                  <div className={`transition-transform duration-300 ${isActive ? "scale-110" : ""}`}>
+                    {isActive ? (
+                      <div className={item.color}>
+                        {item.icon}
+                      </div>
+                    ) : (
+                      <div className={item.color}>
+                        {item.icon}
+                      </div>
+                    )}
+                  </div>
+                  <span className={`font-bold tracking-wide ${
+                    isActive 
+                      ? `bg-clip-text text-transparent bg-gradient-to-r ${item.gradientText}` 
+                      : "text-slate-600 font-medium"
+                  }`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-100">
@@ -698,6 +823,7 @@ export default function StationDashboard() {
           <SectionHeader
             title={activePage.title}
             subtitle={`${managerName}, ${activePage.subtitle}`}
+            gradientClass={sidebarTabs.find(t => t.id === activeTab)?.gradientText}
           />
 
         <div className="lg:hidden pro-card p-2 flex overflow-x-auto no-scrollbar gap-2 mb-4">
@@ -709,17 +835,21 @@ export default function StationDashboard() {
                 title="activetab"
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`whitespace-nowrap flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shrink-0 ${
+                className={`whitespace-nowrap flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   isActive
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    ? `${t.activeBg} border ${t.activeBorder} shadow-sm`
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent"
                 }`}
               >
-                <div className={`shrink-0 ${isActive ? "text-white" : t.color}`}>{t.icon}</div>
-                {t.label}
+                <div className={`shrink-0 transition-transform ${isActive ? `${t.color} scale-110` : t.color}`}>
+                  {t.icon}
+                </div>
+                <span className={isActive ? `bg-clip-text text-transparent bg-gradient-to-r ${t.gradientText}` : ""}>
+                  {t.label}
+                </span>
                 {badge && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
-                    isActive ? "bg-white/25 text-white" : badge.color
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    isActive ? "bg-white/50 text-slate-900" : badge.color
                   }`}>
                     {badge.value}
                   </span>
@@ -733,47 +863,49 @@ export default function StationDashboard() {
   
         {/* Station Selector Card - Only on Overview */}
         {activeTab === "overview" && (
+          <div className="space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative w-full h-48 sm:h-64 rounded-3xl overflow-hidden shadow-xl border border-indigo-500/20 bg-slate-900"
+            >
+              <img src="/images/dashboard-illustration.png" className="absolute inset-0 w-full h-full object-cover opacity-60" alt="Dashboard Hub" />
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/95 via-indigo-900/70 to-transparent" />
+              <div className="relative h-full flex flex-col justify-center p-8 sm:p-10">
+                <h2 className="text-2xl sm:text-4xl font-black text-white mb-2 tracking-tight">Your Command Center</h2>
+                <p className="text-sm sm:text-base text-indigo-100 font-medium max-w-lg leading-relaxed">
+                  Get real-time insights, manage your fuel inventory, and monitor platform performance with our premium tracking suite.
+                </p>
+              </div>
+            </motion.div>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="relative overflow-hidden rounded-[1.5rem] p-[1px] bg-gradient-to-br from-blue-600/40 via-cyan-500/30 to-blue-700/40"
+            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white"
           >
-            {/* Animated gradient border effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 opacity-40 animate-pulse blur-xl" />
-            
-            {/* Glass Surface with enhanced blue gradient background */}
-            <div className="rounded-[1.4rem] p-6 backdrop-blur-xl bg-gradient-to-br from-blue-50 via-blue-100/80 to-cyan-50/90 border border-blue-200/60 shadow-[0_20px_60px_rgba(37,99,235,0.3)]">
-
-              {/* Enhanced background glow effects */}
-              <div className="absolute -top-20 -right-20 w-56 h-56 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 blur-3xl rounded-full animate-pulse" />
-              <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 blur-3xl rounded-full animate-pulse" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-r from-blue-400/10 to-cyan-400/10 blur-3xl rounded-full" />
-
+            <div className="p-6 bg-white">
               <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
 
                 {/* LEFT SECTION - Enhanced */}
                 <div className="flex items-center gap-6">
 
-                  {/* Icon with enhanced blue gradient */}
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
-                    <div className="relative p-4 rounded-2xl bg-blue-600 text-white duration-300">
-                      <Building2 className="w-7 h-7 text-white" />
-                    </div>
+                  <div className="p-3 rounded-xl bg-slate-100 text-slate-700">
+                    <Building2 className="w-6 h-6" />
                   </div>
 
                   {/* Station Info with enhanced typography */}
                   {myStations.length > 0 ? (
                     <div>
-                      <div className="relative group">
+                      <div className="relative">
                         <select
                           title="Select Active Station"
                           className="
-                            bg-transparent text-3xl lg:text-4xl font-black outline-none cursor-pointer
+                            bg-transparent text-2xl lg:text-3xl font-bold outline-none cursor-pointer
                             appearance-none pr-12 text-blue-900
-                            hover:text-blue-700
-                            transition-all duration-300 tracking-tight
+                            hover:text-slate-700
+                            transition-all duration-200 tracking-tight
                           "
                           value={activeStationId || ""}
                           onChange={(e) => {
@@ -785,58 +917,47 @@ export default function StationDashboard() {
                             <option
                               key={station._id}
                               value={station._id}
-                              className="bg-blue-600 text-white text-base font-semibold"
+                              className="bg-white text-slate-900 text-base font-semibold"
                             >
                               {station.name}
                             </option>
                           ))}
                         </select>
 
-                        {/* Enhanced Chevron */}
-                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 group-hover:text-blue-700 group-hover:rotate-180 transition-all duration-300 pointer-events-none" />
+                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none" />
                       </div>
 
                       {/* Location with enhanced styling */}
                       <div className="flex items-center gap-2 mt-2">
-                        <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100">
-                          <MapPin className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <p className="text-base font-semibold text-blue-800 tracking-tight">
+                        <MapPin className="w-4 h-4 text-slate-500" />
+                        <p className="text-base font-medium text-slate-700 tracking-tight">
                           {myStations.find(s => s._id === activeStationId)?.location || "Global View"}
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-lg font-medium text-blue-600">
+                    <p className="text-lg font-medium text-slate-600">
                       No stations registered.
                     </p>
                   )}
                 </div>
 
-                {/* RIGHT SECTION - Enhanced */}
                 <div className="flex gap-4">
 
                   {/* STATUS with blue-themed colors */}
-                  <div className="relative group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.9)]" />
-                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-75" />
-                      </div>
-                      <span className="text-sm font-bold text-blue-800 uppercase tracking-wider">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <span className="text-sm font-semibold text-slate-700">
                         System Online
                       </span>
                     </div>
                   </div>
 
-                  {/* DATE with blue theme */}
-                  <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center gap-3">
-                      <div className="p-1 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 group-hover:scale-110 transition-transform duration-300">
-                        <Calendar className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="text-sm font-bold text-blue-800">
+                      <Calendar className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm font-semibold text-slate-700">
                         {new Date().toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -846,11 +967,10 @@ export default function StationDashboard() {
                     </div>
                   </div>
 
-                  {/* Time Display with blue theme */}
-                  <div className="group px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-50/90 to-cyan-50/90 backdrop-blur border border-blue-200/80 shadow-lg">
+                  <div className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-spin-slow" />
-                      <span className="text-sm font-bold text-blue-800">
+                      <Clock className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm font-semibold text-slate-700">
                         {new Date().toLocaleTimeString('en-US', {
                           hour: '2-digit',
                           minute: '2-digit'
@@ -863,6 +983,7 @@ export default function StationDashboard() {
               </div>
             </div>
           </motion.div>
+          </div>
         )}
         {/* Conditional Content rendering */}
         <AnimatePresence mode="wait">
@@ -874,205 +995,127 @@ export default function StationDashboard() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-8"
             >
-             {/* Stats Grid - Vibrant Version */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {myStations.find(s => s._id === activeStationId)?.verificationStatus === "PENDING" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <Clock className="w-8 h-8 text-amber-600 animate-pulse" />
+                  </div>
+                  <div className="text-center sm:text-left flex-1">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase">Verification in Progress</h3>
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed max-w-xl">
+                      Your government document is being reviewed by the administration. You can configure your products and profile, but your station won&apos;t be visible to drivers until approved.
+                    </p>
+                  </div>
+                  <div className="px-4 py-2 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest rounded-full border border-amber-200">
+                    Pending Approval
+                  </div>
+                </div>
+              )}
 
+              {myStations.find(s => s._id === activeStationId)?.verificationStatus === "REJECTED" && (
+                <div className="bg-red-50 border border-red-200 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
+                    <XCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                  <div className="text-center sm:text-left flex-1">
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase text-red-700">Verification Rejected</h3>
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed max-w-xl">
+                      There was an issue with your submitted documents. Please contact support or update your station profile.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab("settings")}
+                    className="px-6 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-500/20 active:scale-95"
+                  >
+                    Check Profile
+                  </button>
+                </div>
+              )}
+              {/* Hero Section / Purpose */}
+              <div className="relative w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-xl border border-indigo-500/20 bg-slate-900">
+                <img src="/images/dashboard-illustration.png" className="absolute inset-0 w-full h-full object-cover opacity-50" alt="Station Control" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-indigo-900/60 to-transparent" />
+                <div className="relative h-full flex flex-col justify-center p-8 sm:p-10">
+                  <h2 className="text-2xl sm:text-4xl font-black text-white mb-2 tracking-tight">Operations Command Center</h2>
+                  <p className="text-sm sm:text-base text-emerald-100 font-medium max-w-lg leading-relaxed">
+                    Optimize your station's efficiency. Verify driver requests via QR scan, monitor real-time fuel levels, and track daily sales and payouts seamlessly.
+                  </p>
+                </div>
+              </div>
+
+             {/* Stats Grid */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
   {[
-    {
-      icon: Clock,
-      label: "Queue Size",
-      value: throughput.queueSize,
-      trend: "+12%",
-      trendUp: true,
-      // Vibrant gradient backgrounds
-      iconBg: "bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 shadow-lg shadow-blue-500/40",
-      iconColor: "text-white",
-      // Vibrant text colors
-      valueColor: "text-slate-800",
-      labelColor: "text-blue-600",
-      trendColor: "text-emerald-600",
-      cardGradient: "from-blue-50/40 to-transparent",
-      accentColor: "blue",
-    },
-    {
-      icon: CheckCircle,
-      label: "Fulfilled Today",
-      value: throughput.todayApproved,
-      trend: "+8%",
-      trendUp: true,
-      iconBg: "bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/40",
-      iconColor: "text-white",
-      valueColor: "text-slate-800",
-      labelColor: "text-emerald-600",
-      trendColor: "text-emerald-600",
-      cardGradient: "from-emerald-50/40 to-transparent",
-      accentColor: "emerald",
-    },
-    {
-      icon: XCircle,
-      label: "Declined Today",
-      value: throughput.todayRejected,
-      trend: "-3%",
-      trendUp: false,
-      iconBg: "bg-gradient-to-br from-rose-600 via-rose-500 to-red-500 shadow-lg shadow-rose-500/40",
-      iconColor: "text-white",
-      valueColor: "text-slate-800",
-      labelColor: "text-rose-600",
-      trendColor: "text-rose-600",
-      cardGradient: "from-rose-50/40 to-transparent",
-      accentColor: "rose",
-    },
+    { icon: Clock, label: "Queue Size", value: throughput.queueSize, trend: "+12%", trendUp: true, color: "from-blue-500 to-indigo-600", shadow: "shadow-indigo-500/30" },
+    { icon: CheckCircle, label: "Fulfilled Today", value: throughput.todayApproved, trend: "+8%", trendUp: true, color: "from-emerald-400 to-teal-500", shadow: "shadow-teal-500/30" },
+    { icon: XCircle, label: "Declined Today", value: throughput.todayRejected, trend: "-3%", trendUp: false, color: "from-rose-400 to-red-500", shadow: "shadow-red-500/30" },
   ].map((stat, idx) => (
     <motion.div
       key={stat.label}
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.08, duration: 0.35 }}
-      whileHover={{ y: -5 }}
-      className="group"
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ delay: idx * 0.1, duration: 0.5, ease: "easeOut" }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${stat.color} p-8 text-white shadow-xl ${stat.shadow} cursor-default`}
     >
-      <div className={`relative rounded-2xl bg-white border border-${stat.accentColor}-100 shadow-lg hover:shadow-${stat.accentColor}-200/50 transition-all duration-300 p-6 overflow-hidden`}>
-        
-        {/* Gradient background overlay */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${stat.cardGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-        
-        {/* Animated shine */}
-        <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/30 to-transparent rotate-45 group-hover:translate-x-full transition-transform duration-1000" />
-
-        <div className="flex items-start justify-between relative">
-
-          <div className="flex-1">
-            <p className={`text-xs font-black uppercase tracking-widest ${stat.labelColor}`}>
-              {stat.label}
-            </p>
-            
-            <p className={`text-5xl font-black mt-3 tracking-tight ${stat.valueColor}`}>
-              {stat.value}
-            </p>
-
-            <div className="flex items-center gap-2 mt-4">
-              <div className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-r ${
-                stat.trendUp 
-                  ? "from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200" 
-                  : "from-rose-50 to-red-50 text-rose-700 border border-rose-200"
-              } shadow-sm`}>
-                {stat.trendUp ? (
-                  <TrendingUp className="w-3.5 h-3.5" />
-                ) : (
-                  <TrendingDown className="w-3.5 h-3.5" />
-                )}
-                <span className="font-bold">{stat.trend}</span>
-              </div>
-              <span className="text-xs font-medium text-slate-400">vs yesterday</span>
-            </div>
+      {/* Decorative background blob */}
+      <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+      
+      <div className="relative z-10 flex flex-col h-full justify-between gap-6">
+        <div className="flex items-start justify-between">
+          <div className={`p-4 rounded-2xl bg-white/20 backdrop-blur-md shadow-inner`}>
+            <stat.icon className="w-8 h-8 text-white" />
           </div>
-
-          {/* Beautiful icon container with pulse effect on hover */}
-          <div className="relative">
-            <div className={`absolute inset-0 ${stat.iconBg} rounded-2xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300`} />
-            <div className={`relative p-3.5 rounded-2xl transition-all duration-300 ${stat.iconBg} group-hover:scale-110 group-hover:rotate-6 shadow-md`}>
-              <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
-            </div>
+          <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md shadow-sm">
+            {stat.trendUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            <span>{stat.trend}</span>
           </div>
-
         </div>
 
-        {/* Decorative progress bar */}
-        <div className="mt-5 h-1 bg-slate-100 rounded-full overflow-hidden">
-          <div className={`h-full w-0 bg-gradient-to-r from-${stat.accentColor}-500 to-${stat.accentColor}-400 group-hover:w-full transition-all duration-1000 rounded-full`} />
+        <div>
+          <p className="text-5xl font-black tracking-tight mb-2">{stat.value}</p>
+          <p className="text-sm font-semibold text-white/90 uppercase tracking-widest">{stat.label}</p>
+          <p className="text-xs font-medium text-white/60 mt-1">vs yesterday</p>
         </div>
       </div>
     </motion.div>
   ))}
 </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="group relative pro-card p-6 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Station Balance</p>
-                      <p className="text-4xl font-black text-slate-900">
-                        {(analytics?.totals?.totalStationEarnings ?? 0).toLocaleString()} ETB
-                      </p>
-                      <p className="text-xs text-slate-500 mt-2 font-medium">
-                        Net earnings after platform commission ({analyticsRange})
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-emerald-50">
-                      <DollarSign className="w-5 h-5 text-emerald-600" />
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="group relative pro-card p-6 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform Commission</p>
-                      <p className="text-4xl font-black text-slate-900">
-                        {(analytics?.totals?.totalPlatformCommission ?? 0).toLocaleString()} ETB
-                      </p>
-                      <p className="text-xs text-slate-500 mt-2 font-medium">
-                        Commission collected from your processed payments ({analyticsRange})
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-indigo-50">
-                      <BarChart3 className="w-5 h-5 text-indigo-600" />
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="group relative pro-card p-6 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pending Payout</p>
-                      <p className="text-4xl font-black text-slate-900">
-                        {(analytics?.totals?.pendingPayoutBalance ?? 0).toLocaleString()} ETB
-                      </p>
-                      <p className="text-xs text-slate-500 mt-2 font-medium">
-                        Eligible amount not yet settled by platform
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-amber-50">
-                      <Clock className="w-5 h-5 text-amber-600" />
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="group relative pro-card p-6 transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Paid Out</p>
-                      <p className="text-4xl font-black text-slate-900">
-                        {(analytics?.totals?.paidOutTotal ?? 0).toLocaleString()} ETB
-                      </p>
-                      <p className="text-xs text-slate-500 mt-2 font-medium">
-                        Total settled to your station so far
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-emerald-50">
-                      <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
+<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+  {[
+    { label: "Station Balance", value: analytics?.totals?.totalStationEarnings ?? 0, icon: DollarSign, sub: "Net earnings", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", delay: 0.3 },
+    { label: "Platform Comm.", value: analytics?.totals?.totalPlatformCommission ?? 0, icon: BarChart3, sub: "Fees collected", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", delay: 0.4 },
+    { label: "Pending Payout", value: analytics?.totals?.pendingPayoutBalance ?? 0, icon: Clock, sub: "To be settled", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", delay: 0.5 },
+    { label: "Paid Out", value: analytics?.totals?.paidOutTotal ?? 0, icon: CheckCircle, sub: "Settled total", color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100", delay: 0.6 }
+  ].map((item) => (
+    <motion.div
+      key={item.label}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: item.delay, duration: 0.5, ease: "easeOut" }}
+      whileHover={{ y: -6 }}
+      className="group relative bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-300"
+    >
+      <div className="flex flex-col h-full justify-between">
+        <div className="flex items-start justify-between mb-8">
+          <div className={`p-3.5 rounded-2xl ${item.bg} ${item.color} transition-transform duration-300 group-hover:scale-110 shadow-sm border ${item.border}`}>
+            <item.icon className="w-6 h-6" />
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{item.label}</p>
+          <p className="text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-1">
+            {item.value.toLocaleString()} <span className="text-base font-bold text-slate-400">ETB</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-2 font-semibold">
+            {item.sub} <span className="opacity-75">({analyticsRange})</span>
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  ))}
+</div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1093,18 +1136,16 @@ export default function StationDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Petrol Card */}
                     <motion.div 
-                      whileHover={{ scale: 1.01 }}
-                      className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
-                        petrol ? "bg-white border-indigo-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
+                      whileHover={{ y: -2 }}
+                      className={`rounded-2xl p-6 border transition-all ${
+                        petrol ? "bg-white border-slate-200 shadow-sm" : "bg-slate-50 border-slate-200 opacity-80"
                       }`}
                     >
-                      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full" />
-                      
-                      <div className="relative space-y-6">
+                      <div className="space-y-5">
                         <div className="flex justify-between items-start">
                           <div className="space-y-1">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Benzene (Petrol)</h3>
-                            <p className="text-sm text-indigo-500/60 font-bold">Main supply line</p>
+                            <h3 className="text-lg font-bold text-slate-900">Petrol</h3>
+                            <p className="text-sm text-slate-500">Primary fuel line</p>
                           </div>
                           <button 
                             title="status"
@@ -1118,17 +1159,17 @@ export default function StationDashboard() {
                               });
                               showToast(`Petrol ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
                             }}
-                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                              petrol ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                              petrol ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600 border border-slate-300"
                             }`}
                           >
-                            {petrol ? "Available ✓" : "Out of Stock ✕"}
+                            {petrol ? "Available" : "Out of stock"}
                           </button>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                            <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Current Price</p>
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 mb-1">Current Price</p>
                             <div className="flex items-center gap-2">
                               <label htmlFor=""></label>
                               <input 
@@ -1146,13 +1187,13 @@ export default function StationDashboard() {
                                   setPetrolPrice(price);
                                   showToast("Petrol price updated", "success");
                                 }}
-                                className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
+                                className="bg-transparent text-2xl font-bold text-slate-900 w-20 outline-none"
                               />
-                              <span className="text-sm font-bold text-indigo-600">ETB/L</span>
+                              <span className="text-sm font-semibold text-slate-600">ETB/L</span>
                             </div>
                           </div>
-                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                            <p className="text-[10px] font-bold text-indigo-600/50 uppercase tracking-widest mb-1">Stock Level</p>
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 mb-1">Stock Level</p>
                             <div className="flex items-center gap-2">
                               <input 
                                 title="Petrol Stock"
@@ -1169,9 +1210,9 @@ export default function StationDashboard() {
                                   setPetrolQty(qty); // Ensure it's a number after blur
                                   showToast("Petrol stock updated", "success");
                                 }}
-                                className="bg-transparent text-2xl font-black text-slate-900 w-full outline-none"
+                                className="bg-transparent text-2xl font-bold text-slate-900 w-full outline-none"
                               />
-                              <span className="text-sm font-bold text-indigo-600">Litres</span>
+                              <span className="text-sm font-semibold text-slate-600">Litres</span>
                             </div>
                           </div>
                         </div>
@@ -1180,7 +1221,7 @@ export default function StationDashboard() {
                           <button 
                             title="addstock"
                             onClick={() => openStockModal("petrol")}
-                            className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+                            className="flex-1 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold transition-all"
                           >
                             + Add Stock
                           </button>
@@ -1190,18 +1231,16 @@ export default function StationDashboard() {
 
                     {/* Diesel Card */}
                     <motion.div 
-                      whileHover={{ scale: 1.01 }}
-                      className={`relative overflow-hidden rounded-[2.5rem] p-8 border transition-all duration-500 ${
-                        diesel ? "bg-white border-amber-200 shadow-xl" : "bg-slate-100 border-slate-200 opacity-80"
+                      whileHover={{ y: -2 }}
+                      className={`rounded-2xl p-6 border transition-all ${
+                        diesel ? "bg-white border-slate-200 shadow-sm" : "bg-slate-50 border-slate-200 opacity-80"
                       }`}
                     >
-                      <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full" />
-                      
-                      <div className="relative space-y-6">
+                      <div className="space-y-5">
                         <div className="flex justify-between items-start">
                           <div className="space-y-1">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider">Nafta (Diesel)</h3>
-                            <p className="text-sm text-amber-600/60 font-bold">Commercial fuel</p>
+                            <h3 className="text-lg font-bold text-slate-900">Diesel</h3>
+                            <p className="text-sm text-slate-500">Commercial fuel line</p>
                           </div>
                           <button 
                             title="stationadd"
@@ -1215,17 +1254,17 @@ export default function StationDashboard() {
                               });
                               showToast(`Diesel ${newStatus ? "Available" : "Empty"}`, newStatus ? "success" : "info");
                             }}
-                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                              diesel ? "bg-amber-600 text-white shadow-lg shadow-amber-500/30" : "bg-slate-200 text-slate-500 border border-slate-300"
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                              diesel ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600 border border-slate-300"
                             }`}
                           >
-                            {diesel ? "Available ✓" : "Out of Stock ✕"}
+                            {diesel ? "Available" : "Out of stock"}
                           </button>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                            <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Current Price</p>
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 mb-1">Current Price</p>
                             <div className="flex items-center gap-2">
                               <label htmlFor=""></label>
                               <input 
@@ -1243,13 +1282,13 @@ export default function StationDashboard() {
                                   setDieselPrice(price);
                                   showToast("Diesel price updated", "success");
                                 }}
-                                className="bg-transparent text-2xl font-black text-slate-900 w-20 outline-none"
+                                className="bg-transparent text-2xl font-bold text-slate-900 w-20 outline-none"
                               />
-                              <span className="text-sm font-bold text-amber-600">ETB/L</span>
+                              <span className="text-sm font-semibold text-slate-600">ETB/L</span>
                             </div>
                           </div>
-                          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200">
-                            <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest mb-1">Stock Level</p>
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 mb-1">Stock Level</p>
                             <div className="flex items-center gap-2">
                               <input 
                                 title="Diesel Stock"
@@ -1266,9 +1305,9 @@ export default function StationDashboard() {
                                   setDieselQty(qty); // Ensure it's a number after blur
                                   showToast("Diesel stock updated", "success");
                                 }}
-                                className="bg-transparent text-2xl font-black text-slate-900 w-full outline-none"
+                                className="bg-transparent text-2xl font-bold text-slate-900 w-full outline-none"
                               />
-                              <span className="text-sm font-bold text-amber-600">Litres</span>
+                              <span className="text-sm font-semibold text-slate-600">Litres</span>
                             </div>
                           </div>
                         </div>
@@ -1277,7 +1316,7 @@ export default function StationDashboard() {
                           <button 
                             title="addstack"
                             onClick={() => openStockModal("diesel")}
-                            className="flex-1 py-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+                            className="flex-1 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold transition-all"
                           >
                             + Add Stock
                           </button>
@@ -1294,86 +1333,161 @@ export default function StationDashboard() {
                   exit={{ opacity: 0, y: -20 }}
                   className="space-y-8"
                 >
-                  <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-3xl">🏗️</div>
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900">Station Profile</h3>
-                      <p className="text-sm text-slate-500 font-medium">Update your station public information and operational settings.</p>
-                    </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-xl font-bold text-slate-900">Station Profile</h3>
+                    <p className="text-sm text-slate-500 mt-1">Manage identity, operations, and compliance details for this station.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Station Name</label>
-                          <input 
-                          title="stationname"
-                            type="text" 
-                            defaultValue={myStations.find(s => s._id === activeStationId)?.name}
-                            className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Location Address</label>
-                          <input 
-                          title="stationlocation"
-                            type="text" 
-                            defaultValue={myStations.find(s => s._id === activeStationId)?.location}
-                            className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
-                          />
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
+                        <h4 className="text-sm font-semibold text-slate-700">Identity & Contact</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Station Name</label>
+                            <input
+                              title="station-name"
+                              type="text"
+                              value={profileForm.stationName}
+                              onChange={(e) => setProfileForm((p) => ({ ...p, stationName: e.target.value }))}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Contact Phone</label>
+                            <input
+                              title="station-phone"
+                              type="text"
+                              placeholder="+251 9xx xxx xxx"
+                              value={profileForm.contactPhone}
+                              onChange={(e) => setProfileForm((p) => ({ ...p, contactPhone: e.target.value }))}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Station Address</label>
+                            <input
+                              title="station-location"
+                              type="text"
+                              value={profileForm.location}
+                              onChange={(e) => setProfileForm((p) => ({ ...p, location: e.target.value }))}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div className="p-6 rounded-[2rem] bg-indigo-600 text-white shadow-xl shadow-indigo-500/20">
-                         <h4 className="font-black uppercase tracking-widest text-xs mb-4 opacity-80">Operational Hours</h4>
-                         <div className="flex items-center justify-between mb-4">
-                            <span className="font-bold">24/7 Operations</span>
-                            <div className="w-12 h-6 bg-white/20 rounded-full relative p-1 cursor-pointer">
-                               <div className="w-4 h-4 bg-white rounded-full ml-auto shadow-sm" />
-                            </div>
-                         </div>
-                         <p className="text-xs text-indigo-100 font-medium leading-relaxed">
-                            Enabling 24/7 operations allows drivers to see your station on the map at any time. If disabled, you can set custom opening and closing times.
-                         </p>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
+                        <h4 className="text-sm font-semibold text-slate-700">Operational Settings</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Opening Hours</label>
+                            <input
+                              title="opening-hours"
+                              type="text"
+                              value={profileForm.openingHours}
+                              onChange={(e) => setProfileForm((p) => ({ ...p, openingHours: e.target.value }))}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Station ID</label>
+                            <input
+                              title="station-id"
+                              type="text"
+                              value={activeStationId || "N/A"}
+                              disabled
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-100 text-slate-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((p) => ({ ...p, acceptsWallet: !p.acceptsWallet }))}
+                            className={`px-4 py-3 rounded-xl border text-sm font-semibold transition ${profileForm.acceptsWallet
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                              }`}
+                          >
+                            Wallet Payments: {profileForm.acceptsWallet ? "Enabled" : "Disabled"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((p) => ({ ...p, acceptsCash: !p.acceptsCash }))}
+                            className={`px-4 py-3 rounded-xl border text-sm font-semibold transition ${profileForm.acceptsCash
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                              }`}
+                          >
+                            Cash Payments: {profileForm.acceptsCash ? "Enabled" : "Disabled"}
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex justify-end gap-3 pt-4">
-                         <button className="px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Discard Changes</button>
-                         <button className="px-8 py-3 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">Save Profile</button>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const activeStation = myStations.find((s) => s._id === activeStationId);
+                            if (!activeStation) return;
+                            setProfileForm((p) => ({
+                              ...p,
+                              stationName: activeStation.name || "",
+                              location: activeStation.location || "",
+                            }));
+                          }}
+                          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveStationProfile}
+                          disabled={profileSaving || !activeStationId}
+                          className="px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition disabled:opacity-50"
+                        >
+                          {profileSaving ? "Saving..." : "Save Profile"}
+                        </button>
                       </div>
                     </div>
 
                     <div className="space-y-6">
-                       <div className="pro-card p-6 border-slate-200">
-                          <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-4">Verification Status</h4>
-                          <div className="space-y-4">
-                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">✓</div>
-                                <div>
-                                   <p className="text-xs font-bold text-slate-900">Email Verified</p>
-                                   <p className="text-[10px] text-slate-500">Confirmed on account creation</p>
-                                </div>
-                             </div>
-                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-bold">!</div>
-                                <div>
-                                   <p className="text-xs font-bold text-slate-900">Business License</p>
-                                   <p className="text-[10px] text-slate-500">Pending manual review</p>
-                                </div>
-                             </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-4">Compliance Status</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">✓</div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">Account verified</p>
+                              <p className="text-xs text-slate-500">Email and operator access confirmed</p>
+                            </div>
                           </div>
-                       </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">!</div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">Business license</p>
+                              <p className="text-xs text-slate-500">Review in progress by compliance team</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-                       <div className="p-6 rounded-3xl border border-red-100 bg-red-50/50">
-                          <h4 className="text-xs font-black uppercase tracking-widest text-red-600 mb-2">Danger Zone</h4>
-                          <p className="text-[10px] text-red-500/70 font-medium mb-4 leading-relaxed">
-                             Permanently remove this station from the platform. This action cannot be undone.
-                          </p>
-                          <button className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">
-                             Deactivate Station
-                          </button>
-                       </div>
+                      <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+                        <h4 className="text-sm font-semibold text-red-700">Danger Zone</h4>
+                        <p className="text-xs text-red-600 mt-2 mb-4 font-medium leading-relaxed">
+                          Permanently delete this station entry. This action cannot be undone and all operational history will be lost.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleDeleteStation}
+                          disabled={profileSaving}
+                          className="w-full py-3 rounded-xl bg-white border border-red-200 text-red-600 text-xs font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                        >
+                          {profileSaving ? "Processing..." : "Delete Station Permanently"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -1386,11 +1500,11 @@ export default function StationDashboard() {
                   className="space-y-6"
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-100">
-                      <ScanLine className="w-5 h-5 text-indigo-600" />
+                    <div className="p-2 rounded-xl bg-slate-100 border border-slate-200">
+                      <ScanLine className="w-5 h-5 text-slate-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-black text-slate-900">QR Ticket Verification</h3>
+                      <h3 className="text-lg font-bold text-slate-900">QR Ticket Verification</h3>
                       <p className="text-xs text-slate-500 font-medium">Scan a driver&apos;s QR code to mark their fuel request as completed</p>
                     </div>
                   </div>
@@ -1475,7 +1589,7 @@ export default function StationDashboard() {
                   className="space-y-6"
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h3 className="text-lg font-black text-slate-900">Performance Analytics</h3>
+                    <h3 className="text-lg font-bold text-slate-900">Performance Analytics</h3>
                     <div className="flex gap-2">
                       {(["today", "7d", "30d"] as const).map((r) => (
                         <button
@@ -1492,7 +1606,7 @@ export default function StationDashboard() {
                       <button
                         onClick={exportCSV}
                         disabled={!analytics}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 transition-all disabled:opacity-50 font-bold"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-all disabled:opacity-50 font-semibold"
                       >
                         <Download className="w-4 h-4" />
                         Export
@@ -1508,18 +1622,18 @@ export default function StationDashboard() {
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         {[
-                          { icon: Fuel, label: "Total Volume", value: `${analytics.totals?.totalLitres ?? 0}L`, color: "indigo" },
-                          { icon: DollarSign, label: "Estimated Revenue", value: `${(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB`, color: "emerald" },
-                          { icon: Users, label: "Total Transactions", value: analytics.totals?.count ?? 0, color: "purple" }
+                          { icon: Fuel, label: "Total Volume", value: `${analytics.totals?.totalLitres ?? 0}L` },
+                          { icon: DollarSign, label: "Estimated Revenue", value: `${(analytics.totals?.totalRevenue ?? 0).toLocaleString()} ETB` },
+                          { icon: Users, label: "Total Transactions", value: analytics.totals?.count ?? 0 }
                         ].map((metric) => (
-                          <div key={metric.label} className="bg-slate-50 rounded-3xl p-6 border border-slate-200 hover:border-indigo-200 transition-all">
+                          <div key={metric.label} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className={`p-3 rounded-2xl bg-${metric.color}-50 border border-${metric.color}-100`}>
-                                <metric.icon className={`w-5 h-5 text-${metric.color}-600`} />
+                              <div className="p-3 rounded-xl bg-slate-100 border border-slate-200">
+                                <metric.icon className="w-5 h-5 text-slate-600" />
                               </div>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{metric.label}</p>
+                              <p className="text-xs font-semibold text-slate-500">{metric.label}</p>
                             </div>
-                            <p className="text-3xl font-black text-slate-900 tracking-tight">{metric.value}</p>
+                            <p className="text-3xl font-bold text-slate-900 tracking-tight">{metric.value}</p>
                           </div>
                         ))}
                       </div>
@@ -1728,14 +1842,14 @@ export default function StationDashboard() {
                         <button
                           disabled={bulkLoading || selectedPendingIds.length === 0}
                           onClick={() => bulkUpdateRequests("REJECTED")}
-                          className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-100 disabled:opacity-50"
+                          className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-100 disabled:opacity-50"
                         >
                           Reject Selected
                         </button>
                         <button
                           disabled={bulkLoading || selectedPendingIds.length === 0}
                           onClick={() => bulkUpdateRequests("APPROVED")}
-                          className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white disabled:opacity-50"
+                          className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white disabled:opacity-50"
                         >
                           Approve Selected
                         </button>
@@ -1765,11 +1879,9 @@ export default function StationDashboard() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.05 }}
-                        whileHover={{ translateY: -5 }}
-                        className="group relative overflow-hidden bg-white rounded-[2.5rem] p-8 border border-slate-200 hover:border-indigo-500 transition-all shadow-sm hover:shadow-xl mb-6"
+                        whileHover={{ translateY: -2 }}
+                        className="group relative overflow-hidden bg-white rounded-2xl p-6 border border-slate-200 transition-all shadow-sm mb-4"
                       >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[60px] rounded-full" />
-                        
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
                           <div className="flex items-center gap-6">
                             {activeTab === "pending" && (
@@ -1781,28 +1893,28 @@ export default function StationDashboard() {
                                 className="h-4 w-4 rounded border-slate-300 text-indigo-600"
                               />
                             )}
-                            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-800 flex items-center justify-center text-white font-black text-3xl shadow-lg rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                            <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-xl">
                               {r.driverId?.name?.charAt(0) ?? "?"}
                             </div>
                             <div>
                               <div className="flex items-center gap-3 mb-2">
-                                <h4 className="text-2xl font-black text-slate-900 tracking-tight">{r.driverId?.name ?? "Guest Driver"}</h4>
-                                <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                <h4 className="text-xl font-bold text-slate-900 tracking-tight">{r.driverId?.name ?? "Guest Driver"}</h4>
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                                   r.fuelType === "petrol" ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-amber-50 text-amber-600 border border-amber-100"
                                 }`}>
-                                  {r.fuelType === "petrol" ? "Benzene" : "Nafta"}
+                                  {r.fuelType === "petrol" ? "Petrol" : "Diesel"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-4">
-                                <span className="flex items-center gap-1.5 text-slate-500 text-xs font-bold">
-                                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                <span className="flex items-center gap-1.5 text-slate-500 text-xs font-medium">
+                                  <Clock className="w-3.5 h-3.5 text-slate-500" />
                                   {formatDateTime(r.createdAt)}
                                 </span>
                                 {r.status === "PENDING" && r.createdAt && (() => {
                                   const ageMinutes = Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 60000);
                                   const tone = ageMinutes >= 30 ? "bg-red-50 text-red-700 border-red-100" : ageMinutes >= 15 ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-emerald-50 text-emerald-700 border-emerald-100";
                                   return (
-                                    <span className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+                                    <span className={`px-2.5 py-1 rounded-full border text-xs font-semibold ${tone}`}>
                                       SLA {ageMinutes}m
                                     </span>
                                   );
@@ -1811,7 +1923,7 @@ export default function StationDashboard() {
                                 <StatusBadge
                                   label={r.status}
                                   tone={r.status === "PENDING" ? "warning" : r.status === "APPROVED" ? "success" : r.status === "COMPLETED" ? "info" : "danger"}
-                                  className="text-[9px]"
+                                  className="text-[10px]"
                                 />
                               </div>
                             </div>
@@ -1822,27 +1934,27 @@ export default function StationDashboard() {
                               <>
                                 <button
                                   onClick={() => updateRequest(r._id, "REJECTED")}
-                                  className="px-8 py-4 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-2xl transition-all active:scale-95"
+                                  className="px-5 py-3 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl transition-all"
                                 >
                                   Decline
                                 </button>
                                 <button
                                   onClick={() => updateRequest(r._id, "APPROVED")}
-                                  className="px-10 py-4 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95 hover:scale-105"
+                                  className="px-6 py-3 text-xs font-semibold bg-slate-900 text-white rounded-xl transition-all"
                                 >
-                                  Fill Fuel ✓
+                                  Approve
                                 </button>
                               </>
                             ) : r.status === "APPROVED" ? (
                               <button
                                 onClick={() => updateRequest(r._id, "COMPLETED")}
-                                className="px-10 py-4 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95 hover:scale-105"
+                                className="px-6 py-3 text-xs font-semibold bg-slate-900 text-white rounded-xl transition-all"
                               >
-                                Complete ✓
+                                Mark Complete
                               </button>
                             ) : (
                               <div className="flex items-center gap-4">
-                                <span className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-[0.2em] border ${
+                                <span className={`px-4 py-2 rounded-xl text-xs font-semibold border ${
                                   r.status === "COMPLETED" ? "bg-indigo-50 border-indigo-100 text-indigo-600" :
                                   r.status === "CANCELED" ? "bg-slate-50 border-slate-100 text-slate-400" :
                                   "bg-red-50 border-red-100 text-red-600"
@@ -2001,12 +2113,47 @@ export default function StationDashboard() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Government Verification Document</label>
+                  <div className="relative group cursor-pointer">
+                    <input
+                      type="file"
+                      id="doc-upload"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      onChange={handleDocUpload}
+                      disabled={uploadingDoc}
+                      accept=".pdf,image/*"
+                    />
+                    <div className={`w-full border-2 border-dashed rounded-2xl p-6 text-center transition-all ${
+                      stationForm.verificationDoc ? "border-emerald-500 bg-emerald-50/50" : "border-slate-200 bg-slate-50 group-hover:border-indigo-400 group-hover:bg-indigo-50/30"
+                    }`}>
+                      {uploadingDoc ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-xs font-bold text-indigo-600">Uploading Document...</span>
+                        </div>
+                      ) : stationForm.verificationDoc ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <CheckCircle className="w-8 h-8 text-emerald-500" />
+                          <span className="text-xs font-bold text-emerald-700">Document Uploaded Successfully</span>
+                          <span className="text-[10px] text-emerald-600 opacity-70 truncate max-w-full px-4">{stationForm.verificationDoc}</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className="w-8 h-8 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                          <span className="text-xs font-bold text-slate-600">Click to upload government permit (PDF/Image)</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  disabled={stationRegisterLoading}
+                  disabled={stationRegisterLoading || uploadingDoc || !stationForm.verificationDoc}
                   className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all  disabled:opacity-50 active:scale-95"
                 >
-                   {stationRegisterLoading ? "Synchronizing..." : "Register Station ✓"}
+                   {stationRegisterLoading ? "Synchronizing..." : "Submit for Verification ✓"}
                 </button>
               </form>
             </motion.div>

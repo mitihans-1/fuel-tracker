@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   // Idempotency: check if already processed
   const existing = await WalletTransaction.findOne({
-    description: { $regex: tx_ref },
+    txRef: tx_ref,
     type: "TOP_UP",
   });
   if (existing) {
@@ -52,8 +52,10 @@ export async function GET(req: NextRequest) {
       walletId: wallet._id,
       type: "TOP_UP",
       amount: paidAmount,
-      description: `Wallet top-up via Chapa (ref: ${tx_ref})`,
+      description: `Wallet top-up via Chapa`,
+      txRef: tx_ref,
     });
+
 
     return NextResponse.json({ verified: true, tx_ref, newBalance: wallet.balance });
   } catch (err) {

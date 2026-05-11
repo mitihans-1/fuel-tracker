@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, Fuel, Wallet, TrendingUp, Clock, CheckCircle,
   Star, Bell, CreditCard,
-  AlertCircle, Navigation, Zap, Shield, Award,
-  Gauge, ArrowUpDown, MessageSquare,
-  TrendingDown, LayoutDashboard, History, Car, Settings, Activity, QrCode, LogOut
+  AlertCircle, Navigation, Shield, Award, LocateFixed,
+  Gauge, ArrowUpDown, MessageSquare, CheckCircle2,
+  TrendingDown, LayoutDashboard, History, Car, Settings, Activity, QrCode, LogOut, Menu, ArrowRight
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -54,7 +54,7 @@ function ReservationCountdown({ expiresAt }: { expiresAt?: string }) {
   const s = secs % 60;
   const expired = secs === 0;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${expired ? "bg-red-50 border-red-200 text-red-600" :
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${expired ? "bg-red-50 border-red-200 text-red-600" :
         secs < 120 ? "bg-amber-50 border-amber-200 text-amber-700" :
           "bg-emerald-50 border-emerald-200 text-emerald-700"
       }`}>
@@ -86,6 +86,38 @@ interface PendingTicket {
 }
 
 const PAGE_SIZE = 6;
+const AVERAGE_CITY_SPEED_KMH = 28;
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+const calculateDistanceKm = (
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+) => {
+  const earthKm = 6371;
+  const dLat = toRad(to.lat - from.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthKm * c;
+};
+
+const formatRelativeMinutes = (dateString?: string) => {
+  if (!dateString) return "Recently updated";
+  const ts = new Date(dateString).getTime();
+  if (!Number.isFinite(ts)) return "Recently updated";
+  const diffMs = Date.now() - ts;
+  if (diffMs < 60_000) return "Updated just now";
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `Updated ${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Updated ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Updated ${days}d ago`;
+};
 
 type Toast = { id: number; message: string; type: "success" | "error" | "info" };
 
@@ -182,7 +214,22 @@ export interface FullStation extends Station {
   estimatedWaitMinutes?: number;
   avgRating?: number;
   ratingCount?: number;
+  updatedAt?: string;
+  phone?: string;
+  paymentMethods?: string[];
+  openingHours?: string;
+  openNow?: boolean;
 }
+
+const getStationCoords = (station: FullStation) => {
+  if (typeof station.location === "object" && station.location !== null) {
+    return { lat: station.location.lat, lng: station.location.lng };
+  }
+  if (typeof station.latitude === "number" && typeof station.longitude === "number") {
+    return { lat: station.latitude, lng: station.longitude };
+  }
+  return null;
+};
 
 interface FuelAlertSubscription {
   _id: string;
@@ -201,8 +248,8 @@ interface StatCardProps {
 
 const StatCard = ({ icon: Icon, label, value, trend, trendValue }: StatCardProps) => (
   <motion.div
-    whileHover={{ scale: 1.02, translateY: -5 }}
-    className="group relative overflow-hidden pro-card rounded-[2.5rem] p-8 transition-all duration-300"
+    whileHover={{ scale: 1.01, translateY: -2 }}
+    className="group relative overflow-hidden pro-card rounded-3xl p-6 transition-all duration-300"
   >
     <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/5 blur-[80px] rounded-full group-hover:bg-indigo-500/10 transition-colors" />
     <div className="relative flex flex-col justify-between h-full">
@@ -211,7 +258,7 @@ const StatCard = ({ icon: Icon, label, value, trend, trendValue }: StatCardProps
           <Icon className="w-6 h-6 text-indigo-600" />
         </div>
         {trend && (
-          <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${trend === "up" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"
+          <div className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 ${trend === "up" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"
             }`}>
             {trend === "up" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {trendValue}
@@ -219,8 +266,8 @@ const StatCard = ({ icon: Icon, label, value, trend, trendValue }: StatCardProps
         )}
       </div>
       <div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">{label}</p>
-        <p className="text-4xl font-black text-slate-900 tracking-tight">{value}</p>
+        <p className="text-xs font-semibold text-slate-500 mb-2">{label}</p>
+        <p className="text-3xl font-bold text-slate-900 tracking-tight">{value}</p>
       </div>
     </div>
   </motion.div>
@@ -229,7 +276,7 @@ const StatCard = ({ icon: Icon, label, value, trend, trendValue }: StatCardProps
 export default function DriverDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useUser();
+  const { user, clear } = useUser();
   const [stations, setStations] = useState<FullStation[]>([]);
   const [requests, setRequests] = useState<FuelRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -255,7 +302,20 @@ export default function DriverDashboard() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [showQrFor, setShowQrFor] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"default" | "cheapest-petrol" | "cheapest-diesel" | "shortest-queue">("default");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locatingUser, setLocatingUser] = useState(false);
+  const [showPaymentGate, setShowPaymentGate] = useState(false);
+  const [paymentPayload, setPaymentPayload] = useState<{ amount: number; type: "TOPUP" | "ORDER"; stationId?: string; fuelType?: string; litres?: number } | null>(null);
+  const [activePaymentMethod, setActivePaymentMethod] = useState<string | null>(null);
+  const [stationFilters, setStationFilters] = useState({
+    openNow: false,
+    petrolOnly: false,
+    dieselOnly: false,
+    shortQueue: false,
+    nearbyOnly: false,
+  });
   const [ticketData, setTicketData] = useState<PendingTicket | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [fuelAlertEnabled, setFuelAlertEnabled] = useState<{
     petrol: boolean;
     diesel: boolean;
@@ -308,7 +368,7 @@ export default function DriverDashboard() {
   };
 
 
-  const view = (searchParams.get("tab") as "dashboard" | "logs" | "vehicles" | "settings") || "dashboard";
+  const view = (searchParams.get("tab") as "dashboard" | "logs" | "settings" | "stations" | "vehicles") || "dashboard";
 
   const setView = (v: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -316,33 +376,39 @@ export default function DriverDashboard() {
     router.push(`${window.location.pathname}?${params.toString()}`);
   };
 
+
   const pageHeadings = {
     dashboard: {
-      title: "Driver Terminal",
-      subtitle: "Discover stations, manage fuel requests, and track your wallet.",
+      title: "Driver Dashboard",
+      subtitle: "Find nearby stations, request fuel, and manage your wallet.",
     },
     logs: {
-      title: "Mission Logs",
-      subtitle: "Comprehensive history of all fuel purchases and transactions.",
+      title: "Fuel Request History",
+      subtitle: "Track every request, payment, and status update.",
     },
     vehicles: {
-      title: "Fleet Management",
-      subtitle: "Connect and monitor your vehicles for streamlined refueling.",
+      title: "My Vehicles",
+      subtitle: "Manage your vehicles and preferred fueling setup.",
     },
     settings: {
-      title: "Account Profile",
-      subtitle: "Update your driver credentials and application preferences.",
+      title: "Account Settings",
+      subtitle: "Update your profile, notifications, and security preferences.",
+    },
+    stations: {
+      title: "Stations",
+      subtitle: "Browse live station status, queue time, and prices.",
     },
   } as const;
 
   const activePage = pageHeadings[view];
   const driverName = user?.name?.split(" ")[0] || "Driver";
 
-  const sidebarItems: { id: "dashboard" | "logs" | "vehicles" | "settings"; label: string; icon: React.ReactNode; color: string }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500" },
-    { id: "logs", label: "Fuel Logs", icon: <History className="w-5 h-5" />, color: "text-purple-500" },
-    { id: "vehicles", label: "My Vehicles", icon: <Car className="w-5 h-5" />, color: "text-amber-500" },
-    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, color: "text-slate-500" },
+  const sidebarItems: { id: "dashboard" | "logs" | "settings" | "stations" | "vehicles"; label: string; icon: React.ReactNode; color: string; activeBg: string; activeBorder: string; gradientText: string }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, color: "text-indigo-500", activeBg: "bg-indigo-50/80", activeBorder: "border-indigo-200/60", gradientText: "from-indigo-600 via-purple-600 to-indigo-600" },
+    { id: "logs", label: "Fuel Logs", icon: <History className="w-5 h-5" />, color: "text-purple-500", activeBg: "bg-purple-50/80", activeBorder: "border-purple-200/60", gradientText: "from-purple-600 to-pink-600" },
+    { id: "settings", label: "Settings", icon: <Settings className="w-5 h-5" />, color: "text-slate-500", activeBg: "bg-slate-100/80", activeBorder: "border-slate-300/60", gradientText: "from-slate-600 to-slate-800" },
+    { id: "stations", label: "Stations", icon: <MapPin className="w-5 h-5" />, color: "text-emerald-500", activeBg: "bg-emerald-50/80", activeBorder: "border-emerald-200/60", gradientText: "from-emerald-600 to-teal-600" },
+    { id: "vehicles", label: "My Vehicles", icon: <Car className="w-5 h-5" />, color: "text-amber-500", activeBg: "bg-amber-50/80", activeBorder: "border-amber-200/60", gradientText: "from-amber-600 to-orange-600" },
   ];
   const toastId = useRef(0);
   const showToast = useCallback((msg: string | { error?: string; message?: string } | unknown, type: Toast["type"] = "info") => {
@@ -354,6 +420,56 @@ export default function DriverDashboard() {
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
+
+  const requestUserLocation = useCallback(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      showToast("Geolocation is not available in your browser", "error");
+      return;
+    }
+    setLocatingUser(true);
+
+    // Check permissions first to avoid Permissions-Policy violations
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: "geolocation" as PermissionName }).then((result) => {
+        if (result.state === "denied") {
+          showToast("Location access denied. Please enable it in your browser settings.", "error");
+          setLocatingUser(false);
+          return;
+        }
+        doGetPosition();
+      }).catch(() => {
+        // Permissions API not fully supported, try directly
+        doGetPosition();
+      });
+    } else {
+      doGetPosition();
+    }
+
+    function doGetPosition() {
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setLocatingUser(false);
+          },
+          (err) => {
+            let msg = "Unable to get your current location";
+            if (err.code === 1) msg = "Location access denied. Please enable it in your browser settings.";
+            else if (err.code === 2) msg = "Location information is unavailable.";
+            else if (err.code === 3) msg = "Location request timed out. Please try again.";
+            
+            showToast(msg, "error");
+            setLocatingUser(false);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+        );
+      } catch {
+        // Permissions-Policy violation throws synchronously
+        showToast("Location access is blocked by site policy.", "error");
+        setLocatingUser(false);
+      }
+    }
+  }, [showToast]);
 
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -413,7 +529,7 @@ export default function DriverDashboard() {
     loadAlerts();
   }, []);
 
-  // Fetch stations
+  // Fetch stations with real-time polling
   useEffect(() => {
     const fetchStations = async () => {
       try {
@@ -432,8 +548,16 @@ export default function DriverDashboard() {
         setLoadingStations(false);
       }
     };
-    const t = setTimeout(fetchStations, 200);
-    return () => clearTimeout(t);
+
+    // Initial load
+    fetchStations();
+
+    // Set up polling every 30 seconds
+    const pollId = setInterval(fetchStations, 30000);
+
+    return () => {
+      clearInterval(pollId);
+    };
   }, [page, searchQuery]);
 
   // Fetch driver requests
@@ -458,6 +582,12 @@ export default function DriverDashboard() {
   useEffect(() => {
     loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    if (view === "stations" && !userLocation && !locatingUser) {
+      requestUserLocation();
+    }
+  }, [view, userLocation, locatingUser, requestUserLocation]);
 
   // Handle return from Chapa
   useEffect(() => {
@@ -492,22 +622,15 @@ export default function DriverDashboard() {
   }, [showToast, loadRequests]);
 
   const handleTopUp = async () => {
-    if (!topUpAmount || topUpAmount <= 0) return;
-    setTopUpLoading(true);
-    try {
-      const res = await fetch("/api/wallet/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: topUpAmount }),
-      });
-      const data = await res.json();
-      if (!res.ok) { showToast(data.error || "Failed to initialize top-up", "error"); return; }
-      window.location.href = data.checkout_url;
-    } catch {
-      showToast("Error initializing top-up", "error");
-    } finally {
-      setTopUpLoading(false);
+    if (topUpAmount < 10) {
+      showToast("Minimum top-up is 10 ETB", "error");
+      return;
     }
+    setPaymentPayload({
+      amount: topUpAmount,
+      type: "TOPUP"
+    });
+    setShowPaymentGate(true);
   };
 
   const downloadReceipt = async (requestId: string) => {
@@ -559,53 +682,59 @@ export default function DriverDashboard() {
 
   const handlePayment = async () => {
     if (!checkoutStation || !checkoutFuelType) return;
+    const pricePerLitre = checkoutFuelType === "petrol" ? (checkoutStation.petrolPrice ?? 80) : (checkoutStation.dieselPrice ?? 75);
+    const total = checkoutAmount * pricePerLitre;
+    
+    setPaymentPayload({
+      amount: total,
+      type: "ORDER",
+      stationId: checkoutStation._id,
+      fuelType: checkoutFuelType,
+      litres: checkoutAmount
+    });
+    setShowPaymentGate(true);
+  };
+
+  const executeFinalPayment = async (method: string) => {
+    if (!paymentPayload) return;
     setIsProcessingPayment(true);
+    setTopUpLoading(true);
+    
     try {
-      const pricePerLitre = checkoutFuelType === "petrol"
-        ? (checkoutStation.petrolPrice ?? 80)
-        : (checkoutStation.dieselPrice ?? 75);
-      const totalPrice = checkoutAmount * pricePerLitre;
+      if (method === "Chapa" || paymentPayload.type === "TOPUP") {
+        const endpoint = paymentPayload.type === "TOPUP" ? "/api/wallet/topup" : "/api/payment/chapa/initialize";
+        const body = paymentPayload.type === "TOPUP" 
+          ? { amount: paymentPayload.amount }
+          : { 
+              amount: paymentPayload.amount, 
+              fuelType: paymentPayload.fuelType, 
+              stationId: paymentPayload.stationId,
+              stationName: checkoutStation?.name,
+              litres: paymentPayload.litres 
+            };
 
-      const res = await fetch("/api/payment/chapa/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: totalPrice,
-          fuelType: checkoutFuelType,
-          stationId: checkoutStation._id,
-          stationName: checkoutStation.name,
-          litres: checkoutAmount,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.error || "Payment init failed", "error");
-        return;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        
+        if (data.checkout_url || data.checkoutUrl) {
+          window.location.href = data.checkout_url || data.checkoutUrl;
+        } else {
+          showToast(data.error || "Payment failed", "error");
+        }
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        showToast(`Redirecting to ${method} secure gateway...`, "info");
+        window.location.reload(); 
       }
-
-      const locationText = typeof checkoutStation.location === "string"
-        ? checkoutStation.location
-        : checkoutStation.location?.text ?? "";
-      const ticketInfo: PendingTicket = {
-        stationName: checkoutStation.name,
-        stationLocation: locationText,
-        stationRating: checkoutStation.avgRating,
-        stationRatingCount: checkoutStation.ratingCount,
-        queueLength: checkoutStation.queueLength,
-        estimatedWait: checkoutStation.estimatedWaitMinutes,
-        fuelType: checkoutFuelType,
-        litres: checkoutAmount,
-        pricePerLitre,
-        total: totalPrice,
-      };
-      sessionStorage.setItem("pendingTicket", JSON.stringify(ticketInfo));
-
-      window.location.href = data.checkout_url;
     } catch {
-      showToast("Error initializing payment", "error");
+      showToast("Payment processing failed", "error");
     } finally {
       setIsProcessingPayment(false);
+      setTopUpLoading(false);
     }
   };
 
@@ -733,11 +862,31 @@ export default function DriverDashboard() {
   const safeRequests = Array.isArray(requests) ? requests : [];
   const safeStations = Array.isArray(stations) ? stations : [];
 
-  const filteredStations = safeStations.filter((s) => {
+  const searchFilteredStations = safeStations.filter((s) => {
     const nameMatch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
     const locationText = typeof s.location === 'string' ? s.location : s.location?.text || '';
     const locationMatch = locationText.toLowerCase().includes(searchQuery.toLowerCase());
     return nameMatch || locationMatch;
+  });
+
+  const getStationDistanceKm = (station: FullStation) => {
+    if (!userLocation) return null;
+    const coords = getStationCoords(station);
+    if (!coords) return null;
+    return calculateDistanceKm(userLocation, coords);
+  };
+
+  const filteredStations = searchFilteredStations.filter((station) => {
+    const isOpen = station.openNow ?? Boolean(station.petrol || station.diesel);
+    const distanceKm = getStationDistanceKm(station);
+    if (stationFilters.openNow && !isOpen) return false;
+    if (stationFilters.petrolOnly && !station.petrol) return false;
+    if (stationFilters.dieselOnly && !station.diesel) return false;
+    if (stationFilters.shortQueue && (station.estimatedWaitMinutes ?? 999) > 15) return false;
+    if (stationFilters.nearbyOnly) {
+      if (distanceKm === null || distanceKm > 5) return false;
+    }
+    return true;
   });
 
   const stats = {
@@ -751,9 +900,16 @@ export default function DriverDashboard() {
     lastTicketFuel: safeRequests.filter((r) => r.status === "APPROVED").slice(-1)[0]?.fuelType ?? null,
   };
 
-  const recommendedStation = filteredStations.find(
-    (s) => (s.petrol || s.diesel) && (s.petrolQty ?? 0) + (s.dieselQty ?? 0) > 0
-  ) ?? filteredStations[0];
+  const recommendedStation = filteredStations
+    .map((station) => {
+      const availabilityScore = (station.petrol ? 1 : 0) + (station.diesel ? 1 : 0);
+      const queueScore = Math.max(0, 30 - (station.estimatedWaitMinutes ?? 30));
+      const distanceKm = getStationDistanceKm(station);
+      const distanceScore = distanceKm === null ? 0 : Math.max(0, 15 - distanceKm);
+      const score = availabilityScore * 20 + queueScore + distanceScore;
+      return { station, score };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.station ?? filteredStations[0];
 
   const sortedStations = [...filteredStations].sort((a, b) => {
     if (sortBy === "cheapest-petrol") return (a.petrolPrice ?? 999) - (b.petrolPrice ?? 999);
@@ -767,53 +923,78 @@ export default function DriverDashboard() {
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE
   );
+  const selectedStationDetails = filteredStations.find((s) => s._id === selected?._id) ?? null;
 
   return (
     <div className="dashboard-root dashboard-shell min-h-screen text-slate-900 overflow-hidden">
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-4 right-4 z-50">
+        <button
+          title="mobile"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 bg-white rounded-lg shadow-sm border border-slate-200"
+        >
+          <Menu className="w-5 h-5 text-slate-600" />
+        </button>
+      </div>
+
       {/* Gradient Accents matching Station Dashboard */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-200 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100 blur-[120px] rounded-full" />
       </div>
 
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r border-slate-200/60 flex-col">
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 pro-surface border-r border-slate-200/60 flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      } lg:flex`}>
         <div className="p-6 pt-8 h-full flex flex-col">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-500/20 text-lg">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 text-white flex items-center justify-center font-bold shadow-lg shadow-indigo-500/20 text-lg">
               ⛽
             </div>
             <div>
-              <p className="text-sm font-black text-slate-900 leading-tight uppercase tracking-tight">FuelSync</p>
-              <p className="text-[10px] uppercase tracking-widest text-indigo-500 font-bold">Driver Hub</p>
+              <p className="text-sm font-bold text-slate-900 leading-tight">FuelSync</p>
+              <p className="text-xs text-indigo-500 font-semibold">Driver Hub</p>
             </div>
           </div>
 
 
-          {/* Nav */}
-          <nav className="space-y-1 flex-1">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setView(item.id)}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all ${view === item.id
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          <nav className="space-y-2 flex-1">
+            {sidebarItems.map((item) => {
+              const isActive = view === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setView(item.id); setMobileMenuOpen(false); }}
+                  className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                    isActive
+                      ? `${item.activeBg} shadow-sm border ${item.activeBorder}`
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
                   }`}
-              >
-                <div className={`${view === item.id ? "text-white" : item.color}`}>
-                  {item.icon}
-                </div>
-                {item.label}
-              </button>
-            ))}
+                >
+                  <div className={`transition-transform duration-300 ${isActive ? "scale-110" : ""}`}>
+                    <div className={item.color}>
+                      {item.icon}
+                    </div>
+                  </div>
+                  <span className={`font-bold tracking-wide ${
+                    isActive 
+                      ? `bg-clip-text text-transparent bg-gradient-to-r ${item.gradientText}` 
+                      : "text-slate-600 font-medium"
+                  }`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
 
           {/* Wallet */}
           <div className="pro-card p-4 mt-4">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Wallet Balance</p>
             <div className="flex items-baseline justify-between">
-              <p className="text-xl font-black text-slate-900">{walletLoading ? "…" : (walletBalance ?? 0).toLocaleString()}</p>
+              <p className="text-xl font-bold text-slate-900">{walletLoading ? "…" : (walletBalance ?? 0).toLocaleString()}</p>
               <p className="text-xs font-bold text-indigo-600">{walletCurrency}</p>
             </div>
             <button
@@ -827,7 +1008,11 @@ export default function DriverDashboard() {
           {/* Sign Out */}
           <div className="mt-4 pt-4 border-t border-slate-100">
             <button
-              onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/auth/login"; }}
+              onClick={() => {
+                clear();
+                fetch("/api/auth/logout", { method: "POST", keepalive: true }).catch(console.error);
+                router.replace("/auth/login");
+              }}
               className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
             >
               <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
@@ -840,20 +1025,28 @@ export default function DriverDashboard() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-y-auto relative lg:pl-64">
         <div className="relative z-10 dashboard-content max-w-[1600px] mx-auto p-8 lg:p-12 space-y-12 pb-32">
-          {/* Mobile Tab Switcher */}
-          <div className="lg:hidden pro-card p-2 flex flex-wrap gap-2 mb-8">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setView(item.id)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${view === item.id
-                    ? "bg-indigo-600 text-white shadow-lg"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          <div className="lg:hidden pro-card p-2 flex overflow-x-auto no-scrollbar gap-2 mb-8">
+            {sidebarItems.map((item) => {
+              const isActive = view === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id)}
+                  className={`whitespace-nowrap flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    isActive
+                      ? `${item.activeBg} border ${item.activeBorder} shadow-sm`
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent"
                   }`}
-              >
-                {item.label}
-              </button>
-            ))}
+                >
+                  <div className={`shrink-0 transition-transform ${isActive ? `${item.color} scale-110` : item.color}`}>
+                    {item.icon}
+                  </div>
+                  <span className={isActive ? `bg-clip-text text-transparent bg-gradient-to-r ${item.gradientText}` : ""}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <SectionHeader
@@ -861,6 +1054,7 @@ export default function DriverDashboard() {
             subtitle={activePage.subtitle}
             showGreeting={view === 'dashboard'}
             managerName={driverName}
+            gradientClass={sidebarItems.find(i => i.id === view)?.gradientText}
           />
 
           <AnimatePresence mode="wait">
@@ -872,24 +1066,36 @@ export default function DriverDashboard() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-12"
               >
+                <div className="relative w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-xl border border-indigo-500/20 bg-slate-900">
+                  <img src="/images/dashboard-illustration.png" className="absolute inset-0 w-full h-full object-cover opacity-60" alt="Dashboard Hub" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-900/95 via-indigo-900/70 to-transparent" />
+                  <div className="relative h-full flex flex-col justify-center p-8 sm:p-10">
+                    <h2 className="text-2xl sm:text-4xl font-black text-white mb-2 tracking-tight">Driver Control Center</h2>
+                    <p className="text-sm sm:text-base text-blue-100 font-medium max-w-lg leading-relaxed">
+                      Your central hub for efficient fuel management. Track requests, find nearby active stations with real-time pricing, and manage your digital wallet.
+                    </p>
+                  </div>
+                </div>
+
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <StatCard
                     icon={Fuel}
-                    label="Operations History"
+                    label="Total Requests"
                     value={stats.totalRequests}
                     trend="up"
                     trendValue="+2.1%"
                   />
                   <StatCard
                     icon={Clock}
-                    label="Current Operations"
+                    label="Pending Requests"
                     value={stats.pendingCount}
                     trend="down"
                     trendValue="-1.4%"
                   />
                   <StatCard
                     icon={CheckCircle}
-                    label="Verified Tickets"
+                    label="Approved Requests"
                     value={stats.approvedCount}
                     trend="up"
                     trendValue="+5.8%"
@@ -922,9 +1128,9 @@ export default function DriverDashboard() {
                       </div>
 
                       <div className="mt-8">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.2em] mb-2">Available Balance</p>
+                        <p className="text-xs font-semibold text-slate-500 mb-2">Available Balance</p>
                         <div className="flex items-baseline gap-2">
-                          <p className="text-4xl font-black text-slate-900 tracking-tight">
+                          <p className="text-4xl font-bold text-slate-900 tracking-tight">
                             {walletLoading ? "..." : walletBalance === null ? "0.00" : walletBalance.toLocaleString()}
                           </p>
                           <p className="text-lg font-bold text-blue-600">{walletCurrency}</p>
@@ -940,7 +1146,7 @@ export default function DriverDashboard() {
                           onClick={() => setShowTopUp(true)}
                           className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
                         >
-                          Quick Top Up
+                          Add Funds
                         </button>
                       )}
                     </div>
@@ -952,11 +1158,12 @@ export default function DriverDashboard() {
                     className="group relative overflow-hidden pro-card rounded-[1.25rem] p-6 transition-all duration-300 cursor-pointer"
                     onClick={() => {
                       if (recommendedStation) {
-                        const loc = recommendedStation.location;
-                        if (typeof loc === "object" && loc !== null && "lat" in loc) {
-                          setSelected(recommendedStation);
+                        setSelected(recommendedStation);
+                        setView("stations");
+                        setPage(1);
+                        setTimeout(() => {
                           mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }
+                        }, 80);
                       }
                     }}
                   >
@@ -1087,345 +1294,557 @@ export default function DriverDashboard() {
                   )}
                 </section>
 
-                {/* Search & Map Section */}
-                <section className="space-y-8 relative">
-                  <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-200/30 blur-[120px] rounded-full" />
-                  <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-indigo-200/30 blur-[120px] rounded-full" />
-                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <h2 className="text-3xl md:text-4xl font-black tracking-tight flex items-center gap-3 text-slate-900">
-                      <MapPin className="w-6 h-6 text-blue-500" />
-                      Nearby Stations
-                      <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-4 py-1.5 text-xs font-bold rounded-full border border-blue-200 shadow-sm">
-                        {filteredStations.length}
-                      </span>
-                    </h2>
-                    <div className="relative w-full sm:w-80">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search stations or locations..."
-                        className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-md focus:shadow-lg"
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                      />
+                {/* Quick Map & Stations (Enhanced for Mobile) */}
+                <section className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">Nearby Active Stations</h3>
+                      <p className="text-sm text-slate-500">Live fuel availability and map view</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={requestUserLocation}
+                        disabled={locatingUser}
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-slate-900/10"
+                      >
+                        <LocateFixed className="w-3.5 h-3.5" />
+                        {locatingUser ? "Locating..." : userLocation ? "Refresh GPS" : "Use My Location"}
+                      </button>
+                      <button
+                        onClick={() => setView("stations")}
+                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition flex items-center gap-2"
+                      >
+                        View All <ArrowRight size={14} />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Sort Controls */}
-                  <div className="flex flex-wrap gap-2">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider self-center">
-                      <ArrowUpDown className="w-3.5 h-3.5" /> Sort:
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div className="pro-card rounded-3xl overflow-hidden shadow-lg border border-slate-200 h-[300px] sm:h-[400px] relative">
+                      <OSMMap stations={filteredStations} selectedStation={selected} onSelectStation={setSelected} userLocation={userLocation} />
+                    </div>
+
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto no-scrollbar pr-1">
+                      {filteredStations.slice(0, 4).map((station) => (
+                        <div 
+                          key={station._id}
+                          onClick={() => { setSelected(station); setView("stations"); }}
+                          className="pro-card p-4 flex items-center justify-between hover:border-blue-400 transition-all cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-blue-50 transition">
+                              <MapPin className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{station.name}</p>
+                              <p className="text-[10px] text-slate-500">
+                                {getStationDistanceKm(station) !== null 
+                                  ? `${getStationDistanceKm(station)?.toFixed(1)} km away` 
+                                  : (typeof station.location === "string" ? station.location : station.location?.text)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-1">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter ${
+                              station.petrol ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                            }`}>
+                              PETROL: {station.petrol ? `${station.petrolPrice} ETB` : "EMPTY"}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m queue` : "No queue"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {filteredStations.length === 0 && (
+                        <div className="pro-card p-12 text-center">
+                          <p className="text-sm text-slate-500">No active stations nearby.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              </motion.div>
+            )}
+
+            {view === "stations" && (
+              <motion.div
+                key="stations"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-8 relative"
+              >
+                <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-200/30 blur-[120px] rounded-full" />
+                <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-indigo-200/30 blur-[120px] rounded-full" />
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight flex items-center gap-3 text-slate-900">
+                    <MapPin className="w-6 h-6 text-blue-500" />
+                    Nearby Stations
+                    <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-4 py-1.5 text-xs font-bold rounded-full border border-blue-200 shadow-sm">
+                      {filteredStations.length}
                     </span>
+                  </h2>
+                  <div className="relative w-full sm:w-80">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search stations or locations..."
+                      className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/70 backdrop-blur-xl border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-md focus:shadow-lg"
+                      value={searchQuery}
+                      onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="lg:col-span-2 flex flex-wrap gap-2">
                     {([
-                      { id: "default", label: "Default" },
-                      { id: "cheapest-petrol", label: "💧 Cheapest Petrol" },
-                      { id: "cheapest-diesel", label: "🛢 Cheapest Diesel" },
-                      { id: "shortest-queue", label: "⚡ Shortest Queue" },
-                    ] as const).map((opt) => (
+                      { key: "openNow", label: "Open now" },
+                      { key: "petrolOnly", label: "Petrol available" },
+                      { key: "dieselOnly", label: "Diesel available" },
+                      { key: "shortQueue", label: "Queue < 15m" },
+                      { key: "nearbyOnly", label: "Within 5km" },
+                    ] as const).map((filter) => (
                       <button
-                        key={opt.id}
-                        onClick={() => { setSortBy(opt.id); setPage(1); }}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sortBy === opt.id
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                        key={filter.key}
+                        onClick={() => {
+                          setStationFilters((prev) => ({ ...prev, [filter.key]: !prev[filter.key] }));
+                          setPage(1);
+                        }}
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition ${stationFilters[filter.key]
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                           }`}
                       >
-                        {opt.label}
+                        {filter.label}
                       </button>
                     ))}
                   </div>
+                  <div className="flex justify-start lg:justify-end">
+                    <button
+                      onClick={requestUserLocation}
+                      disabled={locatingUser}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 transition inline-flex items-center gap-2"
+                    >
+                      <LocateFixed className="w-3.5 h-3.5" />
+                      {locatingUser ? "Locating..." : userLocation ? "Refresh location" : "Use my location"}
+                    </button>
+                  </div>
+                </div>
 
-                  {loadingStations ? (
-                    <div className="relative bg-white/70 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-                      <div className="relative">
-                        <div className="w-16 h-16 rounded-full border-4 border-blue-200" />
-                        <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-                      </div>
-                      <p className="text-xl font-bold text-blue-600 uppercase tracking-widest animate-pulse">Scanning Stations...</p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 self-center">
+                    <ArrowUpDown className="w-3.5 h-3.5" /> Sort by
+                  </span>
+                  {([
+                    { id: "default", label: "Default" },
+                    { id: "cheapest-petrol", label: "Cheapest Petrol" },
+                    { id: "cheapest-diesel", label: "Cheapest Diesel" },
+                    { id: "shortest-queue", label: "Shortest Queue" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => { setSortBy(opt.id); setPage(1); }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${sortBy === opt.id
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs text-slate-500">Stations matching filters</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{filteredStations.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs text-slate-500">Best option now</p>
+                    <p className="text-sm font-bold text-slate-900 mt-1">{recommendedStation?.name ?? "No recommendation"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs text-slate-500">Location status</p>
+                    <p className="text-sm font-semibold text-slate-900 mt-1">{userLocation ? "Live location enabled" : "Location unavailable"}</p>
+                  </div>
+                </div>
+
+                {loadingStations ? (
+                  <div className="relative bg-white/70 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                    <div className="relative">
+                      <div className="w-16 h-16 rounded-full border-4 border-blue-200" />
+                      <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
                     </div>
-                  ) : error ? (
-                    <div className="text-center py-20 bg-red-50 rounded-[2.5rem] border border-red-200">
-                      <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-                        <AlertCircle className="w-10 h-10 text-red-500" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-slate-900 mb-2 uppercase tracking-wide">Signal Interrupted</h3>
-                      <p className="text-red-600 font-medium">{error}</p>
+                    <p className="text-lg font-semibold text-blue-600 animate-pulse">Loading nearby stations...</p>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-20 bg-red-50 rounded-[2.5rem] border border-red-200">
+                    <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
+                      <AlertCircle className="w-10 h-10 text-red-500" />
                     </div>
-                  ) : (
-                    <>
-                      {/* Smart Insights Panel */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
-                      >
-                        {[
-                          {
-                            label: "Apex Recommendation",
-                            sub: "Peak efficiency node nearby",
-                            icon: Award,
-                            color: "indigo",
-                            station: filteredStations.sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0)).find(s => s.petrol || s.diesel)
-                          },
-                          {
-                            label: "Velocity Node",
-                            sub: "Minimal queue detected",
-                            icon: Zap,
-                            color: "emerald",
-                            station: filteredStations.filter(s => s.petrol || s.diesel).sort((a, b) => (a.estimatedWaitMinutes || 0) - (b.estimatedWaitMinutes || 0))[0]
-                          }
-                        ].map((insight, idx) => (
-                          <div
-                            key={idx}
-                            className="relative bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-8 overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
-                          >
-                            <div
-                              className={`absolute -top-10 -right-10 w-40 h-40 bg-${insight.color}-300/30 blur-[80px] rounded-full opacity-70 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500`}
-                            />
-                            <div className="relative z-10 flex items-center gap-6">
-                              <div
-                                className={`w-16 h-16 rounded-3xl bg-gradient-to-br from-${insight.color}-100 to-${insight.color}-50 border border-${insight.color}-200 flex items-center justify-center shadow-inner`}
-                              >
-                                <insight.icon className={`w-8 h-8 text-${insight.color}-600`} />
-                              </div>
-                              <div>
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1">{insight.label}</p>
-                                <h3 className={`text-xl font-black text-slate-900 group-hover:text-${insight.color}-600 transition-colors tracking-tight`}>
-                                  {insight.station?.name || "Locating Optimized Hub..."}
-                                </h3>
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
-                                  {insight.sub}
-                                </p>
-                              </div>
-                            </div>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Unable to load station data</h3>
+                    <p className="text-red-600 font-medium">{error}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      ref={mapSectionRef}
+                      className="h-64 sm:h-80 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-8 bg-white group relative"
+                    >
+                      <div className="absolute top-6 right-6 z-[10] flex gap-2">
+                        <div className="px-5 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-xs font-semibold text-slate-700 shadow-lg flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                          Live map
+                        </div>
+                        <div className="px-4 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-xs font-medium text-slate-700 shadow-lg flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />Selected</span>
+                          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500" />Petrol</span>
+                          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Diesel</span>
+                        </div>
+                      </div>
+                      <OSMMap
+                        stations={filteredStations}
+                        selectedStationId={selected?._id ?? null}
+                        centerTo={selected && typeof selected.location === "object" ? { lat: selected.location.lat, lng: selected.location.lng } : undefined}
+                      />
+                    </div>
+
+                    {selectedStationDetails && (
+                      <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-semibold text-emerald-600">Selected station</p>
+                            <h3 className="text-xl font-bold text-slate-900 mt-1">{selectedStationDetails.name}</h3>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {typeof selectedStationDetails.location === "string"
+                                ? selectedStationDetails.location
+                                : selectedStationDetails.location?.text || "Location unavailable"}
+                            </p>
                           </div>
-                        ))}
-                      </motion.div>
-
-                      {/* Map */}
-                      <div
-                        ref={mapSectionRef}
-                        className="h-64 sm:h-80 md:h-96 rounded-[3rem] overflow-hidden border border-slate-200 shadow-lg transition-all hover:border-blue-300 mb-12 bg-white group relative"
-                      >
-                        <div className="absolute top-6 right-6 z-[10] flex gap-2">
-                          <div className="px-5 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl text-[10px] font-bold text-slate-700 uppercase tracking-widest shadow-lg flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                            Map Active
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              {selectedStationDetails.openNow ?? (selectedStationDetails.petrol || selectedStationDetails.diesel) ? "Open now" : "Closed"}
+                            </span>
+                            <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              {getStationDistanceKm(selectedStationDetails) !== null
+                                ? `${getStationDistanceKm(selectedStationDetails)!.toFixed(1)} km away`
+                                : "Distance unavailable"}
+                            </span>
                           </div>
                         </div>
-                        <OSMMap
-                          stations={filteredStations}
-                          centerTo={selected && typeof selected.location === 'object' ? { lat: selected.location.lat, lng: selected.location.lng } : undefined}
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs text-slate-500">Queue estimate</p>
+                            <p className="text-sm font-bold text-slate-900 mt-1">
+                              {selectedStationDetails.estimatedWaitMinutes ? `~${selectedStationDetails.estimatedWaitMinutes} min` : "No queue"}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs text-slate-500">Support contact</p>
+                            <p className="text-sm font-bold text-slate-900 mt-1">{selectedStationDetails.phone || "Not provided"}</p>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs text-slate-500">Accepted payments</p>
+                            <p className="text-sm font-bold text-slate-900 mt-1">
+                              {Array.isArray(selectedStationDetails.paymentMethods) && selectedStationDetails.paymentMethods.length > 0
+                                ? selectedStationDetails.paymentMethods.join(", ")
+                                : "Wallet, Cash"}
+                            </p>
+                          </div>
+                        </div>
                       </div>
+                    )}
 
-                      {/* Station Grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        <AnimatePresence>
-                          {paginatedStations.map((station, idx) => (
-                            <motion.div
-                              key={station._id}
-                              initial={{ opacity: 0, y: 30 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.05, duration: 0.5, ease: "easeOut" }}
-                              whileHover={{ scale: 1.02, translateY: -10 }}
-                              onClick={() => {
-                                const loc = station.location;
-                                if (typeof loc === "object" && loc !== null && "lat" in (loc as { lat: number })) {
-                                  setSelected(station);
-                                  mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                }
-                              }}
-                              className="group relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-blue-50 backdrop-blur-xl rounded-[2.5rem] border border-slate-200 hover:border-blue-300 transition-all duration-500 cursor-pointer shadow-lg hover:shadow-xl"
-                            >
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 blur-[60px] rounded-full group-hover:bg-blue-200/30 transition-all" />
-
-                              <div className="p-8">
-                                <div className="flex justify-between items-start mb-6">
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-2xl sm:text-3xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
-                                      {station.name}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-2">
-                                      <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                                      <p className="text-sm text-slate-600 font-medium truncate uppercase tracking-tight">
-                                        {typeof station.location === "string" ? station.location : station.location?.text}
-                                      </p>
-                                    </div>
+                    <div className="space-y-4">
+                      <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur sticky top-4 z-20 text-xs font-semibold text-slate-500">
+                        <div className="col-span-4">Station</div>
+                        <div className="col-span-2">Status</div>
+                        <div className="col-span-2">Queue</div>
+                        <div className="col-span-2">Distance</div>
+                        <div className="col-span-2 text-right">Actions</div>
+                      </div>
+                      <AnimatePresence>
+                        {paginatedStations.map((station, idx) => (
+                          (() => {
+                            const isExpanded = selected?._id === station._id;
+                            const distanceKm = getStationDistanceKm(station);
+                            const etaMinutes = distanceKm !== null
+                              ? Math.max(2, Math.round((distanceKm / AVERAGE_CITY_SPEED_KMH) * 60))
+                              : null;
+                            return (
+                          <motion.div
+                            key={station._id}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.04, duration: 0.35, ease: "easeOut" }}
+                            whileHover={{ scale: 1.005, translateY: -2 }}
+                            onClick={() => {
+                              const loc = station.location;
+                              if (typeof loc === "object" && loc !== null && "lat" in (loc as { lat: number })) {
+                                setSelected((prev) => (prev?._id === station._id ? null : station));
+                                mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }
+                            }}
+                            className="group overflow-hidden bg-white rounded-3xl border border-slate-200 hover:border-blue-300 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-lg"
+                          >
+                            <div className="p-5 sm:p-6">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+                                <div className="min-w-0">
+                                  <h3 className="font-bold text-xl sm:text-2xl text-slate-900 group-hover:text-blue-600 transition-colors truncate tracking-tight">
+                                    {station.name}
+                                  </h3>
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                                    <p className="text-xs sm:text-sm text-slate-600 font-medium truncate">
+                                      {typeof station.location === "string" ? station.location : station.location?.text}
+                                    </p>
                                   </div>
-                                  <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${station.petrol || station.diesel
-                                      ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                                      : "bg-red-100 border-red-300 text-red-700"
+                                  <p className="text-xs text-slate-500 mt-1">{formatRelativeMinutes(station.updatedAt)}</p>
+                                </div>
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                  <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${station.petrol || station.diesel
+                                    ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                    : "bg-red-100 border-red-300 text-red-700"
                                     }`}>
                                     {station.petrol || station.diesel ? "ACTIVE" : "CLOSED"}
                                   </div>
-                                </div>
-
-                                <div className="space-y-4 mb-8">
-                                  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-blue-50 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                      <div className="p-2.5 rounded-2xl bg-blue-100 border border-blue-200">
-                                        <Fuel className="w-5 h-5 text-blue-600" />
-                                      </div>
-                                      <div>
-                                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Petrol</p>
-                                        <span className={`text-lg font-bold ${station.petrol ? "text-slate-900" : "text-red-500"}`}>
-                                          {station.petrol ? `${station.petrolQty ?? 0}L` : "EMPTY"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.2em] mb-1">Price/L</p>
-                                      <p className="text-3xl font-bold text-blue-600 tracking-tight">{station.petrolPrice ?? 80}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-200 group-hover:bg-amber-50 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                      <div className="p-2.5 rounded-2xl bg-amber-100 border border-amber-200">
-                                        <Gauge className="w-5 h-5 text-amber-600" />
-                                      </div>
-                                      <div>
-                                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Diesel</p>
-                                        <span className={`text-lg font-bold ${station.diesel ? "text-slate-900" : "text-red-500"}`}>
-                                          {station.diesel ? `${station.dieselQty ?? 0}L` : "EMPTY"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Price/L</p>
-                                      <p className="text-3xl font-bold text-amber-600 tracking-tight">{station.dieselPrice ?? 75}<span className="text-xs ml-1 text-slate-500">ETB</span></p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 mb-8">
-                                  <div className={`flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden group/item transition-all hover:bg-slate-100 ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "border-emerald-300"
-                                      : station.estimatedWaitMinutes < 25 ? "border-amber-300"
-                                        : "border-red-300"
+                                  <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10
+                                    ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                    : station.estimatedWaitMinutes < 25
+                                      ? "bg-amber-100 border-amber-300 text-amber-700"
+                                      : "bg-red-100 border-red-300 text-red-700"
                                     }`}>
-                                    <div className={`absolute top-0 left-0 w-1 h-full ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "bg-emerald-500"
-                                        : station.estimatedWaitMinutes < 25 ? "bg-amber-500"
-                                          : "bg-red-500"
-                                      }`} />
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                      <Clock className="w-3.5 h-3.5" />
-                                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Queue</span>
-                                    </div>
-                                    <div>
-                                      <p className="text-xl font-bold text-slate-900 leading-none">
-                                        {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m` : "No Queue"}
-                                      </p>
-                                      <span className={`text-[9px] font-semibold uppercase tracking-widest mt-1 block ${!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10 ? "text-emerald-600"
-                                          : station.estimatedWaitMinutes < 25 ? "text-amber-600"
-                                            : "text-red-600"
-                                        }`}>
-                                        {(!station.estimatedWaitMinutes || station.estimatedWaitMinutes < 10) ? "Fast" : station.estimatedWaitMinutes < 25 ? "Moderate" : "Slow"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col gap-2 p-5 rounded-[2rem] bg-slate-50 border border-slate-200 relative overflow-hidden">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                      <Star className="w-3.5 h-3.5" />
-                                      <span className="text-[10px] font-semibold uppercase tracking-widest">Rating</span>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-bold text-slate-900">{station.avgRating?.toFixed(1) ?? "New"}</p>
-                                      <div className="flex gap-0.5 mt-1">
-                                        {[1, 2, 3, 4, 5].map(star => (
-                                          <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= (station.avgRating ?? 0) ? "bg-yellow-500" : "bg-slate-200"}`} />
-                                        ))}
-                                      </div>
-                                    </div>
+                                    {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes}m queue` : "No Queue"}
                                   </div>
                                 </div>
+                              </div>
 
-                                <div className="flex gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 mb-4">
+                                <div className="md:col-span-4">
+                                  <p className="text-xs text-slate-500">Station</p>
+                                  <p className="text-sm font-semibold text-slate-900 truncate">{station.name}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-xs text-slate-500">Status</p>
+                                  <p className="text-sm font-semibold text-slate-900">{station.petrol || station.diesel ? "Open" : "Closed"}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-xs text-slate-500">Queue</p>
+                                  <p className="text-sm font-semibold text-slate-900">{station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes} min` : "No Queue"}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-xs text-slate-500">Distance</p>
+                                  <p className="text-sm font-semibold text-slate-900">{distanceKm !== null ? `${distanceKm.toFixed(1)} km` : "N/A"}</p>
+                                  <p className="text-xs text-slate-500">{etaMinutes !== null ? `~${etaMinutes} min drive` : "Distance unavailable"}</p>
+                                </div>
+                                <div className="md:col-span-2 flex md:justify-end items-center">
                                   <button
-                                    disabled={!station.petrol}
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      startCheckout(station, "petrol");
+                                      setSelected((prev) => (prev?._id === station._id ? null : station));
                                     }}
-                                    className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.petrol
-                                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                                      }`}
+                                    className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-300 bg-white hover:bg-slate-100 transition"
                                   >
-                                    Fill Petrol
-                                  </button>
-                                  <button
-
-                                    disabled={!station.diesel}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      startCheckout(station, "diesel");
-                                    }}
-                                    className={`flex-1 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${station.diesel
-                                      ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-                                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                                      }`}
-                                  >
-                                    Fill Diesel
+                                    {isExpanded ? "Hide details" : "Show details"}
                                   </button>
                                 </div>
                               </div>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      </div>
 
-                      {/* Pagination */}
-                      {totalPages > 1 && (
-                        <div className="flex justify-center gap-3 mt-8">
-                          <button
-                            disabled={page === 1}
-                            onClick={() => setPage((p) => p - 1)}
-                            className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
-                          >
-                            Previous
-                          </button>
-                          <div className="flex items-center gap-2">
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                              let pageNum: number;
-                              if (totalPages <= 5) {
-                                pageNum = i + 1;
-                              } else if (page <= 3) {
-                                pageNum = i + 1;
-                              } else if (page >= totalPages - 2) {
-                                pageNum = totalPages - 4 + i;
-                              } else {
-                                pageNum = page - 2 + i;
-                              }
-                              if (pageNum > 0 && pageNum <= totalPages) {
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    onClick={() => setPage(pageNum)}
-                                    className={`w-10 h-10 rounded-xl font-semibold transition-all ${page === pageNum
-                                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-                                      }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
-                              }
-                              return null;
-                            })}
-                          </div>
-                          <button
-                            disabled={page === totalPages}
-                            onClick={() => setPage((p) => p + 1)}
-                            className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
-                          >
-                            Next
-                          </button>
+                              <AnimatePresence initial={false}>
+                              {isExpanded && (
+                              <motion.div
+                                key={`expanded-${station._id}`}
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.25, ease: "easeInOut" }}
+                                className="overflow-hidden"
+                              >
+                              <div className="rounded-2xl border border-slate-200 overflow-hidden mb-5">
+                                <div className="hidden sm:grid grid-cols-4 bg-slate-50 border-b border-slate-200">
+                                  <div className="px-4 py-2.5 text-xs font-semibold text-slate-500">Fuel Type</div>
+                                  <div className="px-4 py-2.5 text-xs font-semibold text-slate-500">Availability</div>
+                                  <div className="px-4 py-2.5 text-xs font-semibold text-slate-500 text-right">Quantity</div>
+                                  <div className="px-4 py-2.5 text-xs font-semibold text-slate-500 text-right">Price/L</div>
+                                </div>
+                                <div className="hidden sm:grid grid-cols-4 items-center border-b border-slate-200 hover:bg-blue-50/40 transition-colors">
+                                  <div className="px-4 py-3 flex items-center gap-2">
+                                    <div className="p-1.5 rounded-xl bg-blue-100 border border-blue-200">
+                                      <Fuel className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-800 uppercase">Petrol</span>
+                                  </div>
+                                  <div className="px-4 py-3">
+                                    <span className={`text-sm font-bold ${station.petrol ? "text-emerald-600" : "text-red-500"}`}>
+                                      {station.petrol ? "Available" : "Empty"}
+                                    </span>
+                                  </div>
+                                  <div className="px-4 py-3 text-right text-sm font-bold text-slate-900">{station.petrol ? `${station.petrolQty ?? 0}L` : "0L"}</div>
+                                  <div className="px-4 py-3 text-right text-lg font-extrabold text-blue-600">{station.petrolPrice ?? 80}<span className="text-xs ml-1 text-slate-500 font-semibold">ETB</span></div>
+                                </div>
+                                <div className="hidden sm:grid grid-cols-4 items-center hover:bg-amber-50/40 transition-colors">
+                                  <div className="px-4 py-3 flex items-center gap-2">
+                                    <div className="p-1.5 rounded-xl bg-amber-100 border border-amber-200">
+                                      <Gauge className="w-4 h-4 text-amber-600" />
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-800 uppercase">Diesel</span>
+                                  </div>
+                                  <div className="px-4 py-3">
+                                    <span className={`text-sm font-bold ${station.diesel ? "text-emerald-600" : "text-red-500"}`}>
+                                      {station.diesel ? "Available" : "Empty"}
+                                    </span>
+                                  </div>
+                                  <div className="px-4 py-3 text-right text-sm font-bold text-slate-900">{station.diesel ? `${station.dieselQty ?? 0}L` : "0L"}</div>
+                                  <div className="px-4 py-3 text-right text-lg font-extrabold text-amber-600">{station.dieselPrice ?? 75}<span className="text-xs ml-1 text-slate-500 font-semibold">ETB</span></div>
+                                </div>
+                                <div className="sm:hidden divide-y divide-slate-200">
+                                  <div className="px-4 py-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 rounded-xl bg-blue-100 border border-blue-200">
+                                        <Fuel className="w-4 h-4 text-blue-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-bold text-slate-800">Petrol</p>
+                                        <p className={`text-xs font-semibold ${station.petrol ? "text-emerald-600" : "text-red-500"}`}>
+                                          {station.petrol ? "Available" : "Empty"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-bold text-slate-900">{station.petrol ? `${station.petrolQty ?? 0}L` : "0L"}</p>
+                                      <p className="text-sm font-extrabold text-blue-600">{station.petrolPrice ?? 80} <span className="text-xs font-semibold text-slate-500">ETB/L</span></p>
+                                    </div>
+                                  </div>
+                                  <div className="px-4 py-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 rounded-xl bg-amber-100 border border-amber-200">
+                                        <Gauge className="w-4 h-4 text-amber-600" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-bold text-slate-800">Diesel</p>
+                                        <p className={`text-xs font-semibold ${station.diesel ? "text-emerald-600" : "text-red-500"}`}>
+                                          {station.diesel ? "Available" : "Empty"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-bold text-slate-900">{station.diesel ? `${station.dieselQty ?? 0}L` : "0L"}</p>
+                                      <p className="text-sm font-extrabold text-amber-600">{station.dieselPrice ?? 75} <span className="text-xs font-semibold text-slate-500">ETB/L</span></p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3 mb-5">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                  <div className="flex items-center gap-2 text-slate-600 mb-1">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span className="text-xs font-semibold">Queue</span>
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-900">
+                                    {station.estimatedWaitMinutes ? `~${station.estimatedWaitMinutes} minutes` : "No Queue"}
+                                  </p>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                      {distanceKm !== null
+                                        ? `${distanceKm.toFixed(1)} km • ~${etaMinutes} min drive`
+                                        : "Distance unavailable"}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                  <div className="flex items-center gap-2 text-slate-600 mb-1">
+                                    <Star className="w-3.5 h-3.5" />
+                                    <span className="text-xs font-semibold">Rating</span>
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-900">{station.avgRating?.toFixed(1) ?? "New"}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                  disabled={!station.petrol}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startCheckout(station, "petrol");
+                                  }}
+                                  className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${station.petrol
+                                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md hover:shadow-lg active:scale-[0.99]"
+                                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                    }`}
+                                >
+                                  Request Petrol
+                                </button>
+                                <button
+                                  disabled={!station.diesel}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startCheckout(station, "diesel");
+                                  }}
+                                  className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${station.diesel
+                                    ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md hover:shadow-lg active:scale-[0.99]"
+                                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                    }`}
+                                >
+                                  Request Diesel
+                                </button>
+                              </div>
+                              </motion.div>
+                              )}
+                              </AnimatePresence>
+                            </div>
+                          </motion.div>
+                            );
+                          })()
+                        ))}
+                      </AnimatePresence>
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div className="flex justify-center gap-3 mt-8">
+                        <button
+                          disabled={page === 1}
+                          onClick={() => setPage((p) => p - 1)}
+                          className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
+                        >
+                          Previous
+                        </button>
+                        <div className="flex items-center gap-2">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum: number;
+                            if (totalPages <= 5) pageNum = i + 1;
+                            else if (page <= 3) pageNum = i + 1;
+                            else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                            else pageNum = page - 2 + i;
+                            if (pageNum > 0 && pageNum <= totalPages) {
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setPage(pageNum)}
+                                  className={`w-10 h-10 rounded-xl font-semibold transition-all ${page === pageNum
+                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                                    }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            }
+                            return null;
+                          })}
                         </div>
-                      )}
-                    </>
-                  )}
-                </section>
+                        <button
+                          disabled={page === totalPages}
+                          onClick={() => setPage((p) => p + 1)}
+                          className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-200 transition-all border border-slate-200"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </motion.div>
             )}
 
@@ -1440,7 +1859,7 @@ export default function DriverDashboard() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="px-6 py-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center gap-3">
                     <Activity className="w-5 h-5 text-indigo-600" />
-                    <span className="text-sm font-black text-slate-900 uppercase tracking-tighter">{requests.length} Operations Archived</span>
+                    <span className="text-sm font-bold text-slate-900">{requests.length} requests found</span>
                   </div>
                 </div>
 
@@ -1448,7 +1867,7 @@ export default function DriverDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-slate-100 border-b border-slate-200">
-                        <tr className="text-left text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em]">
+                        <tr className="text-left text-xs font-semibold text-slate-600">
                           <th className="px-8 py-6">Station</th>
                           <th className="px-8 py-6">Fuel Type</th>
                           <th className="px-8 py-6">Quantity</th>
@@ -1471,11 +1890,11 @@ export default function DriverDashboard() {
                             <td className="px-8 py-6">
                               <div className="flex flex-col">
                                 <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{r.stationId?.name ?? "Unknown Station"}</span>
-                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mt-1">{r.stationId?.location ?? "—"}</span>
+                                <span className="text-xs text-slate-500 font-medium mt-1">{r.stationId?.location ?? "—"}</span>
                               </div>
                             </td>
                             <td className="px-8 py-6">
-                              <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${r.fuelType === "petrol"
+                              <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${r.fuelType === "petrol"
                                 ? "bg-blue-100 text-blue-700 border border-blue-200"
                                 : "bg-amber-100 text-amber-700 border border-amber-200"
                                 }`}>
@@ -1510,7 +1929,7 @@ export default function DriverDashboard() {
                             </td>
                             <td className="px-8 py-6">
                               <div className="flex flex-col gap-1">
-                                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{formatDateTime(r.createdAt)}</span>
+                                <span className="text-xs text-slate-500 font-medium">{formatDateTime(r.createdAt)}</span>
                                 {r.status === "APPROVED" && r.reservationExpiresAt && (
                                   <ReservationCountdown expiresAt={r.reservationExpiresAt} />
                                 )}
@@ -1521,7 +1940,7 @@ export default function DriverDashboard() {
                                 <div className="flex justify-end gap-2">
                                   <button
                                     onClick={() => setShowQrFor(showQrFor === r._id ? null : r._id)}
-                                    className="px-4 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-200 transition-all border border-emerald-200 flex items-center gap-1.5"
+                                    className="px-4 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-semibold hover:bg-emerald-200 transition-all border border-emerald-200 flex items-center gap-1.5"
                                   >
                                     <QrCode className="w-3.5 h-3.5" />
                                     Show QR
@@ -1529,7 +1948,7 @@ export default function DriverDashboard() {
                                   <button
                                     onClick={() => openCancelConfirm(r._id)}
                                     disabled={mutatingId === r._id}
-                                    className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-200 transition-all border border-red-200"
+                                    className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 transition-all border border-red-200"
                                   >
                                     Cancel
                                   </button>
@@ -1538,14 +1957,14 @@ export default function DriverDashboard() {
                                 <div className="flex justify-end gap-2">
                                   <button
                                     onClick={() => downloadReceipt(r._id)}
-                                    className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-200 transition-all border border-indigo-200"
+                                    className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200 transition-all border border-indigo-200"
                                   >
                                     Receipt
                                   </button>
                                   <button
                                     onClick={() => openCancelConfirm(r._id)}
                                     disabled={mutatingId === r._id}
-                                    className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-widest hover:bg-red-200 transition-all border border-red-200"
+                                    className="px-4 py-2 rounded-xl bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 transition-all border border-red-200"
                                   >
                                     Cancel
                                   </button>
@@ -1554,14 +1973,14 @@ export default function DriverDashboard() {
                                 <div className="flex justify-end gap-2">
                                   <button
                                     onClick={() => downloadReceipt(r._id)}
-                                    className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-200 transition-all border border-indigo-200"
+                                    className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 text-xs font-semibold hover:bg-indigo-200 transition-all border border-indigo-200"
                                   >
                                     Receipt
                                   </button>
                                   <button
                                     onClick={() => openRemoveConfirm(r._id)}
                                     disabled={mutatingId === r._id}
-                                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200"
+                                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200 transition-all border border-slate-200"
                                   >
                                     Remove
                                   </button>
@@ -1597,11 +2016,11 @@ export default function DriverDashboard() {
                   <Car className="w-16 h-16 text-indigo-400 group-hover:text-indigo-600 transition-colors relative z-10" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Fleet Integration Offline</h2>
-                  <p className="text-slate-500 font-bold mt-2 uppercase tracking-[0.3em] text-[10px]">Development in Progress • v0.9.4</p>
+                  <h2 className="text-2xl font-bold text-slate-900">Vehicle management is coming soon</h2>
+                  <p className="text-slate-500 mt-2 text-sm">We are preparing this section for registration, maintenance history, and default vehicle preferences.</p>
                 </div>
-                <button className="px-10 py-5 bg-slate-100 border border-slate-200 rounded-3xl text-slate-400 font-black uppercase tracking-[0.25em] text-[10px] hover:bg-slate-200 transition-all cursor-not-allowed">
-                  Protocol Loading
+                <button className="px-10 py-5 bg-slate-100 border border-slate-200 rounded-3xl text-slate-500 font-semibold text-sm hover:bg-slate-200 transition-all cursor-not-allowed">
+                  Feature in progress
                 </button>
               </motion.div>
             )}
@@ -1890,7 +2309,7 @@ export default function DriverDashboard() {
                   maxLength={500}
                   className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none transition"
                 />
-                <p className="text-[10px] text-slate-400 text-right mt-1">{ratingComment.length}/500</p>
+                <p className="text-xs text-slate-400 text-right mt-1">{ratingComment.length}/500</p>
               </div>
 
               <div className="flex gap-3">
@@ -1971,11 +2390,11 @@ export default function DriverDashboard() {
                   <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-3xl mx-auto animate-bounce">
                     ✓
                   </div>
-                  <h3 className="text-2xl font-black text-white">Payment Confirmed!</h3>
+                  <h3 className="text-2xl font-bold text-white">Payment Confirmed!</h3>
                   <p className="text-blue-100/80 text-sm">Your fuel request is confirmed</p>
                   <div className="inline-block bg-black/20 rounded-xl px-4 py-2 mt-2">
-                    <p className="text-[10px] text-blue-200/60 uppercase tracking-wider">Ticket Reference</p>
-                    <p className="font-black text-white tracking-wider text-lg">{ticketRef}</p>
+                    <p className="text-xs text-blue-200/60">Ticket Reference</p>
+                    <p className="font-bold text-white tracking-wider text-lg">{ticketRef}</p>
                   </div>
                 </div>
 
@@ -2010,7 +2429,7 @@ export default function DriverDashboard() {
                       </div>
                       <div className="ml-auto text-right">
                         <p className="text-xs text-slate-600">Total</p>
-                        <p className="font-black text-slate-900 text-lg">{ticketData.total.toLocaleString()} ETB</p>
+                        <p className="font-bold text-slate-900 text-lg">{ticketData.total.toLocaleString()} ETB</p>
                       </div>
                     </div>
                   </div>
@@ -2238,7 +2657,7 @@ export default function DriverDashboard() {
                       <p className="font-semibold text-slate-900 text-sm">{n.title}</p>
                       <p className="text-xs text-slate-600 mt-1">{n.message}</p>
                       {n.createdAt && (
-                        <p className="text-[10px] text-slate-500 mt-2">{formatDateTime(n.createdAt)}</p>
+                        <p className="text-xs text-slate-500 mt-2">{formatDateTime(n.createdAt)}</p>
                       )}
                     </li>
                   ))}
@@ -2265,6 +2684,103 @@ export default function DriverDashboard() {
                   Mark all as read
                 </button>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payment Gateway Selector */}
+      <AnimatePresence>
+        {showPaymentGate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1100] flex items-center justify-center p-4 sm:p-6"
+          >
+            <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md" onClick={() => !isProcessingPayment && setShowPaymentGate(false)} />
+            <motion.div
+              initial={{ scale: 0.9, y: 50, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 50, opacity: 0 }}
+              className="relative bg-white rounded-t-[3rem] sm:rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl overflow-y-auto max-h-[95vh] no-scrollbar"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+              
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Select Payment</h3>
+                  <p className="text-sm text-slate-500 font-medium">Choose your preferred provider</p>
+                </div>
+                <button 
+                  onClick={() => setShowPaymentGate(false)}
+                  className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="bg-slate-50 rounded-3xl p-6 mb-8 border border-slate-100">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total to Pay</span>
+                  <span className="text-2xl font-black text-slate-900">{paymentPayload?.amount.toLocaleString()} ETB</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { id: "Telebirr", color: "bg-[#0099FF]", icon: "📱", label: "TeleBirr" },
+                  { id: "CBEbirr", color: "bg-[#800080]", icon: "🏦", label: "CBEBirr" },
+                  { id: "E-birr", color: "bg-[#FF6600]", icon: "💳", label: "E-Birr" },
+                  { id: "Chapa", color: "bg-[#4F46E5]", icon: "⚡", label: "Chapa/Card" }
+                ].map((method) => (
+                  <button
+                    key={method.id}
+                    onClick={() => setActivePaymentMethod(method.id)}
+                    className={`relative p-5 rounded-3xl border-2 transition-all duration-300 flex flex-col items-center gap-3 group ${
+                      activePaymentMethod === method.id 
+                        ? "border-slate-900 bg-slate-900 text-white shadow-xl scale-105" 
+                        : "border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-2xl ${method.color} flex items-center justify-center text-xl shadow-lg group-hover:scale-110 transition-transform`}>
+                      {method.icon}
+                    </div>
+                    <span className={`text-xs font-black uppercase tracking-tight ${activePaymentMethod === method.id ? "text-white" : "text-slate-600"}`}>
+                      {method.label}
+                    </span>
+                    {activePaymentMethod === method.id && (
+                      <motion.div layoutId="check" className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
+                        <CheckCircle2 className="w-3 h-3 text-white" />
+                      </motion.div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                disabled={!activePaymentMethod || isProcessingPayment}
+                onClick={() => {
+                  if (activePaymentMethod) {
+                    executeFinalPayment(activePaymentMethod);
+                  }
+                }}
+                className="w-full mt-10 py-5 rounded-[2rem] bg-slate-900 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-3 sticky bottom-0"
+              >
+                {isProcessingPayment ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Pay with {activePaymentMethod || "..."}
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <div className="mt-6 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <Shield className="w-3 h-3" />
+                PCI-DSS Secure Payment Gateway
+              </div>
             </motion.div>
           </motion.div>
         )}

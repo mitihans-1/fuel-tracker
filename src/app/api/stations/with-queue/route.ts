@@ -8,7 +8,12 @@ export async function GET() {
     await connectDB();
 
     const [stations, waitingRequests] = await Promise.all([
-      Station.find({}).lean(),
+      Station.find({ 
+        $or: [
+          { verificationStatus: "APPROVED" },
+          { verificationStatus: { $exists: false } }
+        ]
+      }).lean(),
       FuelRequest.find({ status: { $in: ["PENDING", "APPROVED"] } })
         .select("stationId createdAt status")
         .lean(),

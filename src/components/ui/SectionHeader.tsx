@@ -7,6 +7,7 @@ export default function SectionHeader({
   badge,
   showGreeting,
   managerName,
+  gradientClass = "from-indigo-600 via-purple-600 to-indigo-600",
 }: {
   title: string;
   subtitle?: string;
@@ -14,6 +15,7 @@ export default function SectionHeader({
   badge?: string;
   showGreeting?: boolean;
   managerName?: string;
+  gradientClass?: string;
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 w-full">
@@ -33,12 +35,12 @@ export default function SectionHeader({
           </p>
         )}
         
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight uppercase">
+        <h2 className={`text-2xl sm:text-4xl font-extrabold tracking-tight uppercase bg-clip-text text-transparent bg-gradient-to-r ${gradientClass} drop-shadow-sm pb-1`}>
           {title}
         </h2>
         
         {subtitle && (
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-widest mt-1">
+          <p className="text-sm sm:text-base font-semibold text-slate-500 tracking-wide mt-1 max-w-2xl">
             {subtitle}
           </p>
         )}

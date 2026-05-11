@@ -14,39 +14,54 @@ export async function POST(req: NextRequest) {
     }
 
     const decoded = verifyToken(token);
-    if (!decoded || decoded.role !== "ADMIN") {
-      return NextResponse.json({ error: "Only admins can register stations" }, { status: 403 });
+    if (!decoded || (decoded.role !== "ADMIN" && decoded.role !== "STATION")) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
     const body = await req.json();
-    const { name, location, zone, woreda, kebele, email, password } = body;
+    const { 
+      name, stationName, // Handle both name and stationName
+      location, stationLocation, 
+      zone, woreda, kebele, 
+      email, password, 
+      verificationDoc 
+    } = body;
 
-    if (!name || !location || !email || !password) {
+    const finalName = name || stationName;
+    const finalLocation = location || stationLocation;
+
+    if (decoded.role === "STATION" && !verificationDoc) {
+      return NextResponse.json({ error: "Verification document is required for station registration." }, { status: 400 });
+    }
+
+    if (!finalName || !finalLocation) {
       return NextResponse.json({ error: "Required fields missing." }, { status: 400 });
     }
 
     await connectDB();
-    const user = await UserModel.findById(decoded.id);
+    
+    let managerId = decoded.id;
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (decoded.role === "ADMIN") {
+      if (!email || !password) {
+        return NextResponse.json({ error: "Email and password required for new manager account." }, { status: 400 });
+      }
+      const existingUser = await UserModel.findOne({ email });
+      if (existingUser) {
+        return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
+      }
+
+      const bcrypt = (await import("bcryptjs")).default;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const stationManager = await UserModel.create({
+        name: `${finalName} Manager`,
+        email,
+        password: hashedPassword,
+        role: "STATION",
+        isVerified: true,
+      });
+      managerId = stationManager._id;
     }
-
-    // 1. Create the station manager user
-    const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
-    }
-
-    const bcrypt = (await import("bcryptjs")).default;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const stationManager = await UserModel.create({
-      name: `${name} Manager`,
-      email,
-      password: hashedPassword,
-      role: "STATION",
-      isVerified: true,
-    });
 
     // 2. Geocode location
     let lat: number | undefined;
@@ -54,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(finalLocation)}&format=json&limit=1`,
         { headers: { "User-Agent": "FuelTrackerApp/1.0" } }
       );
       const geoData = await geoRes.json();
@@ -67,23 +82,28 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Create the station
-    await Station.create({
-      name,
-      location,
+    const newStation = await Station.create({
+      name: finalName,
+      location: finalLocation,
       zone,
       woreda,
       kebele,
       petrol: false,
       diesel: false,
-      ownerUserId: stationManager._id,
+      ownerUserId: managerId,
       latitude: lat,
       longitude: lon,
       isSetupComplete: true,
+      verificationDoc,
+      verificationStatus: decoded.role === "ADMIN" ? "APPROVED" : "PENDING"
     });
 
-    return NextResponse.json({ message: "Station and manager account created successfully" }, { status: 201 });
+    return NextResponse.json({ 
+      message: decoded.role === "ADMIN" ? "Station and manager account created" : "Station registered and awaiting approval",
+      station: newStation
+    }, { status: 201 });
 
-  } catch (err) {
+    } catch (err) {
     console.error("STATION UPGRADE ERROR:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

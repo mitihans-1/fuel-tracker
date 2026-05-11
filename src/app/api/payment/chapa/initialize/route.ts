@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     first_name: firstName,
     last_name: lastName,
     tx_ref,
-    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/chapa/verify`,
+    callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/chapa/webhook`,
     return_url: returnUrl,
     customization: {
       title: "FuelSync Payment",

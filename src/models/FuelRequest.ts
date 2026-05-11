@@ -79,9 +79,10 @@ const requestSchema = new mongoose.Schema({
     default: "PENDING"
   },
   meta: {
-    tx_ref: { type: String },
+    tx_ref: { type: String, unique: true, sparse: true, index: true },
     paymentProvider: { type: String, default: "CHAPA" }
   },
+
   reservationExpiresAt: {
     type: Date,
     required: false,

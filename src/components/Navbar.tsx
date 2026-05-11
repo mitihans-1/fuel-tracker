@@ -23,14 +23,29 @@ interface NavigationLink {
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
- const searchParams = useSearchParams();
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { user, clear } = useUser();
+
+  // Scroll handler for glassmorphism effect
+  useEffect(() => {
+    const handleScroll = () => {
+      // Trigger background change after the hero image (approx 80% of screen height)
+      setIsScrolled(window.scrollY > window.innerHeight * 0.8);
+    };
+    window.addEventListener("scroll", handleScroll);
+    handleScroll(); // Initial check
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+
   const profileDisplayName =
     user?.name?.trim() ||
     user?.email?.split("@")[0] ||
     "Account";
   const isDashboard = pathname?.startsWith("/dashboard");
+  const isAuthPage = pathname?.startsWith("/auth");
   const userRole = isDashboard ? (user?.role ?? null) : null;
   const isStationView = isDashboard && searchParams.get("view") === "station";
   const currentQuery = searchParams.toString();
@@ -126,11 +141,11 @@ export default function Navbar() {
     } catch { /* silent */ }
   };
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+  const handleLogout = () => {
     clear();
-    router.push("/auth/login");
     setMenuOpen(false);
+    fetch("/api/auth/logout", { method: "POST", keepalive: true }).catch(console.error);
+    router.replace("/auth/login");
   };
 
   const coreLinks: NavigationLink[] = [
@@ -157,22 +172,48 @@ export default function Navbar() {
     { name: "How It Works", path: "/#features" },
     { name: "Contact", path: "/contact" },
   ];
-  const authLinks: NavigationLink[] = [{ name: "Register", path: "/auth/register" }];
+  const authLinks: NavigationLink[] = [
+    { name: "Login", path: "/auth/login" },
+    { name: "Register", path: "/auth/register" }
+  ];
+
   const visibleLinks: NavigationLink[] = isDashboard ? coreLinks : [...coreLinks, ...marketingLinks];
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 w-full bg-slate-900 border-b border-white/10">
+    <nav className={`fixed top-0 inset-x-0 z-[100] w-full transition-all duration-500 ${
+      isAuthPage
+        ? "bg-white/95 backdrop-blur-xl border-b border-slate-200 py-4 shadow-sm"
+        : isScrolled 
+          ? "bg-slate-950/90 backdrop-blur-xl border-b border-white/5 py-4 shadow-2xl" 
+          : "bg-transparent py-5"
+    }`}>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex justify-between items-center">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group" onClick={() => setMenuOpen(false)}>
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 transition-transform group-hover:scale-110">
-            ⛽
-          </div>
-          <span className="font-black text-lg tracking-tight text-white">
-            Fuel<span className="text-blue-400">Sync</span>
-          </span>
-        </Link>
+        {/* Logo + Live Status */}
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-3 group" onClick={() => setMenuOpen(false)}>
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 transition-all group-hover:scale-110 group-hover:rotate-3">
+              ⛽
+            </div>
+            <span className={`font-black text-xl tracking-tight ${isAuthPage ? "text-slate-900" : "text-white"}`}>
+              Fuel<span className={isAuthPage ? "text-indigo-600" : "text-blue-400"}>Sync</span>
+            </span>
+          </Link>
+
+          {!isDashboard && (
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400/90">
+                Live Grid: 452 Stations
+              </span>
+            </div>
+          )}
+        </div>
+
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-6">
@@ -184,7 +225,7 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={`transition-colors ${isNavLinkActive(link.path) ? "text-blue-400" : "text-white/60 hover:text-white"}`}
+                  className={`transition-colors ${isNavLinkActive(link.path) ? (isAuthPage ? "text-indigo-600" : "text-blue-400") : (isAuthPage ? "text-slate-600 hover:text-slate-900" : "text-white/60 hover:text-white")}`}
                 >
                   {link.name}
                 </Link>
@@ -194,7 +235,7 @@ export default function Navbar() {
 
           {/* <ThemeSwitcher /> */}
 
-          <div className="h-5 w-px bg-white/10" />
+          <div className={`h-5 w-px ${isAuthPage ? "bg-slate-200" : "bg-white/10"}`} />
 
           <div className="flex items-center gap-3">
           {/* Driver Dashboard Top Navigation (Text Style) */}
@@ -411,7 +452,9 @@ const isActive =
                   className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                     pathname === link.path
                       ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
-                      : "text-white/60 hover:text-white hover:bg-white/10"
+                      : isAuthPage 
+                        ? "text-slate-500 hover:text-slate-900 hover:bg-slate-100" 
+                        : "text-white/60 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   {link.name}
@@ -464,21 +507,23 @@ const isActive =
             </div>
           )}
 
-          <button
-            className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? (
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
+          {!isDashboard && (
+            <button
+              className={`p-2 rounded-xl transition-all ${isAuthPage ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100" : "text-white/70 hover:text-white hover:bg-white/10"}`}
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

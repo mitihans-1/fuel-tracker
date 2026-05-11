@@ -63,7 +63,9 @@ export async function GET(req: NextRequest) {
         amount: paidAmount,
         description: `${meta.litres}L of ${meta.fuelType} at ${meta.stationName ?? "station"}`,
         relatedRequestId: fuelReq._id,
+        txRef: tx_ref,
       });
+
     }
   } catch (err) {
     console.error("Verify: failed to record payment:", err);
